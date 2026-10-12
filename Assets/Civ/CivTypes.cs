@@ -4,7 +4,7 @@ using UnityEngine;
 // Tipos y datos del juego de civilizaciones en tiempo real.
 
 public enum UnitKind { Settler, Worker, Warrior, Spearman, Sailboat, Caravan, Archer, Horseman, Chariot, Phalanx, Legion, Catapult, Merchant }
-public enum TechKind { Fire, Agriculture, Husbandry, Mining, Sailing, Archery, Pottery, Riding, Wheel, Masonry, Bronze, Writing, Construction, Iron, Astronomy, Mathematics, Currency, Philosophy, EraChange, HeavyPlow, WaterMill, Camshaft, ArabicNumerals, Universities, Cities, Bridges }
+public enum TechKind { Fire, Agriculture, Husbandry, Mining, Sailing, Archery, Pottery, Riding, Wheel, Masonry, Bronze, Writing, Construction, Iron, Astronomy, Mathematics, Currency, Philosophy, EraChange, HeavyPlow, WaterMill, Camshaft, ArabicNumerals, Universities, Cities, EraChange2, Bridges }
 public enum BuildingKind{ Granary, Workshop, Market, Library, Walls, PublicBaths, GreatLibrary, Observatory, FibonacciLab, Bank, Academy, FullingMill, University, AlexandriaLibrary }
 
 public class UnitDef
@@ -24,6 +24,7 @@ public class TechDef
     public float cost;
     public TechKind? requires;     // tecnología previa necesaria
     public TechKind? alsoRequires; // segunda tecnología previa, si hacen falta dos
+    public TechKind[] requiresAll; // todas estas tecnologías previas, si hacen falta más de dos
 }
 
 public class BuildingDef
@@ -49,9 +50,12 @@ public static class GameDefs
         { TechKind.HeavyPlow,   new TechDef { name = "Arado y collera", cost = 80, unlocks = "Granja (alimento x2)", requires = TechKind.EraChange } },
         { TechKind.WaterMill,   new TechDef { name = "Molino hidráulico", cost = 85, unlocks = "+1 comida en casillas junto al mar o a un río", requires = TechKind.EraChange } },
         { TechKind.Camshaft,   new TechDef { name = "Árbol de levas", cost = 95, unlocks = "+1 producción en casillas junto al mar o a un río y Batán", requires = TechKind.WaterMill } },
-        { TechKind.ArabicNumerals, new TechDef { name = "Cifras arábigas", cost = 90, unlocks = "+25% de ciencia y de oro en todas las ciudades , Banco, Mercader y Laboratorio de Fibonacci", requires = TechKind.EraChange } },
+        { TechKind.ArabicNumerals, new TechDef { name = "Cifras arábigas", cost = 90, unlocks = "+25% de ciencia y de oro en todas las ciudades, Banco, Mercader y Laboratorio de Fibonacci", requires = TechKind.EraChange } },
         { TechKind.Cities,     new TechDef { name = "Ciudades", cost = 100, unlocks = "+25% de crecimiento en todas las ciudades y Academia", requires = TechKind.HeavyPlow } },
         { TechKind.Universities, new TechDef { name = "Universidades", cost = 130, unlocks = "+25% de ciencia en todas las ciudades, Universidad y Gran Biblioteca de Alejandría", requires = TechKind.ArabicNumerals } },
+        // Aparece cuando se han descubierto todas las tecnologías de la Edad Media
+        { TechKind.EraChange2, new TechDef { name = "Cambio de era", cost = 800, unlocks = "una nueva era",
+            requiresAll = new[] { TechKind.HeavyPlow, TechKind.WaterMill, TechKind.Camshaft, TechKind.ArabicNumerals, TechKind.Cities, TechKind.Universities } } },
         { TechKind.Currency, new TechDef { name = "Moneda",      cost = 40, unlocks = "Caravana de comercio", requires = TechKind.Bronze, alsoRequires = TechKind.Writing } },
         { TechKind.Mathematics,new TechDef { name = "Matemáticas", cost = 40, unlocks = "Catapulta", requires = TechKind.Writing, alsoRequires = TechKind.Wheel } },
         { TechKind.Astronomy,  new TechDef { name = "Astronomía",  cost = 55, unlocks = "Observatorio", requires = TechKind.Writing } },
@@ -179,9 +183,15 @@ public class Civ
     public bool CanResearch(TechKind t)
     {
         TechDef def = GameDefs.Techs[t];
-        return !Has(t)
-            && (!def.requires.HasValue || Has(def.requires.Value))
-            && (!def.alsoRequires.HasValue || Has(def.alsoRequires.Value));
+        if (Has(t)) return false;
+        if (def.requires.HasValue && !Has(def.requires.Value)) return false;
+        if (def.alsoRequires.HasValue && !Has(def.alsoRequires.Value)) return false;
+
+        if (def.requiresAll != null)
+            foreach (TechKind r in def.requiresAll)
+                if (!Has(r)) return false;
+
+        return true;
     }
 
     public List<Unit> units = new List<Unit>();

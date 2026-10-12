@@ -414,6 +414,7 @@ public class CivUI : MonoBehaviour
         IconLabel(ResourceIcons.Science, Signed(h.scienceRate) + "/s: " + research, 300f, label);
 
         GUILayout.Label("Ciudades: " + h.cities.Count + "  Unidades: " + h.units.Count, label, GUILayout.Width(200));
+        GUILayout.Label("<b>" + EraName(h) + "</b>", label, GUILayout.Width(130));
         GUILayout.FlexibleSpace();
 
         if (GUILayout.Button(game.gameSpeed <= 0f ? "▶" : "❚❚", GUILayout.Width(36))) HandleKeyPause();
@@ -424,6 +425,14 @@ public class CivUI : MonoBehaviour
 
         GUILayout.EndHorizontal();
         GUILayout.EndArea();
+    }
+
+    // Edad en la que está la civilización: cada Cambio de era pasa a la siguiente
+    static string EraName(Civ civ)
+    {
+        if (civ.Has(TechKind.EraChange2)) return "Edad Moderna";
+        if (civ.Has(TechKind.EraChange)) return "Edad Media";
+        return "Edad Antigua";
     }
 
     // Dibujito de un recurso seguido de su texto, en un bloque de ancho fijo
