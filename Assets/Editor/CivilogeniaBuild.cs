@@ -10,6 +10,17 @@ public static class CivilogeniaBuild
     const string ScenePath = "Assets/Scenes/Civilogenia.unity";
     const string OutputFolder = "Exe";
 
+    static bool buildOk;
+
+    // Compilación por línea de comandos (-batchmode -executeMethod CivilogeniaBuild.BuildFromCommandLine):
+    // abre la escena del juego y compila; sale con código 0 si el build es correcto y 1 si falla.
+    public static void BuildFromCommandLine()
+    {
+        EditorSceneManager.OpenScene("Assets/prueba.unity");
+        BuildWindows();
+        EditorApplication.Exit(buildOk ? 0 : 1);
+    }
+
     // Guarda la escena actual, incluye los shaders que se buscan por nombre y compila para Windows.
     [MenuItem("Civilogenia/Compilar (Windows)")]
     public static void BuildWindows()
@@ -41,7 +52,9 @@ public static class CivilogeniaBuild
         BuildReport report = BuildPipeline.BuildPlayer(options);
         BuildSummary summary = report.summary;
 
-        if (summary.result == BuildResult.Succeeded)
+        buildOk = summary.result == BuildResult.Succeeded;
+
+        if (buildOk)
             Debug.Log("[Civilogenia] Build correcto: " + Path.GetFullPath(options.locationPathName)
                       + " (" + (summary.totalSize / 1048576) + " MB)");
         else

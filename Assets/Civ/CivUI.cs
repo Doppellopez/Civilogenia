@@ -227,7 +227,7 @@ public class CivUI : MonoBehaviour
         int cell = game.grid.Nearest(dir);
 
         // Barco con carga + clic derecho en una costa: va y desembarca allí
-        if (selUnit.def.naval && selUnit.cargo != null && game.grid.land[cell])
+        if (selUnit.def.naval && selUnit.cargo.Count > 0 && game.grid.land[cell])
         {
             game.OrderDisembark(selUnit, cell);
             return;
@@ -611,7 +611,7 @@ public class CivUI : MonoBehaviour
             }
             else if (u.def.capacity > 0)
             {
-                GUILayout.Label(u.cargo != null ? "Transporta: " + u.cargo.def.name : "Vacío (capacidad " + u.def.capacity + ")", label);
+                GUILayout.Label(u.cargo.Count > 0 ? "Transporta (" + u.cargo.Count + "/" + u.def.capacity + "): " + string.Join(", ", u.cargo.ConvertAll(c => c.def.name)) : "Vacío (capacidad " + u.def.capacity + ")", label);
                 GUILayout.Label("Embarcar: clic der. de una unidad sobre el barco.", small);
                 GUILayout.Label("Desembarcar: clic der. del barco en una casilla de tierra.", small);
             }

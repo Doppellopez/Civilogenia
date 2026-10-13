@@ -172,7 +172,7 @@ public class FreeCamera : MonoBehaviour
         pitch = euler.x > 180f ? euler.x - 360f : euler.x;
     }
 
-    // Tras mover la Tierra: la cámara gira con ella (conserva el encuadre) y mira siempre al punto
+    // Tras mover la Tierra: la cámara gira con ella (conserva el encuadre) y sigue mirando al centro de la Tierra
     void LateUpdate()
     {
         if (!following || earth == null) return;
@@ -183,11 +183,8 @@ public class FreeCamera : MonoBehaviour
         lastEarthRotation = e.rotation;
         transform.position = e.position + delta * (transform.position - e.position);
 
-        Vector3 target = e.TransformPoint(followLocal);
-        Vector3 toTarget = target - transform.position;
-        if (toTarget.sqrMagnitude > 1e-4f)
-            // El norte de la Tierra (su eje local Y) siempre hacia arriba en la pantalla
-            transform.rotation = Quaternion.LookRotation(toTarget, e.TransformDirection(Vector3.up));
+        // Siempre al centro de la Tierra, con su norte (eje local Y) hacia arriba en la pantalla
+        LookAtEarthCenter();
     }
 
     [Header("Zoom (rueda del ratón)")]

@@ -18,11 +18,11 @@ public static class SpaceLighting
 
     public static void Apply()
     {
-        // Sin luz ambiental ni cielo: lo que no toca el Sol queda negro
+        // Sin cielo y con una luz ambiental muy tenue: lo que no toca el Sol queda casi negro, pero se distingue algo
         RenderSettings.skybox = null;
         RenderSettings.ambientMode = AmbientMode.Flat;
-        RenderSettings.ambientLight = Color.black;
-        RenderSettings.ambientIntensity = 0f;
+        RenderSettings.ambientLight = new Color(0.16f, 0.17f, 0.2f);
+        RenderSettings.ambientIntensity = 1f;
         RenderSettings.defaultReflectionMode = DefaultReflectionMode.Custom;
         RenderSettings.reflectionIntensity = 0f;
         RenderSettings.fog = false;
@@ -56,7 +56,7 @@ public static class SpaceLighting
         }
 
         sun.color = new Color(1f, 0.97f, 0.92f);
-        sun.intensity = 1.3f;
+        sun.intensity = 1.6f;
         sun.shadows = LightShadows.Soft;
         RenderSettings.sun = sun;
     }

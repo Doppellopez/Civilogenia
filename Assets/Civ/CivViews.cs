@@ -606,6 +606,61 @@ public static class CivViews
                     new Vector3(size * 0.012f, size * 0.008f, size * 0.07f));
         }
 
+        if (city.buildings.Contains(BuildingKind.PrintingHouse))
+        {
+            // Prensa: taller de madera con tejado a dos aguas, una prensa de tornillo con su barra y pliegos de papel
+            Material prWood = LitMaterial(new Color(0.45f, 0.3f, 0.16f));
+            Material prDark = LitMaterial(new Color(0.28f, 0.18f, 0.1f));
+            Material prRoof = LitMaterial(new Color(0.55f, 0.25f, 0.18f));
+            Material prPaper = LitMaterial(new Color(0.93f, 0.9f, 0.8f));
+            Material prIron = LitMaterial(new Color(0.3f, 0.3f, 0.34f));
+
+            Vector3 at = new Vector3(-size * 0.9f, 0f, size * 0.9f);
+
+            // Cuerpo y tejado
+            Piece(root.transform, Cube, prWood, at + new Vector3(0f, size * 0.15f, 0f), new Vector3(size * 0.4f, size * 0.3f, size * 0.4f));
+            GameObject prRoofPiece = Piece(root.transform, Cylinder, prRoof, at + new Vector3(0f, size * 0.34f, 0f), new Vector3(size * 0.3f, size * 0.22f, size * 0.3f));
+            prRoofPiece.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+            Piece(root.transform, Cube, prDark, at + new Vector3(size * 0.2f, size * 0.12f, 0f), new Vector3(size * 0.02f, size * 0.18f, size * 0.12f)); // puerta
+
+            // Prensa de tornillo a la entrada: dos montantes, tornillo central y barra giratoria
+            Vector3 press = at + new Vector3(size * 0.34f, 0f, 0f);
+            Piece(root.transform, Cube, prDark, press + new Vector3(0f, size * 0.04f, 0f), new Vector3(size * 0.16f, size * 0.08f, size * 0.2f));
+            for (int side = -1; side <= 1; side += 2)
+                Piece(root.transform, Cube, prWood, press + new Vector3(0f, size * 0.17f, side * size * 0.08f), new Vector3(size * 0.03f, size * 0.26f, size * 0.03f));
+            Piece(root.transform, Cube, prWood, press + new Vector3(0f, size * 0.3f, 0f), new Vector3(size * 0.04f, size * 0.03f, size * 0.2f));
+            Piece(root.transform, Cylinder, prIron, press + new Vector3(0f, size * 0.22f, 0f), new Vector3(size * 0.025f, size * 0.12f, size * 0.025f));
+            Piece(root.transform, Cube, prDark, press + new Vector3(0f, size * 0.36f, 0f), new Vector3(size * 0.03f, size * 0.025f, size * 0.26f));
+            Piece(root.transform, Cube, prPaper, press + new Vector3(0f, size * 0.1f, 0f), new Vector3(size * 0.1f, size * 0.02f, size * 0.12f));
+        }
+
+        if (city.buildings.Contains(BuildingKind.GutenbergPress))
+        {
+            // Imprenta de Gutenberg: plataforma de piedra con una gran prensa de tornillo de madera y un libro abierto
+            Material gbStone = LitMaterial(new Color(0.7f, 0.68f, 0.62f));
+            Material gbWood = LitMaterial(new Color(0.45f, 0.3f, 0.16f));
+            Material gbDark = LitMaterial(new Color(0.28f, 0.18f, 0.1f));
+            Material gbIron = LitMaterial(new Color(0.3f, 0.3f, 0.34f));
+            Material gbPaper = LitMaterial(new Color(0.94f, 0.91f, 0.82f));
+            Vector3 at = new Vector3(size * 1.4f, 0f, -size * 1.2f); // si no hay celdilla libre, fuera del disco de la ciudad
+            Transform site = WonderSite(city, BuildingKind.GutenbergPress, root.transform, grid, earth, ref at);
+
+            Piece(site, Cube, gbStone, at + new Vector3(0f, size * 0.03f, 0f), new Vector3(size * 0.7f, size * 0.06f, size * 0.6f));
+
+            // Bastidor: dos montantes y una viga superior; tornillo central con su barra
+            for (int side = -1; side <= 1; side += 2)
+                Piece(site, Cube, gbWood, at + new Vector3(0f, size * 0.3f, side * size * 0.17f), new Vector3(size * 0.07f, size * 0.48f, size * 0.07f));
+            Piece(site, Cube, gbWood, at + new Vector3(0f, size * 0.56f, 0f), new Vector3(size * 0.09f, size * 0.07f, size * 0.42f));
+            Piece(site, Cylinder, gbIron, at + new Vector3(0f, size * 0.42f, 0f), new Vector3(size * 0.05f, size * 0.17f, size * 0.05f));
+            Piece(site, Cube, gbDark, at + new Vector3(0f, size * 0.5f, 0f), new Vector3(size * 0.05f, size * 0.04f, size * 0.55f));
+            Piece(site, Cube, gbDark, at + new Vector3(0f, size * 0.2f, 0f), new Vector3(size * 0.28f, size * 0.03f, size * 0.26f)); // plato
+
+            // Libro abierto con tapas del color de la civilización y una pila de pliegos
+            Piece(site, Cube, civMat, at + new Vector3(-size * 0.25f, size * 0.09f, 0f), new Vector3(size * 0.18f, size * 0.05f, size * 0.26f));
+            Piece(site, Cube, gbPaper, at + new Vector3(-size * 0.25f, size * 0.125f, 0f), new Vector3(size * 0.16f, size * 0.03f, size * 0.24f));
+            Piece(site, Cube, gbPaper, at + new Vector3(size * 0.22f, size * 0.11f, size * 0.1f), new Vector3(size * 0.14f, size * 0.07f, size * 0.12f));
+        }
+
         if (city.buildings.Contains(BuildingKind.FibonacciLab))
         {
             // Laboratorio de Fibonacci: base de piedra y una espiral de cilindros cada vez más grandes (proporción áurea)
@@ -818,6 +873,14 @@ public static class CivViews
                 boss.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
                 break;
             }
+
+            case UnitKind.Crossbowman:
+                BuildCrossbowman(root.transform, size, unit.owner.color);
+                break;
+
+            case UnitKind.Ballista:
+                BuildBallista(root.transform, size, unit.owner.color);
+                break;
 
             case UnitKind.Sailboat:
                 BuildSailboatModel(root.transform, size, unit.owner.color);
@@ -1478,6 +1541,189 @@ public static class CivViews
         Piece(root, Cube, steel, new Vector3(s * 0.31f, s * 0.56f, s * 0.2f), new Vector3(s * 0.01f, s * 0.01f, s * 0.3f));
     }
 
+    // Ballestero: arquero con capucha y una ballesta de madera con arco de acero y virote cargado
+    static void BuildCrossbowman(Transform root, float s, Color civ)
+    {
+        Material jerkin = LitMaterial(civ);
+        Material cowl = LitMaterial(Color.Lerp(civ, Color.black, 0.45f));
+        Material skin = LitMaterial(new Color(0.9f, 0.72f, 0.56f));
+        Material hose = LitMaterial(new Color(0.3f, 0.26f, 0.2f));
+        Material boots = LitMaterial(new Color(0.2f, 0.14f, 0.09f));
+        Material leather = LitMaterial(new Color(0.5f, 0.34f, 0.2f));
+        Material wood = LitMaterial(new Color(0.45f, 0.3f, 0.16f));
+        Material steel = LitMaterial(new Color(0.75f, 0.77f, 0.82f));
+        Material white = LitMaterial(new Color(0.92f, 0.9f, 0.85f));
+
+        MedLegs(root, s, hose, boots);
+        MedTorso(root, s, jerkin, leather, true);
+        MedHead(root, s, skin);
+        Piece(root, Sphere, cowl, new Vector3(0f, s * 0.92f, -s * 0.03f), new Vector3(s * 0.26f, s * 0.18f, s * 0.26f));
+
+        // Aljaba de virotes al cinto
+        GameObject quiver = Piece(root, Cylinder, leather, new Vector3(-s * 0.16f, s * 0.42f, -s * 0.08f), new Vector3(s * 0.08f, s * 0.14f, s * 0.08f));
+        quiver.transform.localRotation = Quaternion.Euler(0f, 0f, -10f);
+
+        // Ballesta apuntando al frente: caja de madera, arco de acero cruzado, cuerda y virote
+        MedHand(root, s, skin, s * 0.2f, s * 0.5f, s * 0.2f);
+        MedHand(root, s, skin, s * 0.2f, s * 0.52f, s * 0.38f);
+        Piece(root, Cube, wood, new Vector3(s * 0.2f, s * 0.5f, s * 0.3f), new Vector3(s * 0.06f, s * 0.06f, s * 0.5f));
+        Piece(root, Cube, steel, new Vector3(s * 0.2f, s * 0.52f, s * 0.52f), new Vector3(s * 0.4f, s * 0.025f, s * 0.03f));
+        Piece(root, Cube, white, new Vector3(s * 0.2f, s * 0.52f, s * 0.42f), new Vector3(s * 0.36f, s * 0.008f, s * 0.008f));
+        Piece(root, Cube, steel, new Vector3(s * 0.2f, s * 0.545f, s * 0.38f), new Vector3(s * 0.015f, s * 0.015f, s * 0.3f));
+    }
+
+    // Ballesta de asedio: gran ballesta sobre un armazón de madera con ruedas, con un virote enorme en el canal
+    static void BuildBallista(Transform root, float s, Color civ)
+    {
+        Material wood = LitMaterial(new Color(0.45f, 0.3f, 0.16f));
+        Material woodDark = LitMaterial(new Color(0.3f, 0.2f, 0.1f));
+        Material iron = LitMaterial(new Color(0.55f, 0.57f, 0.62f));
+        Material rope = LitMaterial(new Color(0.8f, 0.72f, 0.5f));
+        Material flag = LitMaterial(civ);
+
+        // Armazón y ruedas
+        Piece(root, Cube, woodDark, new Vector3(0f, s * 0.2f, 0f), new Vector3(s * 0.5f, s * 0.08f, s * 0.9f));
+        for (int side = -1; side <= 1; side += 2)
+        {
+            GameObject wheel = Piece(root, Cylinder, woodDark, new Vector3(side * s * 0.32f, s * 0.2f, -s * 0.05f), new Vector3(s * 0.34f, s * 0.04f, s * 0.34f));
+            wheel.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+        }
+
+        // Canal central, soporte y gran arco con dos brazos de madera y la cuerda
+        Piece(root, Cube, wood, new Vector3(0f, s * 0.38f, s * 0.1f), new Vector3(s * 0.1f, s * 0.1f, s * 0.95f));
+        Piece(root, Cube, woodDark, new Vector3(0f, s * 0.3f, s * 0.05f), new Vector3(s * 0.16f, s * 0.14f, s * 0.2f));
+        for (int side = -1; side <= 1; side += 2)
+        {
+            GameObject arm = Piece(root, Cube, wood, new Vector3(side * s * 0.4f, s * 0.42f, s * 0.5f), new Vector3(s * 0.7f, s * 0.07f, s * 0.07f));
+            arm.transform.localRotation = Quaternion.Euler(0f, side * 14f, 0f);
+        }
+        Piece(root, Cube, rope, new Vector3(0f, s * 0.43f, s * 0.2f), new Vector3(s * 0.9f, s * 0.015f, s * 0.015f));
+
+        // Virote enorme con punta de hierro y banderín de la civilización
+        Piece(root, Cube, woodDark, new Vector3(0f, s * 0.47f, s * 0.2f), new Vector3(s * 0.035f, s * 0.035f, s * 0.9f));
+        Piece(root, Cube, iron, new Vector3(0f, s * 0.47f, s * 0.7f), new Vector3(s * 0.07f, s * 0.05f, s * 0.12f));
+        Piece(root, Cube, flag, new Vector3(0f, s * 0.5f, -s * 0.2f), new Vector3(s * 0.01f, s * 0.1f, s * 0.14f));
+    }
+
+    // Fusilero: casaca del color de la civilización, chacó alto y un fusil largo con bayoneta
+    static void BuildRifleman(Transform root, float s, Color civ)
+    {
+        Material coat = LitMaterial(civ);
+        Material hat = LitMaterial(new Color(0.1f, 0.1f, 0.14f));
+        Material skin = LitMaterial(new Color(0.9f, 0.72f, 0.56f));
+        Material trousers = LitMaterial(new Color(0.22f, 0.24f, 0.3f));
+        Material boots = LitMaterial(new Color(0.12f, 0.08f, 0.05f));
+        Material leather = LitMaterial(new Color(0.8f, 0.78f, 0.7f));
+        Material wood = LitMaterial(new Color(0.4f, 0.26f, 0.13f));
+        Material steel = LitMaterial(new Color(0.75f, 0.77f, 0.82f));
+        Material gold = LitMaterial(new Color(0.95f, 0.8f, 0.3f));
+
+        MedLegs(root, s, trousers, boots);
+        MedTorso(root, s, coat, leather, false);
+        MedHead(root, s, skin);
+
+        // Chacó con plaquita dorada
+        Piece(root, Cylinder, hat, new Vector3(0f, s * 1.0f, 0f), new Vector3(s * 0.2f, s * 0.12f, s * 0.2f));
+        Piece(root, Cube, gold, new Vector3(0f, s * 0.99f, s * 0.1f), new Vector3(s * 0.07f, s * 0.07f, s * 0.01f));
+
+        // Fusil apoyado al frente con bayoneta
+        MedHand(root, s, skin, s * 0.2f, s * 0.5f, s * 0.2f);
+        MedHand(root, s, skin, s * 0.2f, s * 0.55f, s * 0.45f);
+        GameObject stock = Piece(root, Cube, wood, new Vector3(s * 0.2f, s * 0.48f, s * 0.1f), new Vector3(s * 0.045f, s * 0.07f, s * 0.3f));
+        stock.transform.localRotation = Quaternion.Euler(-8f, 0f, 0f);
+        Piece(root, Cube, steel, new Vector3(s * 0.2f, s * 0.54f, s * 0.55f), new Vector3(s * 0.02f, s * 0.02f, s * 0.75f));
+        Piece(root, Cube, steel, new Vector3(s * 0.2f, s * 0.54f, s * 1.02f), new Vector3(s * 0.01f, s * 0.01f, s * 0.2f));
+    }
+
+    // Cañón: cureña de madera con dos ruedas, un largo tubo de hierro y una pila de balas
+    static void BuildCannon(Transform root, float s, Color civ)
+    {
+        Material wood = LitMaterial(new Color(0.42f, 0.28f, 0.14f));
+        Material woodDark = LitMaterial(new Color(0.28f, 0.18f, 0.1f));
+        Material iron = LitMaterial(new Color(0.18f, 0.18f, 0.2f));
+        Material flag = LitMaterial(civ);
+
+        Piece(root, Cube, wood, new Vector3(0f, s * 0.22f, 0f), new Vector3(s * 0.4f, s * 0.1f, s * 0.8f));
+        for (int side = -1; side <= 1; side += 2)
+        {
+            GameObject wheel = Piece(root, Cylinder, woodDark, new Vector3(side * s * 0.27f, s * 0.24f, 0f), new Vector3(s * 0.4f, s * 0.05f, s * 0.4f));
+            wheel.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+        }
+
+        GameObject barrel = Piece(root, Cylinder, iron, new Vector3(0f, s * 0.4f, s * 0.2f), new Vector3(s * 0.2f, s * 0.5f, s * 0.2f));
+        barrel.transform.localRotation = Quaternion.Euler(80f, 0f, 0f);
+        Piece(root, Sphere, iron, new Vector3(0f, s * 0.38f, -s * 0.3f), new Vector3(s * 0.2f, s * 0.2f, s * 0.2f));
+
+        // Pila de balas y banderín de la civilización
+        for (int i = 0; i < 3; i++)
+            Piece(root, Sphere, iron, new Vector3((i - 1) * s * 0.1f, s * 0.31f, -s * 0.5f), new Vector3(s * 0.09f, s * 0.09f, s * 0.09f));
+        Piece(root, Cube, flag, new Vector3(0f, s * 0.58f, -s * 0.3f), new Vector3(s * 0.01f, s * 0.12f, s * 0.16f));
+    }
+
+    // Barco de vapor: casco de hierro, dos chimeneas humeantes, una rueda de palas y un mástil con el estandarte
+    static void BuildSteamship(Transform root, float s, Color civ)
+    {
+        Material hull = LitMaterial(new Color(0.22f, 0.22f, 0.25f));
+        Material deck = LitMaterial(new Color(0.55f, 0.42f, 0.26f));
+        Material stack = LitMaterial(new Color(0.08f, 0.08f, 0.09f));
+        Material band = LitMaterial(civ);
+        Material smoke = LitMaterial(new Color(0.6f, 0.6f, 0.62f));
+        Material white = LitMaterial(new Color(0.9f, 0.9f, 0.88f));
+
+        Piece(root, ShipHull(), hull, Vector3.zero, new Vector3(s * 1.2f, s * 1.1f, s * 1.7f));
+        Piece(root, Cube, deck, new Vector3(0f, s * 0.46f, 0f), new Vector3(s * 0.6f, s * 0.06f, s * 1.1f));
+        Piece(root, Cube, white, new Vector3(0f, s * 0.62f, -s * 0.15f), new Vector3(s * 0.4f, s * 0.26f, s * 0.5f)); // puente
+
+        // Dos chimeneas con franja de color y humo
+        for (int i = 0; i < 2; i++)
+        {
+            float z = s * (0.2f + i * 0.4f);
+            Piece(root, Cylinder, stack, new Vector3(0f, s * 0.95f, z), new Vector3(s * 0.2f, s * 0.35f, s * 0.2f));
+            Piece(root, Cylinder, band, new Vector3(0f, s * 1.18f, z), new Vector3(s * 0.21f, s * 0.05f, s * 0.21f));
+            Piece(root, Sphere, smoke, new Vector3(0f, s * 1.5f + i * s * 0.1f, z - s * 0.05f), new Vector3(s * 0.3f, s * 0.22f, s * 0.3f));
+        }
+
+        // Ruedas de palas a ambos lados
+        for (int side = -1; side <= 1; side += 2)
+        {
+            GameObject paddle = Piece(root, Cylinder, stack, new Vector3(side * s * 0.62f, s * 0.38f, -s * 0.05f), new Vector3(s * 0.4f, s * 0.05f, s * 0.4f));
+            paddle.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+        }
+
+        // Mástil pequeño con estandarte
+        Piece(root, Cylinder, deck, new Vector3(0f, s * 1.0f, -s * 0.55f), new Vector3(s * 0.04f, s * 0.5f, s * 0.04f));
+        Piece(root, Cube, band, new Vector3(s * 0.05f, s * 1.45f, -s * 0.55f), new Vector3(s * 0.02f, s * 0.12f, s * 0.3f));
+    }
+
+    // Mosquetero: casaca del color de la civilización, sombrero de tres picos y un mosquete largo con bayoneta
+    static void BuildMusketeer(Transform root, float s, Color civ)
+    {
+        Material coat = LitMaterial(civ);
+        Material hat = LitMaterial(new Color(0.12f, 0.11f, 0.13f));
+        Material skin = LitMaterial(new Color(0.9f, 0.72f, 0.56f));
+        Material breeches = LitMaterial(new Color(0.9f, 0.88f, 0.82f));
+        Material boots = LitMaterial(new Color(0.15f, 0.1f, 0.07f));
+        Material leather = LitMaterial(new Color(0.5f, 0.34f, 0.2f));
+        Material wood = LitMaterial(new Color(0.42f, 0.27f, 0.14f));
+        Material steel = LitMaterial(new Color(0.75f, 0.77f, 0.82f));
+
+        MedLegs(root, s, breeches, boots);
+        MedTorso(root, s, coat, leather, true);
+        MedHead(root, s, skin);
+
+        // Sombrero de tres picos
+        Piece(root, Cylinder, hat, new Vector3(0f, s * 0.93f, 0f), new Vector3(s * 0.34f, s * 0.025f, s * 0.34f));
+        Piece(root, Cylinder, hat, new Vector3(0f, s * 0.98f, 0f), new Vector3(s * 0.2f, s * 0.05f, s * 0.2f));
+
+        // Mosquete: culata de madera, cañón de acero y bayoneta, sujeto con ambas manos
+        MedHand(root, s, skin, s * 0.2f, s * 0.5f, s * 0.2f);
+        MedHand(root, s, skin, s * 0.2f, s * 0.55f, s * 0.4f);
+        GameObject stock = Piece(root, Cube, wood, new Vector3(s * 0.2f, s * 0.48f, s * 0.12f), new Vector3(s * 0.05f, s * 0.07f, s * 0.3f));
+        stock.transform.localRotation = Quaternion.Euler(-8f, 0f, 0f);
+        Piece(root, Cube, steel, new Vector3(s * 0.2f, s * 0.54f, s * 0.5f), new Vector3(s * 0.025f, s * 0.025f, s * 0.6f));
+        Piece(root, Cube, steel, new Vector3(s * 0.2f, s * 0.54f, s * 0.88f), new Vector3(s * 0.012f, s * 0.012f, s * 0.18f));
+    }
+
     // Caballero medieval con armadura completa y sobretodo del color de la civilización. mounted: con lanza (a caballo);
     // si no, con espada larga y gran escudo (infantería pesada)
     static void BuildMedievalKnight(Transform root, float s, Color civ, bool mounted)
@@ -1589,6 +1835,37 @@ public static class CivViews
         Piece(root, Cube, cross, new Vector3(s * 0.05f, s * 1.92f, s * 0.05f), new Vector3(s * 0.02f, s * 0.12f, s * 0.3f));
     }
 
+    // Galeón: casco grande con castillo de popa alto, tres mástiles con velas y estandarte del color de la civilización
+    static void BuildGalleon(Transform root, float s, Color civ)
+    {
+        Material wood = LitMaterial(new Color(0.34f, 0.22f, 0.12f));
+        Material woodLight = LitMaterial(new Color(0.58f, 0.43f, 0.25f));
+        Material sail = LitMaterial(new Color(0.95f, 0.92f, 0.82f));
+        Material flag = LitMaterial(civ);
+
+        Piece(root, ShipHull(), wood, Vector3.zero, new Vector3(s * 1.3f, s * 1.2f, s * 1.5f));
+
+        // Castillo de popa alto y de proa bajo
+        Piece(root, Cube, woodLight, new Vector3(0f, s * 0.55f, -s * 0.95f), new Vector3(s * 0.7f, s * 0.4f, s * 0.6f));
+        Piece(root, Cube, wood, new Vector3(0f, s * 0.82f, -s * 1.05f), new Vector3(s * 0.55f, s * 0.2f, s * 0.4f));
+        Piece(root, Cube, woodLight, new Vector3(0f, s * 0.5f, s * 1.0f), new Vector3(s * 0.42f, s * 0.24f, s * 0.4f));
+
+        // Mástil mayor y trinquete con velas cuadradas, mesana en popa
+        float[] mastZ = { s * 0.3f, s * 0.85f, -s * 0.7f };
+        float[] mastH = { 1.0f, 0.75f, 0.6f };
+        for (int i = 0; i < 3; i++)
+        {
+            float h = mastH[i];
+            Piece(root, Cylinder, wood, new Vector3(0f, s * (0.9f + h * 0.6f), mastZ[i]), new Vector3(s * 0.06f, s * h * 0.8f, s * 0.06f));
+            Piece(root, Cube, sail, new Vector3(0f, s * (0.9f + h * 0.55f), mastZ[i] + s * 0.03f), new Vector3(s * 0.9f * h, s * 0.7f * h, s * 0.02f));
+            GameObject yard = Piece(root, Cylinder, wood, new Vector3(0f, s * (0.9f + h * 0.95f), mastZ[i]), new Vector3(s * 0.03f, s * 0.48f * h, s * 0.03f));
+            yard.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+        }
+
+        // Estandarte en lo alto del mástil mayor
+        Piece(root, Cube, flag, new Vector3(s * 0.05f, s * 1.95f, mastZ[0]), new Vector3(s * 0.02f, s * 0.14f, s * 0.34f));
+    }
+
     // Carro de comercio medieval: carreta cubierta con toldo del color de la civilización, barriles y un caballo de tiro
     static void BuildMedievalWagon(Transform root, float s, Color civ)
     {
@@ -1677,6 +1954,13 @@ public static class CivViews
             case UnitKind.Legion:    BuildMedievalKnight(root, s, civ, false); break;
             case UnitKind.Catapult:  BuildMedievalTrebuchet(root, s, civ); break;
             case UnitKind.Sailboat:  BuildMedievalCog(root, s, civ); break;
+            case UnitKind.Galleon:   BuildGalleon(root, s, civ); break;
+            case UnitKind.Musketeer: BuildMusketeer(root, s, civ); break;
+            case UnitKind.Rifleman:  BuildRifleman(root, s, civ); break;
+            case UnitKind.Cannon:    BuildCannon(root, s, civ); break;
+            case UnitKind.Steamship: BuildSteamship(root, s, civ); break;
+            case UnitKind.Crossbowman: BuildCrossbowman(root, s, civ); break;
+            case UnitKind.Ballista:  BuildBallista(root, s, civ); break;
             case UnitKind.Caravan:
             case UnitKind.Merchant:  BuildMedievalWagon(root, s, civ); break;
             case UnitKind.Chariot:   BuildMedievalWarWagon(root, s, civ); break;

@@ -402,6 +402,8 @@ public class CivGame : MonoBehaviour
         city.foodRate = total.x;
         city.prodRate = total.y + (city.buildings.Contains(BuildingKind.Workshop) ? 2f : 0f)
                         + (city.buildings.Contains(BuildingKind.FullingMill) ? 3f : 0f);
+        if (city.owner.Has(TechKind.SteamEngine)) city.prodRate *= 1.5f; // Máquina de vapor: +50 % de producción en todas las ciudades
+        if (city.owner.Has(TechKind.Clock)) city.prodRate *= 1.25f; // Reloj mecánico: +25 % de producción en todas las ciudades
         city.goldRate = total.z + roadTiles + (city.buildings.Contains(BuildingKind.Market) ? 2f : 0f);
         city.scienceRate = (0.4f + 0.3f * city.pop + roadTiles) * (city.buildings.Contains(BuildingKind.Library) ? 2f : 1f);
         if (city.buildings.Contains(BuildingKind.Bank)) city.goldRate *= 1.5f; // Banco: +50 % de oro en esta ciudad
@@ -411,11 +413,14 @@ public class CivGame : MonoBehaviour
             city.scienceRate *= 1.25f;
         }
         if (city.owner.Has(TechKind.Universities)) city.scienceRate *= 1.25f; // Universidades: +25 % en todas las ciudades
+        if (city.owner.Has(TechKind.Electricity)) city.scienceRate *= 1.25f; // Electricidad: +25 % en todas las ciudades
         if (city.owner.Has(TechKind.Philosophy)) city.scienceRate *= 1.5f; // Filosofía: +50 % en todas las ciudades
         if (city.buildings.Contains(BuildingKind.University)) city.scienceRate *= 1.75f; // Universidad: +75 % en esta ciudad
+        if (city.buildings.Contains(BuildingKind.PrintingHouse)) city.scienceRate *= 2f; // Prensa: duplica la ciencia en esta ciudad
         if (city.buildings.Contains(BuildingKind.Observatory)) city.scienceRate *= 1.5f; // Observatorio: +50 % en esta ciudad
         if (OwnsGreatLibrary(city.owner)) city.scienceRate *= 1.5f; // Gran Biblioteca: +50 % en todas las ciudades
         if (OwnsBuilding(city.owner, BuildingKind.AlexandriaLibrary)) city.scienceRate *= 1.4f; // Gran Biblioteca de Alejandría: +40 % en todas las ciudades
+        if (OwnsBuilding(city.owner, BuildingKind.GutenbergPress)) city.scienceRate *= 1.5f; // Imprenta de Gutenberg: x1,5 en todas las ciudades
         if (OwnsBuilding(city.owner, BuildingKind.FibonacciLab)) city.scienceRate *= 1.25f; // Laboratorio de Fibonacci: +25 % en todas las ciudades
 
         // Cada ruta comercial activa da +15 % de oro y de ciencia a la ciudad
@@ -588,6 +593,13 @@ public class CivGame : MonoBehaviour
             case UnitKind.Legion:   return civ.Has(TechKind.Iron);
             case UnitKind.Catapult: return civ.Has(TechKind.Mathematics);
             case UnitKind.Sailboat: return civ.Has(TechKind.Sailing);
+            case UnitKind.Galleon:  return civ.Has(TechKind.Compass);
+            case UnitKind.Musketeer: return civ.Has(TechKind.Gunpowder);
+            case UnitKind.Crossbowman: return civ.Has(TechKind.Crossbow);
+            case UnitKind.Rifleman: return civ.Has(TechKind.Rifle);
+            case UnitKind.Cannon:   return civ.Has(TechKind.Artillery);
+            case UnitKind.Steamship: return civ.Has(TechKind.SteamEngine);
+            case UnitKind.Ballista: return civ.Has(TechKind.Crossbow);
             case UnitKind.Caravan:  return civ.Has(TechKind.Currency);
             case UnitKind.Merchant: return false; // solo mejorando una caravana
             default:                return true;
@@ -611,7 +623,7 @@ public class CivGame : MonoBehaviour
     // Las maravillas (Gran Biblioteca, Laboratorio de Fibonacci): solo puede existir una de cada en todo el mundo
     static bool IsWonder(BuildingKind kind)
     {
-        return kind == BuildingKind.GreatLibrary || kind == BuildingKind.FibonacciLab || kind == BuildingKind.AlexandriaLibrary;
+        return kind == BuildingKind.GreatLibrary || kind == BuildingKind.FibonacciLab || kind == BuildingKind.AlexandriaLibrary || kind == BuildingKind.GutenbergPress;
     }
 
     // La maravilla se levanta en una celdilla libre del territorio de la ciudad (la más cercana al centro);
@@ -665,6 +677,8 @@ public class CivGame : MonoBehaviour
         if (kind == BuildingKind.University && !city.owner.Has(TechKind.Universities)) return false;
         if (kind == BuildingKind.FullingMill && !city.owner.Has(TechKind.Camshaft)) return false;
         if (kind == BuildingKind.Academy && !city.owner.Has(TechKind.Cities)) return false;
+        if (kind == BuildingKind.GutenbergPress && (!city.owner.Has(TechKind.PrintingPress) || WonderExists(kind))) return false;
+        if (kind == BuildingKind.PrintingHouse && !city.owner.Has(TechKind.PrintingPress)) return false;
         if (kind == BuildingKind.Bank && !city.owner.Has(TechKind.ArabicNumerals)) return false;
         if (kind == BuildingKind.FibonacciLab && (!city.owner.Has(TechKind.ArabicNumerals) || WonderExists(kind))) return false;
         return !city.buildings.Contains(kind);
@@ -718,6 +732,20 @@ public class CivGame : MonoBehaviour
                 return null;
             case UnitKind.Spearman: return civ.Has(TechKind.Iron) ? UnitKind.Legion : (UnitKind?)null;
             case UnitKind.Horseman: return civ.Has(TechKind.Wheel) ? UnitKind.Chariot : (UnitKind?)null;
+            case UnitKind.Archer:
+                if (civ.Has(TechKind.Rifle)) return UnitKind.Rifleman;
+                if (civ.Has(TechKind.Gunpowder)) return UnitKind.Musketeer;
+                return civ.Has(TechKind.Crossbow) ? UnitKind.Crossbowman : (UnitKind?)null;
+            case UnitKind.Crossbowman:
+                if (civ.Has(TechKind.Rifle)) return UnitKind.Rifleman;
+                return civ.Has(TechKind.Gunpowder) ? UnitKind.Musketeer : (UnitKind?)null;
+            case UnitKind.Musketeer: return civ.Has(TechKind.Rifle) ? UnitKind.Rifleman : (UnitKind?)null;
+            case UnitKind.Catapult:
+            case UnitKind.Ballista: return civ.Has(TechKind.Artillery) ? UnitKind.Cannon : (UnitKind?)null;
+            case UnitKind.Sailboat:
+                if (civ.Has(TechKind.SteamEngine)) return UnitKind.Steamship;
+                return civ.Has(TechKind.Compass) ? UnitKind.Galleon : (UnitKind?)null;
+            case UnitKind.Galleon: return civ.Has(TechKind.SteamEngine) ? UnitKind.Steamship : (UnitKind?)null;
             case UnitKind.Caravan:  return civ.Has(TechKind.ArabicNumerals) ? UnitKind.Merchant : (UnitKind?)null;
             default: return null;
         }
@@ -814,9 +842,14 @@ public class CivGame : MonoBehaviour
         // Cambio de era del jugador: vídeo "Video cambio a edad media" (Assets/Resources) a pantalla completa
         if (civ.isHuman && def == GameDefs.Techs[TechKind.EraChange])
             IntroVideo.PlayClip(EraChangeVideo);
+
+        // Segundo Cambio de era del jugador: vídeo "Video cambio a edad moderna"
+        if (civ.isHuman && def == GameDefs.Techs[TechKind.EraChange2])
+            IntroVideo.PlayClip(EraChange2Video);
     }
 
     const string EraChangeVideo = "Video cambio a edad media";
+    const string EraChange2Video = "Video cambio a edad moderna";
 
     // ---------------------------------------------------------------- Unidades
 
@@ -851,14 +884,17 @@ public class CivGame : MonoBehaviour
         if (u.view != null) Destroy(u.view);
 
         // Si se hunde el barco, se pierde también su carga
-        if (u.cargo != null)
+        if (u.cargo.Count > 0)
         {
-            Unit passenger = u.cargo;
-            u.cargo = null;
-            passenger.carriedBy = null;
-            KillUnit(passenger);
+            List<Unit> passengers = new List<Unit>(u.cargo);
+            u.cargo.Clear();
+            foreach (Unit passenger in passengers)
+            {
+                passenger.carriedBy = null;
+                KillUnit(passenger);
+            }
         }
-        if (u.carriedBy != null) u.carriedBy.cargo = null;
+        if (u.carriedBy != null) u.carriedBy.cargo.Remove(u);
 
         if (u.owner.isHuman) AddLog("Pierdes un " + u.def.name, Color.red);
         CheckElimination(u.owner);
@@ -1396,7 +1432,7 @@ public class CivGame : MonoBehaviour
     public bool OrderBoard(Unit u, Unit ship)
     {
         if (u.def.naval || u.carriedBy != null || ship == null || !ship.alive) return false;
-        if (ship.owner != u.owner || ship.def.capacity <= 0 || ship.cargo != null) return false;
+        if (ship.owner != u.owner || ship.def.capacity <= 0 || ship.cargo.Count >= ship.def.capacity) return false;
 
         CancelRoad(u);
         u.targetUnit = null;
@@ -1415,7 +1451,7 @@ public class CivGame : MonoBehaviour
         Unit ship = u.boardTarget;
         if (ship == null) return false;
 
-        if (!ship.alive || ship.cargo != null)
+        if (!ship.alive || ship.cargo.Count >= ship.def.capacity)
         {
             u.boardTarget = null;
             return false;
@@ -1456,7 +1492,7 @@ public class CivGame : MonoBehaviour
 
     void Board(Unit u, Unit ship)
     {
-        ship.cargo = u;
+        ship.cargo.Add(u);
         u.carriedBy = ship;
         u.boardTarget = null;
         u.path.Clear();
@@ -1471,7 +1507,7 @@ public class CivGame : MonoBehaviour
     /// <summary>El barco lleva su carga hasta el mar junto a la casilla de tierra y la desembarca allí.</summary>
     public bool OrderDisembark(Unit ship, int landCell)
     {
-        if (ship.cargo == null || !grid.land[landCell]) return false;
+        if (ship.cargo.Count == 0 || !grid.land[landCell]) return false;
 
         City city = grid.cityAt[landCell];
         if (city != null && city.owner != ship.owner) return false;
@@ -1505,21 +1541,24 @@ public class CivGame : MonoBehaviour
 
     void Unload(Unit ship)
     {
-        Unit p = ship.cargo;
         int cell = ship.disembarkAt;
         ship.disembarkAt = -1;
-        if (p == null) return;
+        if (ship.cargo.Count == 0) return;
 
-        ship.cargo = null;
-        p.carriedBy = null;
-        p.cell = cell;
-        p.moveTo = -1;
-        p.t = 0f;
-        p.path.Clear();
-        if (p.view != null) p.view.SetActive(true);
-        PlaceUnit(p);
+        List<Unit> passengers = new List<Unit>(ship.cargo);
+        ship.cargo.Clear();
+        foreach (Unit p in passengers)
+        {
+            p.carriedBy = null;
+            p.cell = cell;
+            p.moveTo = -1;
+            p.t = 0f;
+            p.path.Clear();
+            if (p.view != null) p.view.SetActive(true);
+            PlaceUnit(p);
 
-        if (ship.owner.isHuman) AddLog(p.def.name + " desembarca", ship.owner.color);
+            if (ship.owner.isHuman) AddLog(p.def.name + " desembarca", ship.owner.color);
+        }
     }
 
     public void OrderAttack(Unit u, Unit target)
@@ -1609,7 +1648,7 @@ public class CivGame : MonoBehaviour
         // Barco: desembarcar la carga al llegar junto a la costa elegida
         if (u.disembarkAt >= 0)
         {
-            if (u.cargo == null) u.disembarkAt = -1;
+            if (u.cargo.Count == 0) u.disembarkAt = -1;
             else if (grid.Adjacent(u.cell, u.disembarkAt))
             {
                 Unload(u);
@@ -1724,8 +1763,10 @@ public class CivGame : MonoBehaviour
     void AdvanceMove(Unit u, float dt)
     {
         // Las carreteras y recorrer un río duplican la velocidad en ese tramo, sea cual sea el terreno
-        float factor = u.def.naval ? 1f
-            : (grid.HasRoad(u.cell, u.moveTo) || grid.HasRiver(u.cell, u.moveTo))
+        float factor = u.def.naval ? (u.owner.Has(TechKind.Compass) ? 1.5f : 1f) // Brújula magnética: +50 % de velocidad en el mar
+            : grid.HasRoad(u.cell, u.moveTo)
+            ? WorldGrid.RoadSpeedFactor * (u.owner.Has(TechKind.Railway) ? 2f : 1f) // Ferrocarril: las carreteras duplican su velocidad
+            : grid.HasRiver(u.cell, u.moveTo)
             ? WorldGrid.RoadSpeedFactor
             : Mathf.Max(0.2f, GameDefs.MoveFactor(grid.biome[u.moveTo]));
         u.t += u.def.speed * factor * dt;
@@ -1735,7 +1776,7 @@ public class CivGame : MonoBehaviour
             u.cell = u.moveTo;
             u.moveTo = -1;
             u.t = 0f;
-            if (u.cargo != null) u.cargo.cell = u.cell;
+            foreach (Unit p in u.cargo) p.cell = u.cell;
         }
 
         PlaceUnit(u);
@@ -1968,10 +2009,12 @@ public class CivGame : MonoBehaviour
         foreach (City o in civ.cities) if (o.hasItem && o.itemIsUnit && o.itemUnit == UnitKind.Settler) settlers++;
 
         int military = 0;
-        foreach (Unit u in civ.units) if (u.def.IsMilitary) military++;
+        foreach (Unit u in civ.units) if (u.def.IsMilitary && !u.def.naval) military++;
 
         // La más actual que se pueda construir (las antiguas quedan obsoletas)
-        UnitKind bestMilitary = Available(civ, UnitKind.Legion) ? UnitKind.Legion
+        UnitKind bestMilitary = Available(civ, UnitKind.Rifleman) ? UnitKind.Rifleman
+                              : Available(civ, UnitKind.Musketeer) ? UnitKind.Musketeer
+                              : Available(civ, UnitKind.Legion) ? UnitKind.Legion
                               : Available(civ, UnitKind.Spearman) ? UnitKind.Spearman : UnitKind.Warrior;
 
         if (civ.cities.Count + settlers < 5 && settlers == 0 && c.pop >= 2)
@@ -2002,7 +2045,7 @@ public class CivGame : MonoBehaviour
         List<Unit> idle = new List<Unit>();
         foreach (Unit u in civ.units)
         {
-            if (u.def.IsMilitary && !u.Moving && u.path.Count == 0 && !u.HasTarget) idle.Add(u);
+            if (u.def.IsMilitary && !u.def.naval && !u.Moving && u.path.Count == 0 && !u.HasTarget) idle.Add(u);
         }
 
         // Se dejan algunos de guarnición

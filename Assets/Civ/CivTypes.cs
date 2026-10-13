@@ -3,9 +3,9 @@ using UnityEngine;
 
 // Tipos y datos del juego de civilizaciones en tiempo real.
 
-public enum UnitKind { Settler, Worker, Warrior, Spearman, Sailboat, Caravan, Archer, Horseman, Chariot, Phalanx, Legion, Catapult, Merchant }
-public enum TechKind { Fire, Agriculture, Husbandry, Mining, Sailing, Archery, Pottery, Riding, Wheel, Masonry, Bronze, Writing, Construction, Iron, Astronomy, Mathematics, Currency, Philosophy, EraChange, HeavyPlow, WaterMill, Camshaft, ArabicNumerals, Universities, Cities, EraChange2, Bridges }
-public enum BuildingKind{ Granary, Workshop, Market, Library, Walls, PublicBaths, GreatLibrary, Observatory, FibonacciLab, Bank, Academy, FullingMill, University, AlexandriaLibrary }
+public enum UnitKind { Settler, Worker, Warrior, Spearman, Sailboat, Caravan, Archer, Horseman, Chariot, Phalanx, Legion, Catapult, Merchant, Galleon, Musketeer, Crossbowman, Ballista, Rifleman, Cannon, Steamship }
+public enum TechKind { Fire, Agriculture, Husbandry, Mining, Sailing, Archery, Pottery, Riding, Wheel, Masonry, Bronze, Writing, Construction, Iron, Astronomy, Mathematics, Currency, Philosophy, EraChange, HeavyPlow, WaterMill, Camshaft, ArabicNumerals, Universities, Cities, EraChange2, Bridges, Compass, Clock, Gunpowder, PrintingPress, Crossbow, SteamEngine, Electricity, Railway, Rifle, Artillery }
+public enum BuildingKind{ Granary, Workshop, Market, Library, Walls, PublicBaths, GreatLibrary, Observatory, FibonacciLab, Bank, Academy, FullingMill, University, AlexandriaLibrary, PrintingHouse, GutenbergPress }
 
 public class UnitDef
 {
@@ -42,36 +42,47 @@ public static class GameDefs
     // Tecnologías: se investigan con ciencia; "requires" es la tecnología previa necesaria
     public static readonly Dictionary<TechKind, TechDef> Techs = new Dictionary<TechKind, TechDef>
     {
-        { TechKind.Fire,        new TechDef { name = "Fuego",       cost = 15, unlocks = "las ciudades crecen a más de " + PopWithoutFire } },
-        { TechKind.Agriculture, new TechDef { name = "Agricultura", cost = 25, unlocks = "irrigaciones y Granero", requires = TechKind.Fire } },
-        { TechKind.Philosophy,  new TechDef { name = "Filosofía",   cost = 70, unlocks = "+50% de investigación y Cambio de era", requires = TechKind.Astronomy, alsoRequires = TechKind.Mathematics } },
-        { TechKind.EraChange,   new TechDef { name = "Cambio de era", cost = 500, unlocks = "una nueva era", requires = TechKind.Philosophy } },
+        { TechKind.Fire,        new TechDef { name = "Fuego",       cost = 45, unlocks = "las ciudades crecen a más de " + PopWithoutFire } },
+        { TechKind.Agriculture, new TechDef { name = "Agricultura", cost = 75, unlocks = "irrigaciones y Granero", requires = TechKind.Fire } },
+        { TechKind.Philosophy,  new TechDef { name = "Filosofía",   cost = 210, unlocks = "+50% de investigación y Cambio de era", requires = TechKind.Astronomy, alsoRequires = TechKind.Mathematics } },
+        { TechKind.EraChange,   new TechDef { name = "Cambio de era", cost = 1500, unlocks = "una nueva era", requires = TechKind.Philosophy } },
         // Tecnologías de la Edad Media: solo se pueden investigar tras el Cambio de era
         { TechKind.HeavyPlow,   new TechDef { name = "Arado y collera", cost = 80, unlocks = "Granja (alimento x2)", requires = TechKind.EraChange } },
         { TechKind.WaterMill,   new TechDef { name = "Molino hidráulico", cost = 85, unlocks = "+1 comida en casillas junto al mar o a un río", requires = TechKind.EraChange } },
         { TechKind.Camshaft,   new TechDef { name = "Árbol de levas", cost = 95, unlocks = "+1 producción en casillas junto al mar o a un río y Batán", requires = TechKind.WaterMill } },
         { TechKind.ArabicNumerals, new TechDef { name = "Cifras arábigas", cost = 90, unlocks = "+25% de ciencia y de oro en todas las ciudades, Banco, Mercader y Laboratorio de Fibonacci", requires = TechKind.EraChange } },
+        { TechKind.Compass,    new TechDef { name = "Brújula magnética", cost = 90, unlocks = "Galeón y los barcos navegan un 50% más rápido", requires = TechKind.EraChange, alsoRequires = TechKind.Sailing } },
+        { TechKind.Clock,      new TechDef { name = "Reloj mecánico", cost = 110, unlocks = "+25% de producción en todas las ciudades", requires = TechKind.Camshaft } },
+        { TechKind.PrintingPress, new TechDef { name = "Imprenta", cost = 120, unlocks = "Prensa", requires = TechKind.Universities } },
+        { TechKind.Gunpowder,  new TechDef { name = "Pólvora", cost = 150, unlocks = "Mosquetero", requires = TechKind.EraChange } },
         { TechKind.Cities,     new TechDef { name = "Ciudades", cost = 100, unlocks = "+25% de crecimiento en todas las ciudades y Academia", requires = TechKind.HeavyPlow } },
         { TechKind.Universities, new TechDef { name = "Universidades", cost = 130, unlocks = "+25% de ciencia en todas las ciudades, Universidad y Gran Biblioteca de Alejandría", requires = TechKind.ArabicNumerals } },
         // Aparece cuando se han descubierto todas las tecnologías de la Edad Media
         { TechKind.EraChange2, new TechDef { name = "Cambio de era", cost = 800, unlocks = "una nueva era",
-            requiresAll = new[] { TechKind.HeavyPlow, TechKind.WaterMill, TechKind.Camshaft, TechKind.ArabicNumerals, TechKind.Cities, TechKind.Universities } } },
-        { TechKind.Currency, new TechDef { name = "Moneda",      cost = 40, unlocks = "Caravana de comercio", requires = TechKind.Bronze, alsoRequires = TechKind.Writing } },
-        { TechKind.Mathematics,new TechDef { name = "Matemáticas", cost = 40, unlocks = "Catapulta", requires = TechKind.Writing, alsoRequires = TechKind.Wheel } },
-        { TechKind.Astronomy,  new TechDef { name = "Astronomía",  cost = 55, unlocks = "Observatorio", requires = TechKind.Writing } },
-        { TechKind.Iron,       new TechDef { name = "Hierro",      cost = 45, unlocks = "Legión", requires = TechKind.Bronze } },
-        { TechKind.Construction,new TechDef { name = "Construcción", cost = 50, unlocks = "edificios al 90% de su coste", requires = TechKind.Wheel, alsoRequires = TechKind.Masonry } },
-        { TechKind.Writing,    new TechDef { name = "Escritura",   cost = 45, unlocks = "Biblioteca y Gran Biblioteca", requires = TechKind.Pottery } },
-        { TechKind.Bronze,     new TechDef { name = "Bronce",      cost = 35, unlocks = "Falange", requires = TechKind.Mining } },
-        { TechKind.Bridges,    new TechDef { name = "Construcción de puentes", cost = 40, unlocks = "carreteras que atraviesan ríos", requires = TechKind.Masonry } },
-        { TechKind.Masonry,   new TechDef { name = "Mampostería", cost = 35, unlocks = "Muro de la Ciudad", requires = TechKind.Mining } },
-        { TechKind.Wheel,      new TechDef { name = "Rueda",       cost = 35, unlocks = "caminos y Carro", requires = TechKind.Husbandry } },
-        { TechKind.Riding,     new TechDef { name = "Equitación",  cost = 35, unlocks = "Jinete", requires = TechKind.Husbandry } },
-        { TechKind.Pottery,    new TechDef { name = "Cerámica",    cost = 35, unlocks = "crecimiento de población x1,5 en todas las ciudades", requires = TechKind.Agriculture } },
-        { TechKind.Husbandry,  new TechDef { name = "Ganadería",   cost = 25, unlocks = "+1 comida en llanuras", requires = TechKind.Fire } },
-        { TechKind.Mining,      new TechDef { name = "Minería",     cost = 25, unlocks = "minas (producción x2) y Lancero", requires = TechKind.Fire } },
-        { TechKind.Sailing,     new TechDef { name = "Vela",        cost = 25, unlocks = "Barco de Vela en ciudades costeras", requires = TechKind.Fire } },
-        { TechKind.Archery,     new TechDef { name = "Tiro con arco", cost = 25, unlocks = "Arquero", requires = TechKind.Fire } },
+            requiresAll = new[] { TechKind.HeavyPlow, TechKind.WaterMill, TechKind.Camshaft, TechKind.ArabicNumerals, TechKind.Cities, TechKind.Universities, TechKind.Compass, TechKind.Clock, TechKind.PrintingPress, TechKind.Gunpowder } } },
+        { TechKind.Crossbow,   new TechDef { name = "Ballesta", cost = 120, unlocks = "Ballestero y Ballesta de asedio", requires = TechKind.Archery } },
+        // Tecnologías de la Edad Moderna: solo se pueden investigar tras el segundo Cambio de era
+        { TechKind.SteamEngine, new TechDef { name = "Máquina de vapor", cost = 200, unlocks = "+50% de producción en todas las ciudades y Barco de vapor", requires = TechKind.EraChange2 } },
+        { TechKind.Electricity, new TechDef { name = "Electricidad", cost = 250, unlocks = "+25% de ciencia en todas las ciudades", requires = TechKind.SteamEngine } },
+        { TechKind.Railway,    new TechDef { name = "Ferrocarril", cost = 300, unlocks = "las carreteras duplican la velocidad de las unidades", requires = TechKind.SteamEngine } },
+        { TechKind.Rifle,      new TechDef { name = "Fusil", cost = 220, unlocks = "Fusilero", requires = TechKind.EraChange2 } },
+        { TechKind.Artillery,  new TechDef { name = "Artillería", cost = 260, unlocks = "Cañón", requires = TechKind.EraChange2 } },
+        { TechKind.Currency, new TechDef { name = "Moneda",      cost = 120, unlocks = "Caravana de comercio", requires = TechKind.Bronze, alsoRequires = TechKind.Writing } },
+        { TechKind.Mathematics,new TechDef { name = "Matemáticas", cost = 120, unlocks = "Catapulta", requires = TechKind.Writing, alsoRequires = TechKind.Wheel } },
+        { TechKind.Astronomy,  new TechDef { name = "Astronomía",  cost = 165, unlocks = "Observatorio", requires = TechKind.Writing } },
+        { TechKind.Iron,       new TechDef { name = "Hierro",      cost = 135, unlocks = "Legión", requires = TechKind.Bronze } },
+        { TechKind.Construction,new TechDef { name = "Construcción", cost = 150, unlocks = "edificios al 90% de su coste", requires = TechKind.Wheel, alsoRequires = TechKind.Masonry } },
+        { TechKind.Writing,    new TechDef { name = "Escritura",   cost = 135, unlocks = "Biblioteca y Gran Biblioteca", requires = TechKind.Pottery } },
+        { TechKind.Bronze,     new TechDef { name = "Bronce",      cost = 105, unlocks = "Falange", requires = TechKind.Mining } },
+        { TechKind.Bridges,    new TechDef { name = "Construcción de puentes", cost = 120, unlocks = "carreteras que atraviesan ríos", requires = TechKind.Masonry } },
+        { TechKind.Masonry,   new TechDef { name = "Mampostería", cost = 105, unlocks = "Muro de la Ciudad", requires = TechKind.Mining } },
+        { TechKind.Wheel,      new TechDef { name = "Rueda",       cost = 105, unlocks = "caminos y Carro", requires = TechKind.Husbandry } },
+        { TechKind.Riding,     new TechDef { name = "Equitación",  cost = 105, unlocks = "Jinete", requires = TechKind.Husbandry } },
+        { TechKind.Pottery,    new TechDef { name = "Cerámica",    cost = 105, unlocks = "crecimiento de población x1,5 en todas las ciudades", requires = TechKind.Agriculture } },
+        { TechKind.Husbandry,  new TechDef { name = "Ganadería",   cost = 75, unlocks = "+1 comida en llanuras", requires = TechKind.Fire } },
+        { TechKind.Mining,      new TechDef { name = "Minería",     cost = 75, unlocks = "minas (producción x2) y Lancero", requires = TechKind.Fire } },
+        { TechKind.Sailing,     new TechDef { name = "Vela",        cost = 75, unlocks = "Barco de Vela en ciudades costeras", requires = TechKind.Fire } },
+        { TechKind.Archery,     new TechDef { name = "Tiro con arco", cost = 75, unlocks = "Arquero", requires = TechKind.Fire } },
     };
 
     public static readonly Dictionary<UnitKind, UnitDef> Units = new Dictionary<UnitKind, UnitDef>
@@ -81,6 +92,13 @@ public static class GameDefs
         { UnitKind.Warrior,  new UnitDef { name = "Guerrero", cost = 40, hp = 20, attack = 6, defense = 3, speed = 0.7f } },
         { UnitKind.Spearman, new UnitDef { name = "Lancero", cost = 60, hp = 30, attack = 9, defense = 5, speed = 0.65f } },
         { UnitKind.Sailboat, new UnitDef { name = "Barco de Vela", cost = 80, hp = 25, attack = 0, defense = 2, speed = 0.3f, naval = true, capacity = 1 } },
+        { UnitKind.Crossbowman, new UnitDef { name = "Ballestero", cost = 65, hp = 18, attack = 10, defense = 3, speed = 0.65f, range = 2 } },
+        { UnitKind.Ballista, new UnitDef { name = "Ballesta de asedio", cost = 110, hp = 20, attack = 18, defense = 1, speed = 0.4f, range = 3 } },
+        { UnitKind.Rifleman, new UnitDef { name = "Fusilero", cost = 120, hp = 35, attack = 22, defense = 11, speed = 0.6f, range = 2 } },
+        { UnitKind.Cannon,   new UnitDef { name = "Cañón", cost = 150, hp = 25, attack = 30, defense = 2, speed = 0.35f, range = 4 } },
+        { UnitKind.Steamship, new UnitDef { name = "Barco de vapor", cost = 170, hp = 70, attack = 25, defense = 6, speed = 0.45f, range = 2, naval = true, capacity = 4 } },
+        { UnitKind.Musketeer, new UnitDef { name = "Mosquetero", cost = 90, hp = 28, attack = 16, defense = 8, speed = 0.6f, range = 2 } },
+        { UnitKind.Galleon,  new UnitDef { name = "Galeón", cost = 120, hp = 45, attack = 20, defense = 4, speed = 0.35f, range = 2, naval = true, capacity = 3 } },
         { UnitKind.Caravan,  new UnitDef { name = "Caravana de comercio", cost = 50, hp = 10, attack = 0, defense = 0, speed = 0.5f } },
         { UnitKind.Merchant, new UnitDef { name = "Mercader", cost = 90, hp = 15, attack = 0, defense = 0, speed = 0.7f } }, // solo se obtiene mejorando una caravana en una Academia
         { UnitKind.Catapult, new UnitDef { name = "Catapulta", cost = 100, hp = 18, attack = 14, defense = 1, speed = 0.4f, range = 3 } },
@@ -105,6 +123,8 @@ public static class GameDefs
         { BuildingKind.FullingMill, new BuildingDef { name = "Batán",       cost = 100, effect = "+3 producción" } },
         { BuildingKind.University, new BuildingDef { name = "Universidad", cost = 150, effect = "+75% de ciencia de la ciudad" } },
         { BuildingKind.AlexandriaLibrary, new BuildingDef { name = "Gran Biblioteca de Alejandría", cost = 300, effect = "maravilla única: +40% de ciencia en todas tus ciudades" } },
+        { BuildingKind.GutenbergPress, new BuildingDef { name = "Imprenta de Gutenberg", cost = 300, effect = "maravilla única: x1,5 de ciencia en todas tus ciudades" } },
+        { BuildingKind.PrintingHouse, new BuildingDef { name = "Prensa", cost = 150, effect = "duplica la ciencia de la ciudad" } },
         { BuildingKind.PublicBaths, new BuildingDef { name = "Baños públicos", cost = 70, effect = "+50% velocidad de crecimiento" } },
     };
 
@@ -303,8 +323,8 @@ public class Unit
     public int foundAt = -1;         // casilla donde fundar una ciudad al llegar
     public int joinAt = -1;          // casilla de una ciudad propia a la que unirse al llegar (+1 de población)
 
-    // Transporte marítimo: el barco lleva a "cargo"; la unidad embarcada tiene "carriedBy" y no se ve ni actúa
-    public Unit cargo;
+    // Transporte marítimo: el barco lleva a las unidades de "cargo" (hasta su capacidad); la embarcada tiene "carriedBy" y no se ve ni actúa
+    public List<Unit> cargo = new List<Unit>();
     public Unit carriedBy;
     public Unit boardTarget;         // barco al que va a embarcar
     public int disembarkAt = -1;     // casilla de tierra donde el barco desembarcará su carga
