@@ -634,6 +634,159 @@ public static class CivViews
             Piece(root.transform, Cube, prPaper, press + new Vector3(0f, size * 0.1f, 0f), new Vector3(size * 0.1f, size * 0.02f, size * 0.12f));
         }
 
+        if (city.buildings.Contains(BuildingKind.Newspaper))
+        {
+            // Periódico: redacción de ladrillo con rótulo, una rotativa a la entrada y un fajo de ejemplares
+            Material npBrick = LitMaterial(new Color(0.62f, 0.5f, 0.4f));
+            Material npRoof = LitMaterial(new Color(0.3f, 0.3f, 0.34f));
+            Material npSign = LitMaterial(new Color(0.95f, 0.92f, 0.82f));
+            Material npInk = LitMaterial(new Color(0.12f, 0.12f, 0.14f));
+            Material npWindow = LitMaterial(new Color(0.9f, 0.8f, 0.4f));
+
+            Vector3 at = new Vector3(-size * 1.45f, 0f, -size * 0.5f);
+
+            Piece(root.transform, Cube, npBrick, at + new Vector3(0f, size * 0.13f, 0f), new Vector3(size * 0.36f, size * 0.26f, size * 0.46f));
+            Piece(root.transform, Cube, npRoof, at + new Vector3(0f, size * 0.275f, 0f), new Vector3(size * 0.4f, size * 0.03f, size * 0.5f));
+
+            // Rótulo en la fachada (mira a +X, hacia la ciudad) con renglones de texto
+            Piece(root.transform, Cube, npSign, at + new Vector3(size * 0.185f, size * 0.2f, 0f), new Vector3(size * 0.01f, size * 0.07f, size * 0.3f));
+            for (int i = -2; i <= 2; i++)
+                Piece(root.transform, Cube, npInk, at + new Vector3(size * 0.192f, size * 0.2f, i * size * 0.05f), new Vector3(size * 0.005f, size * 0.04f, size * 0.025f));
+
+            for (int side = -1; side <= 1; side += 2)
+                Piece(root.transform, Cube, npWindow, at + new Vector3(size * 0.185f, size * 0.1f, side * size * 0.13f), new Vector3(size * 0.01f, size * 0.07f, size * 0.07f));
+
+            // Rotativa y fajo de periódicos junto a la puerta
+            GameObject drum = Piece(root.transform, Cylinder, npInk, at + new Vector3(size * 0.26f, size * 0.07f, -size * 0.1f), new Vector3(size * 0.08f, size * 0.08f, size * 0.08f));
+            drum.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            for (int i = 0; i < 4; i++)
+                Piece(root.transform, Cube, npSign, at + new Vector3(size * 0.27f, size * (0.015f + i * 0.02f), size * 0.1f), new Vector3(size * 0.07f, size * 0.015f, size * 0.09f));
+        }
+
+        if (city.buildings.Contains(BuildingKind.GutenbergPrint))
+        {
+            // Prensa de Gutenberg: gran imprenta moderna con una rotativa de dos cilindros, una torre con un rótulo de periódico
+            // y un enorme rollo de papel
+            Material gpStone = LitMaterial(new Color(0.72f, 0.7f, 0.66f));
+            Material gpBrick = LitMaterial(new Color(0.58f, 0.34f, 0.26f));
+            Material gpIron = LitMaterial(new Color(0.28f, 0.28f, 0.32f));
+            Material gpPaper = LitMaterial(new Color(0.94f, 0.91f, 0.82f));
+            Material gpInk = LitMaterial(new Color(0.1f, 0.1f, 0.12f));
+            Vector3 at = new Vector3(-size * 1.5f, 0f, -size * 1.3f); // si no hay celdilla libre, fuera del disco de la ciudad
+            Transform site = WonderSite(city, BuildingKind.GutenbergPrint, root.transform, grid, earth, ref at);
+
+            Piece(site, Cube, gpStone, at + new Vector3(0f, size * 0.03f, 0f), new Vector3(size * 0.8f, size * 0.06f, size * 0.7f));
+            Piece(site, Cube, gpBrick, at + new Vector3(0f, size * 0.22f, 0f), new Vector3(size * 0.6f, size * 0.32f, size * 0.5f));
+            Piece(site, Cube, gpIron, at + new Vector3(0f, size * 0.4f, 0f), new Vector3(size * 0.64f, size * 0.04f, size * 0.54f));
+
+            // Torre con reloj y rótulo
+            Piece(site, Cube, gpBrick, at + new Vector3(-size * 0.22f, size * 0.55f, 0f), new Vector3(size * 0.16f, size * 0.3f, size * 0.16f));
+            Piece(site, Cube, gpPaper, at + new Vector3(-size * 0.22f, size * 0.62f, size * 0.09f), new Vector3(size * 0.1f, size * 0.1f, size * 0.01f));
+
+            // Rotativa: dos cilindros horizontales con el papel entre ellos
+            for (int i = 0; i < 2; i++)
+            {
+                GameObject roll = Piece(site, Cylinder, gpIron, at + new Vector3(size * 0.1f, size * (0.28f + i * 0.1f), size * 0.27f), new Vector3(size * 0.09f, size * 0.2f, size * 0.09f));
+                roll.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+            }
+            Piece(site, Cube, gpPaper, at + new Vector3(size * 0.1f, size * 0.33f, size * 0.27f), new Vector3(size * 0.34f, size * 0.01f, size * 0.12f));
+
+            // Rollo de papel gigante a un lado y pila de periódicos delante
+            GameObject paperRoll = Piece(site, Cylinder, gpPaper, at + new Vector3(size * 0.22f, size * 0.12f, -size * 0.3f), new Vector3(size * 0.2f, size * 0.12f, size * 0.2f));
+            paperRoll.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+            for (int i = 0; i < 5; i++)
+            {
+                Piece(site, Cube, gpPaper, at + new Vector3(size * 0.34f, size * (0.075f + i * 0.02f), size * 0.1f), new Vector3(size * 0.14f, size * 0.018f, size * 0.18f));
+                Piece(site, Cube, gpInk, at + new Vector3(size * 0.34f, size * (0.075f + i * 0.02f), size * 0.1f), new Vector3(size * 0.1f, size * 0.019f, size * 0.01f));
+            }
+        }
+
+        if (city.buildings.Contains(BuildingKind.HooverDam))
+        {
+            // Presa Hoover: gran muro curvo de hormigón entre dos paredes de roca, vertedero, agua detrás y dos torres de toma
+            Material hvConcrete = LitMaterial(new Color(0.78f, 0.77f, 0.73f));
+            Material hvDark = LitMaterial(new Color(0.45f, 0.44f, 0.46f));
+            Material hvRock = LitMaterial(new Color(0.5f, 0.38f, 0.28f));
+            Material hvWater = LitMaterial(new Color(0.2f, 0.45f, 0.72f));
+            Material hvGlow = LitMaterial(new Color(0.95f, 0.85f, 0.35f));
+            Vector3 at = new Vector3(size * 1.5f, 0f, size * 1.4f); // si no hay celdilla libre, fuera del disco de la ciudad
+            Transform site = WonderSite(city, BuildingKind.HooverDam, root.transform, grid, earth, ref at);
+
+            // Paredes del cañón y embalse
+            for (int side = -1; side <= 1; side += 2)
+                Piece(site, Cube, hvRock, at + new Vector3(0f, size * 0.2f, side * size * 0.42f), new Vector3(size * 0.5f, size * 0.4f, size * 0.22f));
+            Piece(site, Cube, hvWater, at + new Vector3(size * 0.22f, size * 0.03f, 0f), new Vector3(size * 0.34f, size * 0.05f, size * 0.62f));
+
+            // Muro curvo: tramos escalonados a lo largo del río
+            for (int i = -2; i <= 2; i++)
+            {
+                float off = Mathf.Abs(i) * size * 0.015f;
+                Piece(site, Cube, hvConcrete, at + new Vector3(-off, size * 0.2f, i * size * 0.12f), new Vector3(size * 0.12f, size * 0.4f, size * 0.13f));
+            }
+            Piece(site, Cube, hvDark, at + new Vector3(0f, size * 0.41f, 0f), new Vector3(size * 0.16f, size * 0.025f, size * 0.7f));
+
+            // Dos torres de toma y la central al pie con luces
+            for (int side = -1; side <= 1; side += 2)
+            {
+                Piece(site, Cylinder, hvConcrete, at + new Vector3(size * 0.04f, size * 0.55f, side * size * 0.22f), new Vector3(size * 0.1f, size * 0.15f, size * 0.1f));
+                Piece(site, Cube, hvDark, at + new Vector3(size * 0.04f, size * 0.71f, side * size * 0.22f), new Vector3(size * 0.12f, size * 0.025f, size * 0.12f));
+            }
+            Piece(site, Cube, hvConcrete, at + new Vector3(-size * 0.17f, size * 0.07f, 0f), new Vector3(size * 0.16f, size * 0.14f, size * 0.4f));
+            Piece(site, Cube, hvGlow, at + new Vector3(-size * 0.255f, size * 0.08f, 0f), new Vector3(size * 0.01f, size * 0.05f, size * 0.3f));
+        }
+
+        if (city.buildings.Contains(BuildingKind.HydroDam))
+        {
+            // Presa hidroeléctrica: muro curvo de hormigón con agua detrás, casa de turbinas y una torre de cables
+            Material dmConcrete = LitMaterial(new Color(0.68f, 0.68f, 0.66f));
+            Material dmDark = LitMaterial(new Color(0.4f, 0.4f, 0.43f));
+            Material dmWater = LitMaterial(new Color(0.2f, 0.45f, 0.7f));
+            Material dmGlow = LitMaterial(new Color(0.95f, 0.85f, 0.35f));
+
+            Vector3 at = new Vector3(size * 1.45f, 0f, -size * 0.55f);
+
+            // Embalse (agua) y muro de la presa
+            Piece(root.transform, Cube, dmWater, at + new Vector3(size * 0.12f, size * 0.03f, 0f), new Vector3(size * 0.22f, size * 0.05f, size * 0.5f));
+            Piece(root.transform, Cube, dmConcrete, at + new Vector3(-size * 0.02f, size * 0.12f, 0f), new Vector3(size * 0.1f, size * 0.24f, size * 0.52f));
+            Piece(root.transform, Cube, dmDark, at + new Vector3(-size * 0.02f, size * 0.25f, 0f), new Vector3(size * 0.12f, size * 0.025f, size * 0.54f));
+
+            // Casa de turbinas al pie y torre de transmisión
+            Piece(root.transform, Cube, dmConcrete, at + new Vector3(-size * 0.14f, size * 0.07f, 0f), new Vector3(size * 0.14f, size * 0.14f, size * 0.24f));
+            Piece(root.transform, Cube, dmGlow, at + new Vector3(-size * 0.215f, size * 0.08f, 0f), new Vector3(size * 0.01f, size * 0.05f, size * 0.12f));
+            Piece(root.transform, Cylinder, dmDark, at + new Vector3(-size * 0.1f, size * 0.24f, size * 0.22f), new Vector3(size * 0.025f, size * 0.22f, size * 0.025f));
+            Piece(root.transform, Cube, dmDark, at + new Vector3(-size * 0.1f, size * 0.42f, size * 0.22f), new Vector3(size * 0.14f, size * 0.015f, size * 0.015f));
+        }
+
+        if (city.buildings.Contains(BuildingKind.Factory))
+        {
+            // Fábrica: nave de ladrillo con tejado en dientes de sierra, una alta chimenea con humo y una puerta grande
+            Material fcBrick = LitMaterial(new Color(0.55f, 0.27f, 0.2f));
+            Material fcDark = LitMaterial(new Color(0.25f, 0.25f, 0.28f));
+            Material fcRoof = LitMaterial(new Color(0.35f, 0.38f, 0.42f));
+            Material fcWindow = LitMaterial(new Color(0.9f, 0.8f, 0.4f));
+            Material fcSmoke = LitMaterial(new Color(0.6f, 0.6f, 0.62f));
+
+            Vector3 at = new Vector3(size * 1.45f, 0f, size * 0.5f);
+
+            // Nave y tejado en dientes de sierra
+            Piece(root.transform, Cube, fcBrick, at + new Vector3(0f, size * 0.12f, 0f), new Vector3(size * 0.4f, size * 0.24f, size * 0.5f));
+            for (int i = 0; i < 3; i++)
+            {
+                GameObject tooth = Piece(root.transform, Cube, fcRoof, at + new Vector3(0f, size * 0.29f, (i - 1) * size * 0.16f), new Vector3(size * 0.42f, size * 0.02f, size * 0.17f));
+                tooth.transform.localRotation = Quaternion.Euler(18f, 0f, 0f);
+            }
+
+            // Puerta y ventanas en la fachada (mira a -X, hacia la ciudad)
+            Piece(root.transform, Cube, fcDark, at + new Vector3(-size * 0.205f, size * 0.09f, 0f), new Vector3(size * 0.01f, size * 0.16f, size * 0.16f));
+            for (int side = -1; side <= 1; side += 2)
+                Piece(root.transform, Cube, fcWindow, at + new Vector3(-size * 0.205f, size * 0.15f, side * size * 0.17f), new Vector3(size * 0.01f, size * 0.07f, size * 0.07f));
+
+            // Chimenea alta con franja y humo
+            Piece(root.transform, Cylinder, fcBrick, at + new Vector3(size * 0.12f, size * 0.42f, -size * 0.3f), new Vector3(size * 0.09f, size * 0.3f, size * 0.09f));
+            Piece(root.transform, Cylinder, fcDark, at + new Vector3(size * 0.12f, size * 0.71f, -size * 0.3f), new Vector3(size * 0.1f, size * 0.025f, size * 0.1f));
+            Piece(root.transform, Sphere, fcSmoke, at + new Vector3(size * 0.12f, size * 0.85f, -size * 0.3f), new Vector3(size * 0.16f, size * 0.12f, size * 0.16f));
+        }
+
         if (city.buildings.Contains(BuildingKind.GutenbergPress))
         {
             // Imprenta de Gutenberg: plataforma de piedra con una gran prensa de tornillo de madera y un libro abierto
@@ -2197,12 +2350,39 @@ public static class CivViews
 
     static readonly List<RoadSegment> roadSegments = new List<RoadSegment>();
 
+    /// <summary>Añade a la lista los tramos de carretera de tres en tres: casilla a, casilla b y id de quien la construyó.</summary>
+    public static void ExportRoads(List<int> flat)
+    {
+        foreach (RoadSegment seg in roadSegments)
+        {
+            flat.Add(seg.a);
+            flat.Add(seg.b);
+            flat.Add(seg.builder != null ? seg.builder.id : 0);
+        }
+    }
+
+    /// <summary>Olvida las carreteras, granjas, riegos y minas dibujados (al cargar una partida se vuelven a crear).</summary>
+    public static void ResetStatics()
+    {
+        roadSegments.Clear();
+        roadRoot = null;
+        irrigationRoot = null;
+        mineRoot = null;
+        farmRoot = null;
+    }
+
     // Tramo de carretera entre dos casillas vecinas, pegado al relieve. Es de piedra si quien lo construye ya está en la Edad Media
     public static void BuildRoad(int a, int b, WorldGrid grid, EarthTopography earth, Transform earthTransform, Civ builder)
     {
         RoadSegment seg = new RoadSegment { a = a, b = b, builder = builder };
         seg.view = DrawRoad(a, b, builder, grid, earth, earthTransform);
         roadSegments.Add(seg);
+    }
+
+    // Tramo de ferrocarril sobre una carretera: balasto oscuro, dos carriles de acero y traviesas
+    public static void BuildRail(int a, int b, WorldGrid grid, EarthTopography earth, Transform earthTransform, Civ builder)
+    {
+        DrawRoad(a, b, builder, grid, earth, earthTransform, true);
     }
 
     // Cambio de era de una civilización: todos sus tramos de tierra pasan a carretera de piedra
@@ -2216,17 +2396,20 @@ public static class CivViews
         }
     }
 
-    static GameObject DrawRoad(int a, int b, Civ builder, WorldGrid grid, EarthTopography earth, Transform earthTransform)
+    static GameObject DrawRoad(int a, int b, Civ builder, WorldGrid grid, EarthTopography earth, Transform earthTransform, bool rail = false)
     {
         if (roadRoot == null)
         {
             roadRoot = new GameObject("Carreteras").transform;
             roadRoot.SetParent(earthTransform, false);
-            roadMaterial = FlatMaterial(new Color(0.55f, 0.37f, 0.2f, 1f));       // camino de tierra
-            roadBorderMaterial = FlatMaterial(new Color(0.3f, 0.19f, 0.1f, 1f));  // borde más oscuro
+            roadMaterial = FlatMaterial(new Color(0.66f, 0.52f, 0.33f, 1f));      // sendero de tierra pisada
+            roadBorderMaterial = FlatMaterial(new Color(0.46f, 0.36f, 0.22f, 1f));  // borde de tierra removida
+            pathPebbleMaterial = LitMaterial(new Color(0.5f, 0.42f, 0.3f));       // piedrecillas del camino
             stoneRoadMaterial = FlatMaterial(new Color(0.66f, 0.64f, 0.6f, 1f));  // calzada de piedra clara
             stoneRoadBorderMaterial = FlatMaterial(new Color(0.4f, 0.39f, 0.37f, 1f));
             stoneRoadCobble = LitMaterial(new Color(0.55f, 0.54f, 0.51f));        // adoquines
+            stoneRoadCobbleDark = LitMaterial(new Color(0.42f, 0.41f, 0.4f));     // adoquines más oscuros
+            stoneRoadCobbleLight = LitMaterial(new Color(0.68f, 0.66f, 0.62f));   // adoquines más claros
         }
 
         float lift = grid.radius * 0.006f;
@@ -2264,35 +2447,96 @@ public static class CivViews
             points[i] = earth.LocalSurfacePoint(dd) + dd * lift;
         }
 
-        if (builder != null && builder.Has(TechKind.EraChange))
+        if (rail)
         {
-            // Carretera de piedra: calzada gris clara más ancha con borde oscuro y adoquines alternos a ambos lados
-            AddRoadLine(go.transform, "Borde", points, grid.spacing * 0.1f, stoneRoadBorderMaterial, 3000);
-            AddRoadLine(go.transform, "Calzada", points, grid.spacing * 0.07f, stoneRoadMaterial, 3001);
+            if (railBedMaterial == null)
+            {
+                railBedMaterial = FlatMaterial(new Color(0.22f, 0.22f, 0.24f, 1f));   // balasto
+                railSteelMaterial = FlatMaterial(new Color(0.8f, 0.82f, 0.86f, 1f));  // carriles
+                railSleeperMaterial = LitMaterial(new Color(0.35f, 0.22f, 0.12f));    // traviesas
+            }
 
-            float cobble = grid.spacing * 0.035f;
+            AddRoadLine(go.transform, "Balasto", points, grid.spacing * 0.09f, railBedMaterial, 3002);
+
+            // Dos carriles paralelos a ambos lados del centro
+            for (int side = -1; side <= 1; side += 2)
+            {
+                Vector3[] railPoints = new Vector3[points.Length];
+                for (int i = 0; i < points.Length; i++)
+                {
+                    Vector3 up = points[i].normalized;
+                    Vector3 tangent = (points[Mathf.Min(i + 1, points.Length - 1)] - points[Mathf.Max(i - 1, 0)]).normalized;
+                    Vector3 lateral = Vector3.Cross(up, tangent).normalized;
+                    railPoints[i] = points[i] + lateral * side * grid.spacing * 0.02f + up * grid.spacing * 0.002f;
+                }
+                AddRoadLine(go.transform, "Carril", railPoints, grid.spacing * 0.008f, railSteelMaterial, 3003);
+            }
+
+            // Traviesas a lo largo del tramo
             for (int i = 1; i < steps; i++)
             {
                 Vector3 up = points[i].normalized;
                 Vector3 tangent = (points[i + 1] - points[i - 1]).normalized;
                 Vector3 lateral = Vector3.Cross(up, tangent).normalized;
-                Vector3 pos = points[i] + up * grid.spacing * 0.004f + lateral * (i % 2 == 0 ? 1f : -1f) * grid.spacing * 0.018f;
+                GameObject sleeper = Piece(go.transform, Cube, railSleeperMaterial, points[i] + up * grid.spacing * 0.003f,
+                    new Vector3(grid.spacing * 0.012f, grid.spacing * 0.006f, grid.spacing * 0.06f));
+                sleeper.transform.localRotation = Quaternion.LookRotation(lateral, up);
+            }
+        }
+        else if (builder != null && builder.Has(TechKind.EraChange))
+        {
+            // Camino empedrado: calzada ancha de piedra con un borde de bordillos oscuros y tres hileras de adoquines
+            // de distintos tonos, dispuestos en tresbolillo a lo largo y ancho del camino
+            AddRoadLine(go.transform, "Borde", points, grid.spacing * 0.105f, stoneRoadBorderMaterial, 3000);
+            AddRoadLine(go.transform, "Calzada", points, grid.spacing * 0.08f, stoneRoadMaterial, 3001);
 
-                GameObject stone = Piece(go.transform, Sphere, stoneRoadCobble, pos, new Vector3(cobble, cobble * 0.35f, cobble * 0.8f));
-                stone.transform.localRotation = Quaternion.FromToRotation(Vector3.up, up) * Quaternion.Euler(0f, (i * 53 + a) % 180, 0f);
+            Material[] cobbleMats = { stoneRoadCobble, stoneRoadCobbleDark, stoneRoadCobbleLight };
+            float cobble = grid.spacing * 0.026f;
+            for (int i = 1; i < steps; i++)
+            {
+                Vector3 up = points[i].normalized;
+                Vector3 tangent = (points[i + 1] - points[i - 1]).normalized;
+                Vector3 lateral = Vector3.Cross(up, tangent).normalized;
+
+                for (int row = -1; row <= 1; row++)
+                {
+                    // Las hileras alternas van desplazadas media piedra hacia delante
+                    Vector3 shift = tangent * ((row % 2 == 0) ? 0f : grid.spacing * 0.014f);
+                    Vector3 pos = points[i] + up * grid.spacing * 0.004f + lateral * row * grid.spacing * 0.026f + shift;
+                    float stoneSize = cobble * (0.85f + (float)rng.NextDouble() * 0.3f);
+
+                    GameObject stone = Piece(go.transform, Sphere, cobbleMats[rng.Next(cobbleMats.Length)], pos, new Vector3(stoneSize, stoneSize * 0.35f, stoneSize * 0.85f));
+                    stone.transform.localRotation = Quaternion.FromToRotation(Vector3.up, up) * Quaternion.Euler(0f, (i * 53 + row * 29 + a) % 180, 0f);
+                }
             }
         }
         else
         {
-            // Borde oscuro y fino debajo y camino marrón encima: se distingue sobre cualquier terreno
-            AddRoadLine(go.transform, "Borde", points, grid.spacing * 0.08f, roadBorderMaterial, 3000);
-            AddRoadLine(go.transform, "Calzada", points, grid.spacing * 0.05f, roadMaterial, 3001);
+            // Camino de la Edad Antigua: sendero estrecho de tierra pisada con un borde irregular y piedrecillas sueltas
+            AddRoadLine(go.transform, "Borde", points, grid.spacing * 0.05f, roadBorderMaterial, 3000);
+            AddRoadLine(go.transform, "Calzada", points, grid.spacing * 0.028f, roadMaterial, 3001);
+
+            for (int i = 1; i < steps; i++)
+            {
+                Vector3 up = points[i].normalized;
+                Vector3 tangent = (points[i + 1] - points[i - 1]).normalized;
+                Vector3 lateral = Vector3.Cross(up, tangent).normalized;
+                float side = ((float)rng.NextDouble() - 0.5f) * 2f;
+                float pebble = grid.spacing * (0.008f + (float)rng.NextDouble() * 0.008f);
+                Vector3 pos = points[i] + up * grid.spacing * 0.003f + lateral * side * grid.spacing * 0.03f;
+
+                GameObject stone = Piece(go.transform, Sphere, pathPebbleMaterial, pos, new Vector3(pebble, pebble * 0.5f, pebble * 0.8f));
+                stone.transform.localRotation = Quaternion.FromToRotation(Vector3.up, up) * Quaternion.Euler(0f, (i * 71 + a) % 180, 0f);
+            }
         }
 
         return go;
     }
 
     static Material roadBorderMaterial;
+    static Material stoneRoadCobbleDark, stoneRoadCobbleLight;
+    static Material pathPebbleMaterial;
+    static Material railBedMaterial, railSteelMaterial, railSleeperMaterial;
 
     static void AddRoadLine(Transform parent, string name, Vector3[] points, float width, Material material, int queue)
     {

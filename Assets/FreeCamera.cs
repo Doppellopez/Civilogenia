@@ -125,6 +125,9 @@ public class FreeCamera : MonoBehaviour
     /// <summary>Ciudad cuya vista está activa (null si no hay); la interfaz muestra sus recursos por casilla.</summary>
     public static City ViewedCity { get; private set; }
 
+    /// <summary>Olvida la ciudad de la vista de ciudad (al cargar una partida).</summary>
+    public static void ClearViewedCity() { ViewedCity = null; }
+
     // Ciudad bajo la dirección dada (espacio local de la Tierra), si hay alguna
     City CityAt(Vector3 dir)
     {
@@ -225,6 +228,8 @@ public class FreeCamera : MonoBehaviour
 
     void Update()
     {
+        if (MainMenu.Active) return;   // con el menú abierto la cámara no responde
+
         HandleDoubleClick();
         HandleZoom();
 

@@ -36,7 +36,7 @@ public class CivUI : MonoBehaviour
     {
         if (game == null) game = CivGame.Instance;
         if (game == null || !game.ready) return;
-        if (IntroVideo.Active) return;   // durante la introducción no se atiende el teclado ni el ratón del juego
+        if (IntroVideo.Active || MainMenu.Active) return;   // durante la introducción y el menú no se atiende el teclado ni el ratón del juego
 
         if (selUnit != null && !selUnit.alive) selUnit = null;
         if (selCity != null && !selCity.alive) selCity = null;
@@ -101,12 +101,29 @@ public class CivUI : MonoBehaviour
             else StartRoadMode();
         }
 
+        if (Input.GetKeyDown(KeyCode.V) && selUnit != null && selUnit.owner == game.human && CanRoad(selUnit) && game.human.Has(TechKind.Railway))
+        {
+            if (roadPick > 0) CancelRoadMode();
+            else StartRoadMode(2);
+        }
+
+        if (Input.GetKeyDown(KeyCode.F5)) game.SaveGame();
+        if (Input.GetKeyDown(KeyCode.F9) && CivSave.Exists) StartCoroutine(game.LoadRoutine());
+
         if (Input.GetKeyDown(KeyCode.C))
         {
             if (selUnit != null) game.FocusOn(selUnit.cell);
             else if (selCity != null) game.FocusOn(selCity.cell);
             else if (game.human.cities.Count > 0) game.FocusOn(game.human.cities[0].cell);
         }
+    }
+
+    /// <summary>Quita la selección y los modos de orden en curso (al cargar una partida).</summary>
+    public void ClearSelection()
+    {
+        Select(null, null);
+        CancelRoadMode();
+        showTech = false;
     }
 
     void Select(Unit u, City c)
@@ -118,9 +135,10 @@ public class CivUI : MonoBehaviour
         selCity = c;
     }
 
-    void StartRoadMode()
+    // 1 = carretera, 2 = mejora a ferrocarril
+    void StartRoadMode(int mode = 1)
     {
-        roadPick = 1;
+        roadPick = mode;
     }
 
     void CancelRoadMode()
@@ -149,7 +167,7 @@ public class CivUI : MonoBehaviour
             return; // sigue esperando otra casilla
         }
 
-        if (!game.OrderRoad(selUnit, cell))
+        if (!game.OrderRoad(selUnit, cell, roadPick == 2))
             game.AddLog("No se puede llegar a esa casilla por tierra desde ahí", Color.red);
 
         CancelRoadMode();
@@ -373,7 +391,7 @@ public class CivUI : MonoBehaviour
     void OnGUI()
     {
         if (game == null || !game.ready) return;
-        if (IntroVideo.Active) return;   // la introducción ocupa toda la pantalla
+        if (IntroVideo.Active || MainMenu.Active) return;   // la introducción y el menú ocupan toda la pantalla
 
         InitStyles();
 
@@ -507,7 +525,7 @@ public class CivUI : MonoBehaviour
         Unit u = selUnit;
         bool mine = u.owner == game.human;
 
-        float panelHeight = mine && u.kind == UnitKind.Worker ? 340f : mine && u.kind == UnitKind.Settler ? 200f : mine && (u.def.capacity > 0 || u.IsTrader) ? (game.UpgradeTarget(u.owner, u.kind) != null ? 290f : 230f) : mine && game.UpgradeTarget(u.owner, u.kind) != null ? 225f : 162f;
+        float panelHeight = mine && u.kind == UnitKind.Worker ? 370f : mine && u.kind == UnitKind.Settler ? 200f : mine && (u.def.capacity > 0 || u.IsTrader) ? (game.UpgradeTarget(u.owner, u.kind) != null ? 290f : 230f) : mine && game.UpgradeTarget(u.owner, u.kind) != null ? 225f : 162f;
         Rect r = Panel(new Rect(vw / 2f - 220f, vh - panelHeight - 10f, 440f, panelHeight));
         GUILayout.BeginArea(new Rect(r.x + 10, r.y + 8, r.width - 20, r.height - 16));
 
@@ -582,12 +600,12 @@ public class CivUI : MonoBehaviour
 
                 if (u.roadGoal >= 0)
                 {
-                    GUILayout.Label("Construyendo carretera hacia " + game.RoadGoalName(u.roadGoal) + " (tramo " + Mathf.FloorToInt(u.roadProgress * 100f)
+                    GUILayout.Label((u.railMode ? "Construyendo ferrocarril hacia " : "Construyendo carretera hacia ") + game.RoadGoalName(u.roadGoal) + " (tramo " + Mathf.FloorToInt(u.roadProgress * 100f)
                                     + "%, faltan " + u.path.Count + " casillas)", small);
                 }
-                else if (roadPick == 1)
+                else if (roadPick > 0)
                 {
-                    GUILayout.Label("<b>Carretera:</b> haz clic en la casilla de destino (clic der.: cancelar)", small);
+                    GUILayout.Label("<b>" + (roadPick == 2 ? "Ferrocarril" : "Carretera") + ":</b> haz clic en la casilla de destino (clic der.: cancelar)", small);
                 }
                 else if (!game.human.Has(TechKind.Wheel))
                 {
@@ -597,6 +615,9 @@ public class CivUI : MonoBehaviour
                 {
                     StartRoadMode();
                 }
+
+                if (u.roadGoal < 0 && roadPick == 0 && game.human.Has(TechKind.Railway) && GUILayout.Button("Mejorar a ferrocarril hasta una casilla (V)"))
+                    StartRoadMode(2);
             }
             else if (u.IsTrader)
             {
@@ -819,6 +840,7 @@ public class CivUI : MonoBehaviour
             if (isCenter) y += Vector3.one; // la ciudad aporta +1 de cada recurso por su casilla central
             float sci = 0f;
             if (grid.HasRoadAt(cell)) { y.z += 1f; sci += 1f; }
+            if (grid.HasRailAt(cell)) y.y += 1f; // el ferrocarril da además +1 de producción
 
             bool active = isCenter || city.worked.Contains(cell);
 

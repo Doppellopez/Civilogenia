@@ -4,8 +4,8 @@ using UnityEngine;
 // Tipos y datos del juego de civilizaciones en tiempo real.
 
 public enum UnitKind { Settler, Worker, Warrior, Spearman, Sailboat, Caravan, Archer, Horseman, Chariot, Phalanx, Legion, Catapult, Merchant, Galleon, Musketeer, Crossbowman, Ballista, Rifleman, Cannon, Steamship }
-public enum TechKind { Fire, Agriculture, Husbandry, Mining, Sailing, Archery, Pottery, Riding, Wheel, Masonry, Bronze, Writing, Construction, Iron, Astronomy, Mathematics, Currency, Philosophy, EraChange, HeavyPlow, WaterMill, Camshaft, ArabicNumerals, Universities, Cities, EraChange2, Bridges, Compass, Clock, Gunpowder, PrintingPress, Crossbow, SteamEngine, Electricity, Railway, Rifle, Artillery }
-public enum BuildingKind{ Granary, Workshop, Market, Library, Walls, PublicBaths, GreatLibrary, Observatory, FibonacciLab, Bank, Academy, FullingMill, University, AlexandriaLibrary, PrintingHouse, GutenbergPress }
+public enum TechKind { Fire, Agriculture, Husbandry, Mining, Sailing, Archery, Pottery, Riding, Wheel, Masonry, Bronze, Writing, Construction, Iron, Astronomy, Mathematics, Currency, Philosophy, EraChange, HeavyPlow, WaterMill, Camshaft, ArabicNumerals, Universities, Cities, EraChange2, Bridges, Compass, Clock, Gunpowder, PrintingPress, Crossbow, SteamEngine, Electricity, Railway, Rifle, Artillery, MovableType }
+public enum BuildingKind{ Granary, Workshop, Market, Library, Walls, PublicBaths, GreatLibrary, Observatory, FibonacciLab, Bank, Academy, FullingMill, University, AlexandriaLibrary, PrintingHouse, GutenbergPress, Factory, HydroDam, HooverDam, Newspaper, GutenbergPrint }
 
 public class UnitDef
 {
@@ -47,26 +47,27 @@ public static class GameDefs
         { TechKind.Philosophy,  new TechDef { name = "Filosofía",   cost = 210, unlocks = "+50% de investigación y Cambio de era", requires = TechKind.Astronomy, alsoRequires = TechKind.Mathematics } },
         { TechKind.EraChange,   new TechDef { name = "Cambio de era", cost = 1500, unlocks = "una nueva era", requires = TechKind.Philosophy } },
         // Tecnologías de la Edad Media: solo se pueden investigar tras el Cambio de era
-        { TechKind.HeavyPlow,   new TechDef { name = "Arado y collera", cost = 80, unlocks = "Granja (alimento x2)", requires = TechKind.EraChange } },
-        { TechKind.WaterMill,   new TechDef { name = "Molino hidráulico", cost = 85, unlocks = "+1 comida en casillas junto al mar o a un río", requires = TechKind.EraChange } },
-        { TechKind.Camshaft,   new TechDef { name = "Árbol de levas", cost = 95, unlocks = "+1 producción en casillas junto al mar o a un río y Batán", requires = TechKind.WaterMill } },
-        { TechKind.ArabicNumerals, new TechDef { name = "Cifras arábigas", cost = 90, unlocks = "+25% de ciencia y de oro en todas las ciudades, Banco, Mercader y Laboratorio de Fibonacci", requires = TechKind.EraChange } },
-        { TechKind.Compass,    new TechDef { name = "Brújula magnética", cost = 90, unlocks = "Galeón y los barcos navegan un 50% más rápido", requires = TechKind.EraChange, alsoRequires = TechKind.Sailing } },
-        { TechKind.Clock,      new TechDef { name = "Reloj mecánico", cost = 110, unlocks = "+25% de producción en todas las ciudades", requires = TechKind.Camshaft } },
-        { TechKind.PrintingPress, new TechDef { name = "Imprenta", cost = 120, unlocks = "Prensa", requires = TechKind.Universities } },
-        { TechKind.Gunpowder,  new TechDef { name = "Pólvora", cost = 150, unlocks = "Mosquetero", requires = TechKind.EraChange } },
-        { TechKind.Cities,     new TechDef { name = "Ciudades", cost = 100, unlocks = "+25% de crecimiento en todas las ciudades y Academia", requires = TechKind.HeavyPlow } },
-        { TechKind.Universities, new TechDef { name = "Universidades", cost = 130, unlocks = "+25% de ciencia en todas las ciudades, Universidad y Gran Biblioteca de Alejandría", requires = TechKind.ArabicNumerals } },
+        { TechKind.HeavyPlow,   new TechDef { name = "Arado y collera", cost = 800, unlocks = "Granja (alimento x2)", requires = TechKind.EraChange } },
+        { TechKind.WaterMill,   new TechDef { name = "Molino hidráulico", cost = 850, unlocks = "+1 comida en casillas junto al mar o a un río", requires = TechKind.EraChange } },
+        { TechKind.Camshaft,   new TechDef { name = "Árbol de levas", cost = 950, unlocks = "+1 producción en casillas junto al mar o a un río y Batán", requires = TechKind.WaterMill } },
+        { TechKind.ArabicNumerals, new TechDef { name = "Cifras arábigas", cost = 900, unlocks = "+25% de ciencia y de oro en todas las ciudades, Banco, Mercader y Laboratorio de Fibonacci", requires = TechKind.EraChange } },
+        { TechKind.Compass,    new TechDef { name = "Brújula magnética", cost = 900, unlocks = "Galeón y los barcos navegan un 50% más rápido", requires = TechKind.EraChange, alsoRequires = TechKind.Sailing } },
+        { TechKind.Clock,      new TechDef { name = "Reloj mecánico", cost = 1100, unlocks = "+25% de producción en todas las ciudades", requires = TechKind.Camshaft } },
+        { TechKind.PrintingPress, new TechDef { name = "Imprenta", cost = 1200, unlocks = "Prensa", requires = TechKind.Universities } },
+        { TechKind.Gunpowder,  new TechDef { name = "Pólvora", cost = 1500, unlocks = "Mosquetero", requires = TechKind.EraChange } },
+        { TechKind.Cities,     new TechDef { name = "Ciudades", cost = 1000, unlocks = "+25% de crecimiento en todas las ciudades y Academia", requires = TechKind.HeavyPlow } },
+        { TechKind.Universities, new TechDef { name = "Universidades", cost = 1300, unlocks = "+25% de ciencia en todas las ciudades, Universidad y Gran Biblioteca de Alejandría", requires = TechKind.ArabicNumerals } },
         // Aparece cuando se han descubierto todas las tecnologías de la Edad Media
-        { TechKind.EraChange2, new TechDef { name = "Cambio de era", cost = 800, unlocks = "una nueva era",
+        { TechKind.EraChange2, new TechDef { name = "Cambio de era", cost = 2000, unlocks = "una nueva era",
             requiresAll = new[] { TechKind.HeavyPlow, TechKind.WaterMill, TechKind.Camshaft, TechKind.ArabicNumerals, TechKind.Cities, TechKind.Universities, TechKind.Compass, TechKind.Clock, TechKind.PrintingPress, TechKind.Gunpowder } } },
         { TechKind.Crossbow,   new TechDef { name = "Ballesta", cost = 120, unlocks = "Ballestero y Ballesta de asedio", requires = TechKind.Archery } },
         // Tecnologías de la Edad Moderna: solo se pueden investigar tras el segundo Cambio de era
-        { TechKind.SteamEngine, new TechDef { name = "Máquina de vapor", cost = 200, unlocks = "+50% de producción en todas las ciudades y Barco de vapor", requires = TechKind.EraChange2 } },
-        { TechKind.Electricity, new TechDef { name = "Electricidad", cost = 250, unlocks = "+25% de ciencia en todas las ciudades", requires = TechKind.SteamEngine } },
-        { TechKind.Railway,    new TechDef { name = "Ferrocarril", cost = 300, unlocks = "las carreteras duplican la velocidad de las unidades", requires = TechKind.SteamEngine } },
-        { TechKind.Rifle,      new TechDef { name = "Fusil", cost = 220, unlocks = "Fusilero", requires = TechKind.EraChange2 } },
-        { TechKind.Artillery,  new TechDef { name = "Artillería", cost = 260, unlocks = "Cañón", requires = TechKind.EraChange2 } },
+        { TechKind.SteamEngine, new TechDef { name = "Máquina de vapor", cost = 1600, unlocks = "+50% de producción en todas las ciudades, Fábrica y Barco de vapor", requires = TechKind.EraChange2 } },
+        { TechKind.Electricity, new TechDef { name = "Electricidad", cost = 2000, unlocks = "+25% de ciencia en todas las ciudades Presa hidroeléctrica y la maravilla Presa Hoover", requires = TechKind.SteamEngine } },
+        { TechKind.Railway,    new TechDef { name = "Ferrocarril", cost = 2400, unlocks = "los trabajadores mejoran las carreteras a ferrocarril (el doble de rápidas y +1 de producción por casilla)", requires = TechKind.SteamEngine } },
+        { TechKind.MovableType, new TechDef { name = "Imprenta de tipos móviles", cost = 2200, unlocks = "Periódico y la maravilla Prensa de Gutenberg", requires = TechKind.Electricity } },
+        { TechKind.Rifle,      new TechDef { name = "Fusil", cost = 1760, unlocks = "Fusilero", requires = TechKind.EraChange2 } },
+        { TechKind.Artillery,  new TechDef { name = "Artillería", cost = 2080, unlocks = "Cañón", requires = TechKind.EraChange2 } },
         { TechKind.Currency, new TechDef { name = "Moneda",      cost = 120, unlocks = "Caravana de comercio", requires = TechKind.Bronze, alsoRequires = TechKind.Writing } },
         { TechKind.Mathematics,new TechDef { name = "Matemáticas", cost = 120, unlocks = "Catapulta", requires = TechKind.Writing, alsoRequires = TechKind.Wheel } },
         { TechKind.Astronomy,  new TechDef { name = "Astronomía",  cost = 165, unlocks = "Observatorio", requires = TechKind.Writing } },
@@ -124,6 +125,11 @@ public static class GameDefs
         { BuildingKind.University, new BuildingDef { name = "Universidad", cost = 150, effect = "+75% de ciencia de la ciudad" } },
         { BuildingKind.AlexandriaLibrary, new BuildingDef { name = "Gran Biblioteca de Alejandría", cost = 300, effect = "maravilla única: +40% de ciencia en todas tus ciudades" } },
         { BuildingKind.GutenbergPress, new BuildingDef { name = "Imprenta de Gutenberg", cost = 300, effect = "maravilla única: x1,5 de ciencia en todas tus ciudades" } },
+        { BuildingKind.Newspaper, new BuildingDef { name = "Periódico", cost = 180, effect = "+50% de descubrimiento (ciencia) de la ciudad" } },
+        { BuildingKind.GutenbergPrint, new BuildingDef { name = "Prensa de Gutenberg", cost = 600, effect = "maravilla única: construye un Periódico en cada ciudad que controles y que fundes" } },
+        { BuildingKind.HooverDam, new BuildingDef { name = "Presa Hoover", cost = 500, effect = "maravilla única: +25% de producción en todas tus ciudades (solo en ciudades con río)" } },
+        { BuildingKind.HydroDam, new BuildingDef { name = "Presa hidroeléctrica", cost = 250, effect = "+6 producción (solo en ciudades con río)" } },
+        { BuildingKind.Factory, new BuildingDef { name = "Fábrica", cost = 200, effect = "+50% de producción de la ciudad" } },
         { BuildingKind.PrintingHouse, new BuildingDef { name = "Prensa", cost = 150, effect = "duplica la ciencia de la ciudad" } },
         { BuildingKind.PublicBaths, new BuildingDef { name = "Baños públicos", cost = 70, effect = "+50% velocidad de crecimiento" } },
     };
@@ -335,6 +341,7 @@ public class Unit
     // Construcción de carreteras (trabajadores): construye desde donde está hasta la casilla roadGoal (-1 = ninguna)
     public int roadGoal = -1;
     public float roadProgress;
+    public bool railMode;            // la obra en curso mejora los tramos a ferrocarril (Ferrocarril)
 
     // Irrigación (trabajadores): casilla a irrigar y progreso 0..1 del trabajo
     public int irrigateAt = -1;

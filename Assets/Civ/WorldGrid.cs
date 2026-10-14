@@ -19,7 +19,9 @@ public class WorldGrid
     public List<int> componentSize = new List<int>();
 
     readonly HashSet<long> roads = new HashSet<long>();
+    readonly HashSet<long> rails = new HashSet<long>(); // tramos de carretera mejorados a ferrocarril
     int[] roadCount;            // tramos de carretera que tocan cada casilla
+    int[] railCount;            // tramos de ferrocarril que tocan cada casilla
     public bool[] irrigated;    // casillas con irrigación
     public bool[] mined;        // casillas con mina
     public bool[] farmed;       // casillas con granja
@@ -36,6 +38,7 @@ public class WorldGrid
     public bool HasRiver(int a, int b) { return riverEdges.Contains(EdgeKey(a, b)); }
 
     public const float RoadSpeedFactor = 2f;
+    public const float RailSpeedFactor = 4f; // el ferrocarril duplica la velocidad de una carretera
 
     static long EdgeKey(int a, int b)
     {
@@ -43,6 +46,24 @@ public class WorldGrid
     }
 
     public bool HasRoad(int a, int b) { return roads.Contains(EdgeKey(a, b)); }
+
+    /// <summary>Tramos de ferrocarril como parejas de casillas (para guardar la partida).</summary>
+    public List<Vector2Int> RailEdges()
+    {
+        List<Vector2Int> list = new List<Vector2Int>();
+        foreach (long k in rails) list.Add(new Vector2Int((int)(k >> 32), (int)(uint)(k & 0xFFFFFFFFL)));
+        return list;
+    }
+    public bool HasRail(int a, int b) { return rails.Contains(EdgeKey(a, b)); }
+    public void AddRail(int a, int b)
+    {
+        if (!rails.Add(EdgeKey(a, b))) return;
+        railCount[a]++;
+        railCount[b]++;
+    }
+
+    /// <summary>La casilla tiene al menos un tramo de ferrocarril que pasa por ella.</summary>
+    public bool HasRailAt(int cell) { return railCount[cell] > 0; }
     public void AddRoad(int a, int b)
     {
         if (!roads.Add(EdgeKey(a, b))) return;
@@ -70,6 +91,7 @@ public class WorldGrid
         cityAt = new City[n];
         component = new int[n];
         roadCount = new int[n];
+        railCount = new int[n];
         irrigated = new bool[n];
         mined = new bool[n];
         farmed = new bool[n];
@@ -394,7 +416,8 @@ public class WorldGrid
 
                 float factor = naval ? 1f : GameDefs.MoveFactor(biome[nb]);
                 if (factor <= 0f) continue;
-                if (!naval && (HasRoad(cur, nb) || HasRiver(cur, nb))) factor = RoadSpeedFactor;
+                if (!naval && HasRail(cur, nb)) factor = RailSpeedFactor;
+                else if (!naval && (HasRoad(cur, nb) || HasRiver(cur, nb))) factor = RoadSpeedFactor;
 
                 float step = Vector3.Distance(dir[cur], dir[nb]) / factor;
                 float ng = g[cur] + step;
@@ -418,8 +441,8 @@ public class WorldGrid
 
     float Heuristic(int a, int b)
     {
-        // Con carreteras el coste mínimo por casilla es la mitad, así que la heurística se reduce
-        return Vector3.Distance(dir[a], dir[b]) / RoadSpeedFactor;
+        // Con ferrocarril el coste mínimo por casilla es el más bajo, así que la heurística se reduce
+        return Vector3.Distance(dir[a], dir[b]) / RailSpeedFactor;
     }
 
     static void Push(List<KeyValuePair<float, int>> heap, float f, int node)

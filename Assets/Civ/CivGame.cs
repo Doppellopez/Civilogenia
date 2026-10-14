@@ -7,7 +7,7 @@ using UnityEngine;
 /// civilizaciones, ciudades, economía, unidades, combate e IA.
 /// Se crea sola al pulsar Play (si hay una EarthTopography en la escena).
 /// </summary>
-public class CivGame : MonoBehaviour
+public partial class CivGame : MonoBehaviour
 {
     [Header("Partida")]
     [Tooltip("Civilizaciones en la partida (1 = solo la tuya)")]
@@ -19,6 +19,7 @@ public class CivGame : MonoBehaviour
     [Header("Carreteras")]
     [Tooltip("Segundos que tarda un colono en construir un tramo de carretera")]
     public float roadBuildSeconds = 5f;
+    public float railBuildSeconds = 8f;
 
     [Header("Inteligencia artificial")]
     public bool aiEnabled = true;
@@ -74,6 +75,7 @@ public class CivGame : MonoBehaviour
         if (earth == null) yield break;
 
         earth.rotationSpeed = earthSpin;
+        CaptureBaseChildren();   // lo que ya cuelga de la Tierra no es de la partida (no se destruye al cargar)
 
         grid = new WorldGrid();
         grid.Build(earth, gridCells);
@@ -209,7 +211,7 @@ public class CivGame : MonoBehaviour
     void Update()
     {
         if (!ready) return;
-        if (IntroVideo.Active) return;   // la partida espera mientras suena la introducción
+        if (IntroVideo.Active || MainMenu.Active) return;   // la partida espera mientras suena la introducción y está el menú
 
         float dt = Time.deltaTime * gameSpeed;
         if (dt <= 0f) return;
@@ -281,6 +283,7 @@ public class CivGame : MonoBehaviour
         ClaimTiles(city, 2);
         RecomputeCity(city);
         RebuildCityView(city);
+        GrantNewspapers(civ);   // con la Prensa de Gutenberg, cada ciudad nueva nace con su Periódico
 
         civ.territoryDirty = true;
         AddLog(civ.name + " funda " + city.name, civ.color);
@@ -399,9 +402,16 @@ public class CivGame : MonoBehaviour
         int roadTiles = 0;
         foreach (int c in city.tiles) if (grid.tileCity[c] == city && grid.HasRoadAt(c)) roadTiles++;
 
+        // Cada casilla de la ciudad con ferrocarril da además +1 de producción
+        int railTiles = 0;
+        foreach (int c in city.tiles) if (grid.tileCity[c] == city && grid.HasRailAt(c)) railTiles++;
+
         city.foodRate = total.x;
-        city.prodRate = total.y + (city.buildings.Contains(BuildingKind.Workshop) ? 2f : 0f)
+        city.prodRate = total.y + railTiles + (city.buildings.Contains(BuildingKind.Workshop) ? 2f : 0f)
                         + (city.buildings.Contains(BuildingKind.FullingMill) ? 3f : 0f);
+        if (OwnsBuilding(city.owner, BuildingKind.HooverDam)) city.prodRate *= 1.25f; // Presa Hoover: +25 % de producción en todas las ciudades
+        if (city.buildings.Contains(BuildingKind.HydroDam)) city.prodRate += 6f; // Presa hidroeléctrica: +6 de producción
+        if (city.buildings.Contains(BuildingKind.Factory)) city.prodRate *= 1.5f; // Fábrica: +50 % de producción en esta ciudad
         if (city.owner.Has(TechKind.SteamEngine)) city.prodRate *= 1.5f; // Máquina de vapor: +50 % de producción en todas las ciudades
         if (city.owner.Has(TechKind.Clock)) city.prodRate *= 1.25f; // Reloj mecánico: +25 % de producción en todas las ciudades
         city.goldRate = total.z + roadTiles + (city.buildings.Contains(BuildingKind.Market) ? 2f : 0f);
@@ -416,6 +426,7 @@ public class CivGame : MonoBehaviour
         if (city.owner.Has(TechKind.Electricity)) city.scienceRate *= 1.25f; // Electricidad: +25 % en todas las ciudades
         if (city.owner.Has(TechKind.Philosophy)) city.scienceRate *= 1.5f; // Filosofía: +50 % en todas las ciudades
         if (city.buildings.Contains(BuildingKind.University)) city.scienceRate *= 1.75f; // Universidad: +75 % en esta ciudad
+        if (city.buildings.Contains(BuildingKind.Newspaper)) city.scienceRate *= 1.5f; // Periódico: +50 % en esta ciudad
         if (city.buildings.Contains(BuildingKind.PrintingHouse)) city.scienceRate *= 2f; // Prensa: duplica la ciencia en esta ciudad
         if (city.buildings.Contains(BuildingKind.Observatory)) city.scienceRate *= 1.5f; // Observatorio: +50 % en esta ciudad
         if (OwnsGreatLibrary(city.owner)) city.scienceRate *= 1.5f; // Gran Biblioteca: +50 % en todas las ciudades
@@ -567,6 +578,7 @@ public class CivGame : MonoBehaviour
 
             RecomputeCity(c);
             RebuildCityView(c);
+            if (c.itemBuilding == BuildingKind.GutenbergPrint) GrantNewspapers(c.owner);
             if (c.owner.isHuman) AddLog(c.name + ": " + GameDefs.Buildings[c.itemBuilding].name + " construido", c.owner.color);
         }
     }
@@ -623,7 +635,7 @@ public class CivGame : MonoBehaviour
     // Las maravillas (Gran Biblioteca, Laboratorio de Fibonacci): solo puede existir una de cada en todo el mundo
     static bool IsWonder(BuildingKind kind)
     {
-        return kind == BuildingKind.GreatLibrary || kind == BuildingKind.FibonacciLab || kind == BuildingKind.AlexandriaLibrary || kind == BuildingKind.GutenbergPress;
+        return kind == BuildingKind.GreatLibrary || kind == BuildingKind.FibonacciLab || kind == BuildingKind.AlexandriaLibrary || kind == BuildingKind.GutenbergPress || kind == BuildingKind.HooverDam || kind == BuildingKind.GutenbergPrint;
     }
 
     // La maravilla se levanta en una celdilla libre del territorio de la ciudad (la más cercana al centro);
@@ -664,7 +676,32 @@ public class CivGame : MonoBehaviour
         return false;
     }
 
+    // Prensa de Gutenberg: la civilización que la posee tiene un Periódico en cada una de sus ciudades
+    void GrantNewspapers(Civ civ)
+    {
+        if (!OwnsBuilding(civ, BuildingKind.GutenbergPrint)) return;
+
+        foreach (City city in civ.cities)
+        {
+            if (city.buildings.Contains(BuildingKind.Newspaper)) continue;
+
+            city.buildings.Add(BuildingKind.Newspaper);
+            if (city.hasItem && !city.itemIsUnit && city.itemBuilding == BuildingKind.Newspaper) city.hasItem = false;
+            RecomputeCity(city);
+            RebuildCityView(city);
+        }
+    }
+
     bool OwnsGreatLibrary(Civ civ) { return OwnsBuilding(civ, BuildingKind.GreatLibrary); }
+
+    /// <summary>La ciudad tiene un río en alguna casilla explotable (de su territorio, o la de la propia ciudad).</summary>
+    public bool CityHasRiver(City city)
+    {
+        if (grid.river[city.cell]) return true;
+        foreach (int c in city.tiles)
+            if (grid.tileCity[c] == city && grid.river[c]) return true;
+        return false;
+    }
 
     public bool Available(City city, BuildingKind kind)
     {
@@ -678,6 +715,11 @@ public class CivGame : MonoBehaviour
         if (kind == BuildingKind.FullingMill && !city.owner.Has(TechKind.Camshaft)) return false;
         if (kind == BuildingKind.Academy && !city.owner.Has(TechKind.Cities)) return false;
         if (kind == BuildingKind.GutenbergPress && (!city.owner.Has(TechKind.PrintingPress) || WonderExists(kind))) return false;
+        if (kind == BuildingKind.Newspaper && !city.owner.Has(TechKind.MovableType)) return false;
+        if (kind == BuildingKind.GutenbergPrint && (!city.owner.Has(TechKind.MovableType) || WonderExists(kind))) return false;
+        if (kind == BuildingKind.HooverDam && (!city.owner.Has(TechKind.Electricity) || !CityHasRiver(city) || WonderExists(kind))) return false;
+        if (kind == BuildingKind.HydroDam && (!city.owner.Has(TechKind.Electricity) || !CityHasRiver(city))) return false;
+        if (kind == BuildingKind.Factory && !city.owner.Has(TechKind.SteamEngine)) return false;
         if (kind == BuildingKind.PrintingHouse && !city.owner.Has(TechKind.PrintingPress)) return false;
         if (kind == BuildingKind.Bank && !city.owner.Has(TechKind.ArabicNumerals)) return false;
         if (kind == BuildingKind.FibonacciLab && (!city.owner.Has(TechKind.ArabicNumerals) || WonderExists(kind))) return false;
@@ -957,9 +999,15 @@ public class CivGame : MonoBehaviour
     /// Orden de carretera: el trabajador construye, casilla a casilla y desde donde está, una carretera
     /// visible hasta la casilla de tierra indicada. Las casillas que ya tienen carretera no cuestan tiempo.
     /// </summary>
-    public bool OrderRoad(Unit u, int goal)
+    public bool OrderRoad(Unit u, int goal, bool rail = false)
     {
         if (u.kind != UnitKind.Worker || !grid.land[goal]) return false;
+
+        if (rail && !u.owner.Has(TechKind.Railway))
+        {
+            if (u.owner.isHuman) AddLog("Necesitas descubrir el Ferrocarril para construir vías (T)", Color.red);
+            return false;
+        }
 
         if (grid.river[goal] && !u.owner.Has(TechKind.Bridges))
         {
@@ -996,8 +1044,9 @@ public class CivGame : MonoBehaviour
         u.path = route;
         u.roadGoal = goal;
         u.roadProgress = 0f;
+        u.railMode = rail;
 
-        if (u.owner.isHuman) AddLog("Trabajador: construyendo carretera hacia " + RoadGoalName(goal), u.owner.color);
+        if (u.owner.isHuman) AddLog("Trabajador: construyendo " + (rail ? "ferrocarril" : "carretera") + " hacia " + RoadGoalName(goal), u.owner.color);
         return true;
     }
 
@@ -1012,6 +1061,7 @@ public class CivGame : MonoBehaviour
     {
         u.roadGoal = -1;
         u.roadProgress = 0f;
+        u.railMode = false;
         u.irrigateAt = -1;       // cualquier orden nueva cancela también la irrigación en curso
         u.irrigateProgress = 0f;
         u.mineAt = -1;           // ... y la mina en curso
@@ -1243,7 +1293,7 @@ public class CivGame : MonoBehaviour
 
         if (u.cell == u.roadGoal)
         {
-            if (u.owner.isHuman) AddLog("Carretera terminada hasta " + RoadGoalName(u.roadGoal), u.owner.color);
+            if (u.owner.isHuman) AddLog((u.railMode ? "Ferrocarril terminado hasta " : "Carretera terminada hasta ") + RoadGoalName(u.roadGoal), u.owner.color);
             CancelRoad(u);
             u.path.Clear();
             return;
@@ -1261,7 +1311,30 @@ public class CivGame : MonoBehaviour
         // Sin la Construcción de puentes los ríos no se pavimentan: el trabajador los cruza sin construir en los tramos
         // que tocan una casilla de río
         bool riverBlocks = !u.owner.Has(TechKind.Bridges) && (grid.river[u.cell] || grid.river[next]);
-        if (!grid.HasRoad(u.cell, next) && !riverBlocks)
+        if (u.railMode)
+        {
+            // Mejora de la carretera a ferrocarril: si el tramo aún no tenía carretera, se construye también
+            if (!grid.HasRail(u.cell, next) && !riverBlocks)
+            {
+                u.roadProgress += dt / railBuildSeconds;
+                if (u.roadProgress < 1f) return;
+
+                if (!grid.HasRoad(u.cell, next))
+                {
+                    grid.AddRoad(u.cell, next);
+                    CivViews.BuildRoad(u.cell, next, grid, earth, EarthT, u.owner);
+                }
+
+                grid.AddRail(u.cell, next);
+                CivViews.BuildRail(u.cell, next, grid, earth, EarthT, u.owner);
+
+                // El ferrocarril cambia el rendimiento de las ciudades que controlan esas casillas
+                if (grid.tileCity[u.cell] != null) RecomputeCity(grid.tileCity[u.cell]);
+                if (grid.tileCity[next] != null && grid.tileCity[next] != grid.tileCity[u.cell]) RecomputeCity(grid.tileCity[next]);
+                u.roadProgress = 0f;
+            }
+        }
+        else if (!grid.HasRoad(u.cell, next) && !riverBlocks)
         {
             u.roadProgress += dt / roadBuildSeconds;
             if (u.roadProgress < 1f) return;
@@ -1764,8 +1837,10 @@ public class CivGame : MonoBehaviour
     {
         // Las carreteras y recorrer un río duplican la velocidad en ese tramo, sea cual sea el terreno
         float factor = u.def.naval ? (u.owner.Has(TechKind.Compass) ? 1.5f : 1f) // Brújula magnética: +50 % de velocidad en el mar
+            : grid.HasRail(u.cell, u.moveTo)
+            ? WorldGrid.RailSpeedFactor // Ferrocarril: el doble de rápido que una carretera
             : grid.HasRoad(u.cell, u.moveTo)
-            ? WorldGrid.RoadSpeedFactor * (u.owner.Has(TechKind.Railway) ? 2f : 1f) // Ferrocarril: las carreteras duplican su velocidad
+            ? WorldGrid.RoadSpeedFactor
             : grid.HasRiver(u.cell, u.moveTo)
             ? WorldGrid.RoadSpeedFactor
             : Mathf.Max(0.2f, GameDefs.MoveFactor(grid.biome[u.moveTo]));
@@ -1866,6 +1941,7 @@ public class CivGame : MonoBehaviour
         RecomputeCity(c);
         UpdateCivRates(old);
         RebuildCityView(c);
+        GrantNewspapers(newOwner);   // si el conquistador tiene la Prensa de Gutenberg, la ciudad recibe su Periódico
 
         AddLog(newOwner.name + " conquista " + c.name + " (de " + old.name + ")", newOwner.color);
         CheckElimination(old);
