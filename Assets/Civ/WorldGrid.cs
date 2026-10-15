@@ -376,10 +376,15 @@ public class WorldGrid
     // Camino de casillas (sin incluir la de origen). Solo por tierra; devuelve null si no hay.
     // No se puede atravesar una ciudad enemiga salvo que sea el destino.
     // Con naval = true solo se navega por casillas de mar.
-    public List<int> FindPath(int from, int to, Civ mover, bool naval = false)
+    // Con air = true se vuela sobre tierra y mar sin importar el terreno.
+    public List<int> FindPath(int from, int to, Civ mover, bool naval = false, bool air = false)
     {
         if (from == to) return new List<int>();
-        if (naval)
+        if (air)
+        {
+            // Los aviones no tienen restricciones de terreno
+        }
+        else if (naval)
         {
             if (land[to] || land[from]) return null;
         }
@@ -409,15 +414,15 @@ public class WorldGrid
 
             foreach (int nb in nbr[cur])
             {
-                if (closed[nb] || land[nb] == naval) continue;
+                if (closed[nb] || (!air && land[nb] == naval)) continue;
 
                 City c = cityAt[nb];
                 if (c != null && c.owner != mover && nb != to) continue;
 
-                float factor = naval ? 1f : GameDefs.MoveFactor(biome[nb]);
+                float factor = (naval || air) ? 1f : GameDefs.MoveFactor(biome[nb]);
                 if (factor <= 0f) continue;
-                if (!naval && HasRail(cur, nb)) factor = RailSpeedFactor;
-                else if (!naval && (HasRoad(cur, nb) || HasRiver(cur, nb))) factor = RoadSpeedFactor;
+                if (!naval && !air && HasRail(cur, nb)) factor = RailSpeedFactor;
+                else if (!naval && !air && (HasRoad(cur, nb) || HasRiver(cur, nb))) factor = RoadSpeedFactor;
 
                 float step = Vector3.Distance(dir[cur], dir[nb]) / factor;
                 float ng = g[cur] + step;

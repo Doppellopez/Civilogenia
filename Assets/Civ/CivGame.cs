@@ -411,9 +411,13 @@ public partial class CivGame : MonoBehaviour
                         + (city.buildings.Contains(BuildingKind.FullingMill) ? 3f : 0f);
         if (OwnsBuilding(city.owner, BuildingKind.HooverDam)) city.prodRate *= 1.25f; // Presa Hoover: +25 % de producción en todas las ciudades
         if (city.buildings.Contains(BuildingKind.HydroDam)) city.prodRate += 6f; // Presa hidroeléctrica: +6 de producción
+        if (city.buildings.Contains(BuildingKind.NuclearPlant)) city.prodRate += 10f; // Central nuclear: +10 de producción
         if (city.buildings.Contains(BuildingKind.Factory)) city.prodRate *= 1.5f; // Fábrica: +50 % de producción en esta ciudad
         if (city.owner.Has(TechKind.SteamEngine)) city.prodRate *= 1.5f; // Máquina de vapor: +50 % de producción en todas las ciudades
         if (city.owner.Has(TechKind.Clock)) city.prodRate *= 1.25f; // Reloj mecánico: +25 % de producción en todas las ciudades
+        if (city.owner.Has(TechKind.CombustionEngine)) city.prodRate *= 1.5f; // Motor de combustión: +50 % de producción en todas las ciudades
+        if (OwnsBuilding(city.owner, BuildingKind.FordAssembly)) city.prodRate *= 1.25f; // Cadena de montaje de Ford: +25 % de producción en todas las ciudades
+        if (OwnsBuilding(city.owner, BuildingKind.ManhattanProject)) city.prodRate *= 1.5f; // Proyecto Manhattan: +50 % de producción en todas las ciudades
         city.goldRate = total.z + roadTiles + (city.buildings.Contains(BuildingKind.Market) ? 2f : 0f);
         city.scienceRate = (0.4f + 0.3f * city.pop + roadTiles) * (city.buildings.Contains(BuildingKind.Library) ? 2f : 1f);
         if (city.buildings.Contains(BuildingKind.Bank)) city.goldRate *= 1.5f; // Banco: +50 % de oro en esta ciudad
@@ -424,15 +428,21 @@ public partial class CivGame : MonoBehaviour
         }
         if (city.owner.Has(TechKind.Universities)) city.scienceRate *= 1.25f; // Universidades: +25 % en todas las ciudades
         if (city.owner.Has(TechKind.Electricity)) city.scienceRate *= 1.25f; // Electricidad: +25 % en todas las ciudades
+        if (city.owner.Has(TechKind.Radio)) city.scienceRate *= 1.25f; // Radio: +25 % en todas las ciudades
+        if (city.buildings.Contains(BuildingKind.ComputerLab)) city.scienceRate *= 2f; // Laboratorio informático: +100 % en esta ciudad
         if (city.owner.Has(TechKind.Philosophy)) city.scienceRate *= 1.5f; // Filosofía: +50 % en todas las ciudades
         if (city.buildings.Contains(BuildingKind.University)) city.scienceRate *= 1.75f; // Universidad: +75 % en esta ciudad
         if (city.buildings.Contains(BuildingKind.Newspaper)) city.scienceRate *= 1.5f; // Periódico: +50 % en esta ciudad
         if (city.buildings.Contains(BuildingKind.PrintingHouse)) city.scienceRate *= 2f; // Prensa: duplica la ciencia en esta ciudad
-        if (city.buildings.Contains(BuildingKind.Observatory)) city.scienceRate *= 1.5f; // Observatorio: +50 % en esta ciudad
+        if (city.buildings.Contains(BuildingKind.Observatory)) city.scienceRate *= city.owner.Has(TechKind.Telescope) ? 2f : 1.5f; // Observatorio: +50 % en esta ciudad (+100 % con el Telescopio)
         if (OwnsGreatLibrary(city.owner)) city.scienceRate *= 1.5f; // Gran Biblioteca: +50 % en todas las ciudades
         if (OwnsBuilding(city.owner, BuildingKind.AlexandriaLibrary)) city.scienceRate *= 1.4f; // Gran Biblioteca de Alejandría: +40 % en todas las ciudades
         if (OwnsBuilding(city.owner, BuildingKind.GutenbergPress)) city.scienceRate *= 1.5f; // Imprenta de Gutenberg: x1,5 en todas las ciudades
+        if (OwnsBuilding(city.owner, BuildingKind.GalileoObservatory)) city.scienceRate *= 1.4f; // Observatorio de Galileo: +40 % en todas las ciudades
         if (OwnsBuilding(city.owner, BuildingKind.FibonacciLab)) city.scienceRate *= 1.25f; // Laboratorio de Fibonacci: +25 % en todas las ciudades
+        if (OwnsBuilding(city.owner, BuildingKind.RadioTower)) city.scienceRate *= 1.3f; // Torre de radio de Marconi: +30 % en todas las ciudades
+        if (OwnsBuilding(city.owner, BuildingKind.ManhattanProject)) city.scienceRate *= 1.25f; // Proyecto Manhattan: x1,25 en todas las ciudades
+        if (OwnsBuilding(city.owner, BuildingKind.Internet)) city.scienceRate *= 1.5f; // Internet: x1,5 en todas las ciudades
 
         // Cada ruta comercial activa da +15 % de oro y de ciencia a la ciudad
         float trade = 1f + TradeBonusOf(city);
@@ -472,7 +482,12 @@ public partial class CivGame : MonoBehaviour
         TickTerritory(c, dt);
 
         // Comida y crecimiento
-        c.food += c.FoodSurplus * dt;
+        float surplus = c.FoodSurplus;
+        if (surplus > 0f && c.owner.Has(TechKind.Thermometer)) surplus *= 1.2f; // Termómetro: +20 % de crecimiento en todas las ciudades
+        if (surplus > 0f && c.owner.Has(TechKind.Penicillin)) surplus *= 1.3f; // Penicilina: +30 % de crecimiento en todas las ciudades
+        if (surplus > 0f && OwnsBuilding(c.owner, BuildingKind.FlemingLab)) surplus *= 1.3f; // Laboratorio de Fleming: +30 % de crecimiento en todas las ciudades
+        if (surplus > 0f && OwnsBuilding(c.owner, BuildingKind.FahrenheitStudy)) surplus *= 1.3f; // Estudio de Fahrenheit: +30 % de crecimiento en todas las ciudades
+        c.food += surplus * dt;
 
         // Sin Fuego la ciudad no pasa de PopWithoutFire habitantes
         bool canGrow = c.pop < GameDefs.PopWithoutFire || c.owner.Has(TechKind.Fire);
@@ -609,8 +624,12 @@ public partial class CivGame : MonoBehaviour
             case UnitKind.Musketeer: return civ.Has(TechKind.Gunpowder);
             case UnitKind.Crossbowman: return civ.Has(TechKind.Crossbow);
             case UnitKind.Rifleman: return civ.Has(TechKind.Rifle);
+            case UnitKind.Grenadier: return civ.Has(TechKind.Grenade);
             case UnitKind.Cannon:   return civ.Has(TechKind.Artillery);
             case UnitKind.Steamship: return civ.Has(TechKind.SteamEngine);
+            case UnitKind.Tank:     return civ.Has(TechKind.Tanks);
+            case UnitKind.Fighter:
+            case UnitKind.Bomber:   return civ.Has(TechKind.Aviation);
             case UnitKind.Ballista: return civ.Has(TechKind.Crossbow);
             case UnitKind.Caravan:  return civ.Has(TechKind.Currency);
             case UnitKind.Merchant: return false; // solo mejorando una caravana
@@ -635,7 +654,8 @@ public partial class CivGame : MonoBehaviour
     // Las maravillas (Gran Biblioteca, Laboratorio de Fibonacci): solo puede existir una de cada en todo el mundo
     static bool IsWonder(BuildingKind kind)
     {
-        return kind == BuildingKind.GreatLibrary || kind == BuildingKind.FibonacciLab || kind == BuildingKind.AlexandriaLibrary || kind == BuildingKind.GutenbergPress || kind == BuildingKind.HooverDam || kind == BuildingKind.GutenbergPrint;
+        return kind == BuildingKind.GreatLibrary || kind == BuildingKind.FibonacciLab || kind == BuildingKind.AlexandriaLibrary || kind == BuildingKind.GutenbergPress || kind == BuildingKind.HooverDam || kind == BuildingKind.GutenbergPrint || kind == BuildingKind.GalileoObservatory || kind == BuildingKind.FahrenheitStudy
+            || kind == BuildingKind.RadioTower || kind == BuildingKind.FordAssembly || kind == BuildingKind.FlemingLab || kind == BuildingKind.ManhattanProject || kind == BuildingKind.Internet;
     }
 
     // La maravilla se levanta en una celdilla libre del territorio de la ciudad (la más cercana al centro);
@@ -715,11 +735,20 @@ public partial class CivGame : MonoBehaviour
         if (kind == BuildingKind.FullingMill && !city.owner.Has(TechKind.Camshaft)) return false;
         if (kind == BuildingKind.Academy && !city.owner.Has(TechKind.Cities)) return false;
         if (kind == BuildingKind.GutenbergPress && (!city.owner.Has(TechKind.PrintingPress) || WonderExists(kind))) return false;
-        if (kind == BuildingKind.Newspaper && !city.owner.Has(TechKind.MovableType)) return false;
+        if (kind == BuildingKind.GalileoObservatory && (!city.owner.Has(TechKind.Telescope) || WonderExists(kind))) return false;
+        if (kind == BuildingKind.FahrenheitStudy && (!city.owner.Has(TechKind.Thermometer) || WonderExists(kind))) return false;
+        if (kind == BuildingKind.Newspaper &&!city.owner.Has(TechKind.MovableType)) return false;
         if (kind == BuildingKind.GutenbergPrint && (!city.owner.Has(TechKind.MovableType) || WonderExists(kind))) return false;
         if (kind == BuildingKind.HooverDam && (!city.owner.Has(TechKind.Electricity) || !CityHasRiver(city) || WonderExists(kind))) return false;
         if (kind == BuildingKind.HydroDam && (!city.owner.Has(TechKind.Electricity) || !CityHasRiver(city))) return false;
         if (kind == BuildingKind.Factory && !city.owner.Has(TechKind.SteamEngine)) return false;
+        if (kind == BuildingKind.RadioTower && (!city.owner.Has(TechKind.Radio) || WonderExists(kind))) return false;
+        if (kind == BuildingKind.FordAssembly && (!city.owner.Has(TechKind.CombustionEngine) || WonderExists(kind))) return false;
+        if (kind == BuildingKind.FlemingLab && (!city.owner.Has(TechKind.Penicillin) || WonderExists(kind))) return false;
+        if (kind == BuildingKind.ManhattanProject && (!city.owner.Has(TechKind.NuclearEnergy) || WonderExists(kind))) return false;
+        if (kind == BuildingKind.Internet && (!city.owner.Has(TechKind.Computers) || WonderExists(kind))) return false;
+        if (kind == BuildingKind.ComputerLab && !city.owner.Has(TechKind.Computers)) return false;
+        if (kind == BuildingKind.NuclearPlant && !city.owner.Has(TechKind.NuclearEnergy)) return false;
         if (kind == BuildingKind.PrintingHouse && !city.owner.Has(TechKind.PrintingPress)) return false;
         if (kind == BuildingKind.Bank && !city.owner.Has(TechKind.ArabicNumerals)) return false;
         if (kind == BuildingKind.FibonacciLab && (!city.owner.Has(TechKind.ArabicNumerals) || WonderExists(kind))) return false;
@@ -783,7 +812,10 @@ public partial class CivGame : MonoBehaviour
                 return civ.Has(TechKind.Gunpowder) ? UnitKind.Musketeer : (UnitKind?)null;
             case UnitKind.Musketeer: return civ.Has(TechKind.Rifle) ? UnitKind.Rifleman : (UnitKind?)null;
             case UnitKind.Catapult:
-            case UnitKind.Ballista: return civ.Has(TechKind.Artillery) ? UnitKind.Cannon : (UnitKind?)null;
+            case UnitKind.Ballista:
+                if (civ.Has(TechKind.Tanks)) return UnitKind.Tank;
+                return civ.Has(TechKind.Artillery) ? UnitKind.Cannon : (UnitKind?)null;
+            case UnitKind.Cannon: return civ.Has(TechKind.Tanks) ? UnitKind.Tank : (UnitKind?)null;
             case UnitKind.Sailboat:
                 if (civ.Has(TechKind.SteamEngine)) return UnitKind.Steamship;
                 return civ.Has(TechKind.Compass) ? UnitKind.Galleon : (UnitKind?)null;
@@ -869,10 +901,11 @@ public partial class CivGame : MonoBehaviour
         }
 
         // Cambio de era: las carreteras de la civilización pasan a piedra y sus unidades a su modelo medieval
-        if (civ.currentTech == TechKind.EraChange)
+        bool eraChanged = civ.currentTech == TechKind.EraChange || civ.currentTech == TechKind.EraChange3;
+        if (eraChanged)
             CivViews.UpgradeRoads(civ, grid, earth, EarthT);
 
-        if (civ.currentTech == TechKind.EraChange)
+        if (eraChanged)
             foreach (Unit u in civ.units.ToArray())
             {
                 if (!u.alive) continue;
@@ -888,10 +921,15 @@ public partial class CivGame : MonoBehaviour
         // Segundo Cambio de era del jugador: vídeo "Video cambio a edad moderna"
         if (civ.isHuman && def == GameDefs.Techs[TechKind.EraChange2])
             IntroVideo.PlayClip(EraChange2Video);
+
+        // Tercer Cambio de era del jugador: vídeo "Cambio a edad contemporanea con jazz"
+        if (civ.isHuman && def == GameDefs.Techs[TechKind.EraChange3])
+            IntroVideo.PlayClip(EraChange3Video);
     }
 
     const string EraChangeVideo = "Video cambio a edad media";
     const string EraChange2Video = "Video cambio a edad moderna";
+    const string EraChange3Video = "Cambio a edad contemporanea con jazz";
 
     // ---------------------------------------------------------------- Unidades
 
@@ -966,12 +1004,13 @@ public partial class CivGame : MonoBehaviour
         Vector3 t2 = Vector3.Cross(d, t1);
 
         p += t1 * u.jitter.x + t2 * u.jitter.y;
+        if (u.def.air) p += d * grid.spacing * 0.35f; // Los aviones vuelan a cierta altura sobre el terreno
 
         u.view.transform.localPosition = p;
         Quaternion rot = Quaternion.FromToRotation(Vector3.up, d);
 
-        // Barcos y caravanas apuntan el frente (+Z del modelo) hacia la casilla a la que se dirigen
-        if (u.def.naval || u.IsTrader)
+        // Barcos, aviones y caravanas apuntan el frente (+Z del modelo) hacia la casilla a la que se dirigen
+        if (u.def.naval || u.def.air || u.IsTrader)
         {
             if (u.Moving)
             {
@@ -1408,7 +1447,7 @@ public partial class CivGame : MonoBehaviour
         u.disembarkAt = -1;
 
         int from = u.Moving ? u.moveTo : u.cell;
-        List<int> path = grid.FindPath(from, cell, u.owner, u.def.naval);
+        List<int> path = grid.FindPath(from, cell, u.owner, u.def.naval, u.def.air);
 
         if (path == null) return;
         u.path = path;
@@ -1836,7 +1875,8 @@ public partial class CivGame : MonoBehaviour
     void AdvanceMove(Unit u, float dt)
     {
         // Las carreteras y recorrer un río duplican la velocidad en ese tramo, sea cual sea el terreno
-        float factor = u.def.naval ? (u.owner.Has(TechKind.Compass) ? 1.5f : 1f) // Brújula magnética: +50 % de velocidad en el mar
+        float factor = u.def.air ? 1f // Los aviones vuelan a velocidad constante sobre cualquier terreno
+            : u.def.naval ? (u.owner.Has(TechKind.Compass) ? 1.5f : 1f) // Brújula magnética: +50 % de velocidad en el mar
             : grid.HasRail(u.cell, u.moveTo)
             ? WorldGrid.RailSpeedFactor // Ferrocarril: el doble de rápido que una carretera
             : grid.HasRoad(u.cell, u.moveTo)
@@ -1844,6 +1884,7 @@ public partial class CivGame : MonoBehaviour
             : grid.HasRiver(u.cell, u.moveTo)
             ? WorldGrid.RoadSpeedFactor
             : Mathf.Max(0.2f, GameDefs.MoveFactor(grid.biome[u.moveTo]));
+        if (!u.def.air && !u.def.naval && u.owner.Has(TechKind.CombustionEngine)) factor *= 1.25f; // Motor de combustión: +25 % en tierra
         u.t += u.def.speed * factor * dt;
 
         if (u.t >= 1f)
@@ -2088,7 +2129,8 @@ public partial class CivGame : MonoBehaviour
         foreach (Unit u in civ.units) if (u.def.IsMilitary && !u.def.naval) military++;
 
         // La más actual que se pueda construir (las antiguas quedan obsoletas)
-        UnitKind bestMilitary = Available(civ, UnitKind.Rifleman) ? UnitKind.Rifleman
+        UnitKind bestMilitary = Available(civ, UnitKind.Tank) ? UnitKind.Tank
+                              : Available(civ, UnitKind.Rifleman) ? UnitKind.Rifleman
                               : Available(civ, UnitKind.Musketeer) ? UnitKind.Musketeer
                               : Available(civ, UnitKind.Legion) ? UnitKind.Legion
                               : Available(civ, UnitKind.Spearman) ? UnitKind.Spearman : UnitKind.Warrior;

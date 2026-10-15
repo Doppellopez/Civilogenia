@@ -3,9 +3,9 @@ using UnityEngine;
 
 // Tipos y datos del juego de civilizaciones en tiempo real.
 
-public enum UnitKind { Settler, Worker, Warrior, Spearman, Sailboat, Caravan, Archer, Horseman, Chariot, Phalanx, Legion, Catapult, Merchant, Galleon, Musketeer, Crossbowman, Ballista, Rifleman, Cannon, Steamship }
-public enum TechKind { Fire, Agriculture, Husbandry, Mining, Sailing, Archery, Pottery, Riding, Wheel, Masonry, Bronze, Writing, Construction, Iron, Astronomy, Mathematics, Currency, Philosophy, EraChange, HeavyPlow, WaterMill, Camshaft, ArabicNumerals, Universities, Cities, EraChange2, Bridges, Compass, Clock, Gunpowder, PrintingPress, Crossbow, SteamEngine, Electricity, Railway, Rifle, Artillery, MovableType }
-public enum BuildingKind{ Granary, Workshop, Market, Library, Walls, PublicBaths, GreatLibrary, Observatory, FibonacciLab, Bank, Academy, FullingMill, University, AlexandriaLibrary, PrintingHouse, GutenbergPress, Factory, HydroDam, HooverDam, Newspaper, GutenbergPrint }
+public enum UnitKind { Settler, Worker, Warrior, Spearman, Sailboat, Caravan, Archer, Horseman, Chariot, Phalanx, Legion, Catapult, Merchant, Galleon, Musketeer, Crossbowman, Ballista, Rifleman, Cannon, Steamship, Grenadier, Tank, Fighter, Bomber }
+public enum TechKind { Fire, Agriculture, Husbandry, Mining, Sailing, Archery, Pottery, Riding, Wheel, Masonry, Bronze, Writing, Construction, Iron, Astronomy, Mathematics, Currency, Philosophy, EraChange, HeavyPlow, WaterMill, Camshaft, ArabicNumerals, Universities, Cities, EraChange2, Bridges, Compass, Clock, Gunpowder, PrintingPress, Crossbow, SteamEngine, Electricity, Railway, Rifle, Artillery, MovableType, Grenade, Telescope, Thermometer, EraChange3, CombustionEngine, Aviation, Radio, SteelConcrete, Penicillin, Tanks, Computers, NuclearEnergy }
+public enum BuildingKind{ Granary, Workshop, Market, Library, Walls, PublicBaths, GreatLibrary, Observatory, FibonacciLab, Bank, Academy, FullingMill, University, AlexandriaLibrary, PrintingHouse, GutenbergPress, Factory, HydroDam, HooverDam, Newspaper, GutenbergPrint, GalileoObservatory, FahrenheitStudy, ComputerLab, NuclearPlant, RadioTower, FordAssembly, FlemingLab, ManhattanProject, Internet }
 
 public class UnitDef
 {
@@ -13,6 +13,7 @@ public class UnitDef
     public float cost, hp, attack, defense, speed; // speed en casillas por segundo
     public int popCost;
     public bool naval; // navega solo por mar y se construye en ciudades costeras
+    public bool air;   // vuela sobre tierra y mar sin importar el terreno
     public int capacity; // unidades de tierra que puede transportar
     public int range = 1; // casillas de distancia desde las que ataca (1 = cuerpo a cuerpo)
     public bool IsMilitary => attack > 0f;
@@ -67,7 +68,22 @@ public static class GameDefs
         { TechKind.Railway,    new TechDef { name = "Ferrocarril", cost = 2400, unlocks = "los trabajadores mejoran las carreteras a ferrocarril (el doble de rápidas y +1 de producción por casilla)", requires = TechKind.SteamEngine } },
         { TechKind.MovableType, new TechDef { name = "Imprenta de tipos móviles", cost = 2200, unlocks = "Periódico y la maravilla Prensa de Gutenberg", requires = TechKind.Electricity } },
         { TechKind.Rifle,      new TechDef { name = "Fusil", cost = 1760, unlocks = "Fusilero", requires = TechKind.EraChange2 } },
+        { TechKind.Telescope,  new TechDef { name = "Telescopio", cost = 1700, unlocks = "el Observatorio da +100% de ciencia en su ciudad (en vez de +50%) y la maravilla Observatorio de Galileo Galilei", requires = TechKind.EraChange2, alsoRequires = TechKind.Astronomy } },
+        { TechKind.Thermometer, new TechDef { name = "Termómetro", cost = 1900, unlocks = "+20% de crecimiento en todas las ciudades (medicina e higiene) y la maravilla Estudio de Daniel Gabriel Fahrenheit", requires = TechKind.Telescope } },
+        { TechKind.Grenade,  new TechDef { name = "Granada de mano", cost = 1900, unlocks = "Granadero", requires = TechKind.Rifle } },
         { TechKind.Artillery,  new TechDef { name = "Artillería", cost = 2080, unlocks = "Cañón", requires = TechKind.EraChange2 } },
+        // Aparece cuando se han descubierto todas las tecnologías de la Edad Moderna
+        { TechKind.EraChange3, new TechDef { name = "Cambio de era", cost = 2600, unlocks = "la Edad Contemporánea",
+            requiresAll = new[] { TechKind.SteamEngine, TechKind.Electricity, TechKind.Railway, TechKind.MovableType, TechKind.Rifle, TechKind.Telescope, TechKind.Thermometer, TechKind.Grenade, TechKind.Artillery } } },
+        // Tecnologías de la Edad Contemporánea: solo se pueden investigar tras el tercer Cambio de era
+        { TechKind.CombustionEngine, new TechDef { name = "Motor de combustión", cost = 2800, unlocks = "+50% de producción en todas las ciudades y las unidades terrestres se mueven un 25% más rápido", requires = TechKind.EraChange3 } },
+        { TechKind.Aviation,   new TechDef { name = "Aviación", cost = 3200, unlocks = "Caza y Bombardero (vuelan sobre tierra y mar)", requires = TechKind.CombustionEngine } },
+        { TechKind.Radio,      new TechDef { name = "Radio", cost = 2900, unlocks = "+25% de ciencia en todas las ciudades", requires = TechKind.EraChange3 } },
+        { TechKind.SteelConcrete, new TechDef { name = "Acero y hormigón", cost = 3000, unlocks = "los edificios cuestan un 15% menos (rascacielos)", requires = TechKind.EraChange3 } },
+        { TechKind.Penicillin, new TechDef { name = "Penicilina", cost = 3100, unlocks = "+30% de crecimiento en todas las ciudades", requires = TechKind.EraChange3 } },
+        { TechKind.Tanks,      new TechDef { name = "Carro de combate", cost = 3300, unlocks = "Tanque (mejora del Cañón)", requires = TechKind.CombustionEngine } },
+        { TechKind.Computers,  new TechDef { name = "Ordenadores", cost = 3600, unlocks = "Laboratorio informático (+100% de ciencia en su ciudad)", requires = TechKind.Radio } },
+        { TechKind.NuclearEnergy, new TechDef { name = "Energía nuclear", cost = 4200, unlocks = "Central nuclear (+10 de producción en su ciudad)", requires = TechKind.Computers, alsoRequires = TechKind.Aviation } },
         { TechKind.Currency, new TechDef { name = "Moneda",      cost = 120, unlocks = "Caravana de comercio", requires = TechKind.Bronze, alsoRequires = TechKind.Writing } },
         { TechKind.Mathematics,new TechDef { name = "Matemáticas", cost = 120, unlocks = "Catapulta", requires = TechKind.Writing, alsoRequires = TechKind.Wheel } },
         { TechKind.Astronomy,  new TechDef { name = "Astronomía",  cost = 165, unlocks = "Observatorio", requires = TechKind.Writing } },
@@ -96,8 +112,12 @@ public static class GameDefs
         { UnitKind.Crossbowman, new UnitDef { name = "Ballestero", cost = 65, hp = 18, attack = 10, defense = 3, speed = 0.65f, range = 2 } },
         { UnitKind.Ballista, new UnitDef { name = "Ballesta de asedio", cost = 110, hp = 20, attack = 18, defense = 1, speed = 0.4f, range = 3 } },
         { UnitKind.Rifleman, new UnitDef { name = "Fusilero", cost = 120, hp = 35, attack = 22, defense = 11, speed = 0.6f, range = 2 } },
+        { UnitKind.Grenadier, new UnitDef { name = "Granadero", cost = 110, hp = 32, attack = 28, defense = 9, speed = 0.6f } },
         { UnitKind.Cannon,   new UnitDef { name = "Cañón", cost = 150, hp = 25, attack = 30, defense = 2, speed = 0.35f, range = 4 } },
         { UnitKind.Steamship, new UnitDef { name = "Barco de vapor", cost = 170, hp = 70, attack = 25, defense = 6, speed = 0.45f, range = 2, naval = true, capacity = 4 } },
+        { UnitKind.Tank,     new UnitDef { name = "Tanque", cost = 200, hp = 80, attack = 38, defense = 14, speed = 0.5f, range = 3 } },
+        { UnitKind.Fighter,  new UnitDef { name = "Caza", cost = 190, hp = 40, attack = 30, defense = 6, speed = 1.0f, range = 2, air = true } },
+        { UnitKind.Bomber,   new UnitDef { name = "Bombardero", cost = 260, hp = 60, attack = 45, defense = 4, speed = 0.7f, range = 2, air = true } },
         { UnitKind.Musketeer, new UnitDef { name = "Mosquetero", cost = 90, hp = 28, attack = 16, defense = 8, speed = 0.6f, range = 2 } },
         { UnitKind.Galleon,  new UnitDef { name = "Galeón", cost = 120, hp = 45, attack = 20, defense = 4, speed = 0.35f, range = 2, naval = true, capacity = 3 } },
         { UnitKind.Caravan,  new UnitDef { name = "Caravana de comercio", cost = 50, hp = 10, attack = 0, defense = 0, speed = 0.5f } },
@@ -125,12 +145,21 @@ public static class GameDefs
         { BuildingKind.University, new BuildingDef { name = "Universidad", cost = 150, effect = "+75% de ciencia de la ciudad" } },
         { BuildingKind.AlexandriaLibrary, new BuildingDef { name = "Gran Biblioteca de Alejandría", cost = 300, effect = "maravilla única: +40% de ciencia en todas tus ciudades" } },
         { BuildingKind.GutenbergPress, new BuildingDef { name = "Imprenta de Gutenberg", cost = 300, effect = "maravilla única: x1,5 de ciencia en todas tus ciudades" } },
-        { BuildingKind.Newspaper, new BuildingDef { name = "Periódico", cost = 180, effect = "+50% de descubrimiento (ciencia) de la ciudad" } },
+        { BuildingKind.GalileoObservatory, new BuildingDef { name = "Observatorio de Galileo Galilei", cost = 500, effect = "maravilla única: x1,4 de ciencia en todas tus ciudades" } },
+        { BuildingKind.FahrenheitStudy, new BuildingDef { name = "Estudio de Daniel Gabriel Fahrenheit", cost = 450, effect = "maravilla única: +30% de crecimiento en todas tus ciudades" } },
+        { BuildingKind.Newspaper,new BuildingDef { name = "Periódico", cost = 180, effect = "+50% de descubrimiento (ciencia) de la ciudad" } },
         { BuildingKind.GutenbergPrint, new BuildingDef { name = "Prensa de Gutenberg", cost = 600, effect = "maravilla única: construye un Periódico en cada ciudad que controles y que fundes" } },
         { BuildingKind.HooverDam, new BuildingDef { name = "Presa Hoover", cost = 500, effect = "maravilla única: +25% de producción en todas tus ciudades (solo en ciudades con río)" } },
         { BuildingKind.HydroDam, new BuildingDef { name = "Presa hidroeléctrica", cost = 250, effect = "+6 producción (solo en ciudades con río)" } },
         { BuildingKind.Factory, new BuildingDef { name = "Fábrica", cost = 200, effect = "+50% de producción de la ciudad" } },
         { BuildingKind.PrintingHouse, new BuildingDef { name = "Prensa", cost = 150, effect = "duplica la ciencia de la ciudad" } },
+        { BuildingKind.ComputerLab, new BuildingDef { name = "Laboratorio informático", cost = 300, effect = "+100% de ciencia de la ciudad" } },
+        { BuildingKind.RadioTower, new BuildingDef { name = "Torre de radio de Marconi", cost = 700, effect = "maravilla única: +30% de ciencia en todas tus ciudades" } },
+        { BuildingKind.FordAssembly, new BuildingDef { name = "Cadena de montaje de Ford", cost = 750, effect = "maravilla única: +25% de producción en todas tus ciudades" } },
+        { BuildingKind.FlemingLab, new BuildingDef { name = "Laboratorio de Fleming", cost = 700, effect = "maravilla única: +30% de crecimiento en todas tus ciudades" } },
+        { BuildingKind.ManhattanProject, new BuildingDef { name = "Proyecto Manhattan", cost = 1000, effect = "maravilla única: +50% de producción y x1,25 de ciencia en todas tus ciudades" } },
+        { BuildingKind.Internet, new BuildingDef { name = "Internet", cost = 900, effect = "maravilla única: x1,5 de ciencia en todas tus ciudades" } },
+        { BuildingKind.NuclearPlant, new BuildingDef { name = "Central nuclear", cost = 500, effect = "+10 producción" } },
         { BuildingKind.PublicBaths, new BuildingDef { name = "Baños públicos", cost = 70, effect = "+50% velocidad de crecimiento" } },
     };
 
@@ -294,7 +323,9 @@ public class City
     public float BuildingCost(BuildingKind kind)
     {
         float cost = GameDefs.Buildings[kind].cost;
-        return owner.Has(TechKind.Construction) ? Mathf.Round(cost * 0.9f) : cost;
+        if (owner.Has(TechKind.Construction)) cost = Mathf.Round(cost * 0.9f);
+        if (owner.Has(TechKind.SteelConcrete)) cost = Mathf.Round(cost * 0.85f); // Acero y hormigón: edificios un 15 % más baratos
+        return cost;
     }
 
     public string ItemName

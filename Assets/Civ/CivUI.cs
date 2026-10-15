@@ -222,7 +222,7 @@ public class CivUI : MonoBehaviour
         Unit enemyUnit = PickUnit(dir, false);
 
         // Unidad de tierra + clic derecho sobre un barco propio con sitio: va a embarcar
-        if (enemyUnit != null && enemyUnit != selUnit && enemyUnit.owner == game.human && !selUnit.def.naval && enemyUnit.def.capacity > 0)
+        if (enemyUnit != null && enemyUnit != selUnit && enemyUnit.owner == game.human && !selUnit.def.naval && !selUnit.def.air && enemyUnit.def.capacity > 0)
         {
             if (!game.OrderBoard(selUnit, enemyUnit)) game.AddLog("El barco ya va lleno", Color.red);
             return;
@@ -251,7 +251,7 @@ public class CivUI : MonoBehaviour
             return;
         }
 
-        if (game.grid.land[cell] == selUnit.def.naval) return; // los barcos solo van al mar, el resto solo a tierra
+        if (!selUnit.def.air && game.grid.land[cell] == selUnit.def.naval) return; // los barcos solo van al mar, el resto solo a tierra
 
         game.OrderMove(selUnit, cell);
 
@@ -448,6 +448,7 @@ public class CivUI : MonoBehaviour
     // Edad en la que está la civilización: cada Cambio de era pasa a la siguiente
     static string EraName(Civ civ)
     {
+        if (civ.Has(TechKind.EraChange3)) return "Edad Contemporánea";
         if (civ.Has(TechKind.EraChange2)) return "Edad Moderna";
         if (civ.Has(TechKind.EraChange)) return "Edad Media";
         return "Edad Antigua";

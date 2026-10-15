@@ -121,6 +121,18 @@ public static class CivViews
             houseWood = LitMaterial(new Color(0.34f, 0.22f, 0.11f));      // puerta y marcos
         }
 
+        // Tras el tercer Cambio de era (Edad Contemporánea) las casas se sustituyen por rascacielos
+        bool contemporary = city.owner.Has(TechKind.EraChange3);
+        Material towerGlass = null, towerGlassLight = null, towerConcrete = null, towerMetal = null;
+        if (contemporary)
+        {
+            towerGlass = LitMaterial(new Color(0.16f, 0.28f, 0.42f));        // cristal azul oscuro
+            towerGlassLight = LitMaterial(new Color(0.55f, 0.75f, 0.9f));    // franjas de ventanas
+            towerConcrete = LitMaterial(new Color(0.72f, 0.73f, 0.76f));     // hormigón
+            towerMetal = LitMaterial(new Color(0.3f, 0.31f, 0.34f));         // antenas y remates
+            towerGlass.SetFloat("_Glossiness", 0.7f);
+        }
+
         // Un barrio por cada celda ocupada (la central y una más por cada 10 de población)
         int cellCount = Mathf.Max(1, city.cells.Count);
         for (int k = 0; k < cellCount; k++)
@@ -153,7 +165,9 @@ public static class CivViews
                 float radius = size * (0.16f + (float)rng.NextDouble() * 0.05f);
                 Vector3 p = new Vector3(Mathf.Cos(angle) * dist, 0f, Mathf.Sin(angle) * dist);
 
-                if (medieval)
+                if (contemporary)
+                    BuildSkyscraper(district, p, radius, towerGlass, towerGlassLight, towerConcrete, towerMetal, civMat, -angle * Mathf.Rad2Deg + 90f, rng);
+                else if (medieval)
                     BuildStoneHouse(district, p, radius, houseStone, houseStoneDark, houseRoof, houseWood, dark, -angle * Mathf.Rad2Deg + 90f, rng);
                 else
                     BuildHut(district, p, radius, hide, hideDark, bone, dark, -angle * Mathf.Rad2Deg + 90f, rng);
@@ -787,6 +801,72 @@ public static class CivViews
             Piece(root.transform, Sphere, fcSmoke, at + new Vector3(size * 0.12f, size * 0.85f, -size * 0.3f), new Vector3(size * 0.16f, size * 0.12f, size * 0.16f));
         }
 
+        if (city.buildings.Contains(BuildingKind.ComputerLab))
+        {
+            // Laboratorio informático: edificio bajo de cristal y hormigón con filas de servidores iluminados y una antena parabólica
+            Material clConcrete = LitMaterial(new Color(0.8f, 0.8f, 0.82f));
+            Material clGlass = LitMaterial(new Color(0.2f, 0.35f, 0.5f));
+            Material clDark = LitMaterial(new Color(0.12f, 0.12f, 0.14f));
+            Material clLed = LitMaterial(new Color(0.3f, 1f, 0.5f));
+            Material clCiv = LitMaterial(civColor);
+            clLed.EnableKeyword("_EMISSION");
+            if (clLed.HasProperty("_EmissionColor")) clLed.SetColor("_EmissionColor", new Color(0.2f, 1f, 0.4f) * 1.5f);
+
+            Vector3 at = new Vector3(-size * 1.9f, 0f, size * 0.5f);
+
+            Piece(root.transform, Cube, clConcrete, at + new Vector3(0f, size * 0.03f, 0f), new Vector3(size * 0.55f, size * 0.06f, size * 0.45f));
+            Piece(root.transform, Cube, clGlass, at + new Vector3(0f, size * 0.16f, 0f), new Vector3(size * 0.5f, size * 0.2f, size * 0.4f));
+            Piece(root.transform, Cube, clCiv, at + new Vector3(0f, size * 0.27f, 0f), new Vector3(size * 0.52f, size * 0.025f, size * 0.42f));
+
+            // Racks de servidores visibles tras el cristal de la fachada (+X, hacia la ciudad)
+            for (int i = 0; i < 4; i++)
+            {
+                float z = (i - 1.5f) * size * 0.09f;
+                Piece(root.transform, Cube, clDark, at + new Vector3(size * 0.2f, size * 0.15f, z), new Vector3(size * 0.05f, size * 0.15f, size * 0.06f));
+                Piece(root.transform, Cube, clLed, at + new Vector3(size * 0.232f, size * 0.18f, z), new Vector3(size * 0.008f, size * 0.02f, size * 0.04f));
+            }
+
+            // Antena parabólica en el tejado
+            Piece(root.transform, Cylinder, clDark, at + new Vector3(-size * 0.1f, size * 0.33f, 0f), new Vector3(size * 0.02f, size * 0.06f, size * 0.02f));
+            GameObject dish = Piece(root.transform, Sphere, clConcrete, at + new Vector3(-size * 0.1f, size * 0.41f, 0f), new Vector3(size * 0.2f, size * 0.04f, size * 0.2f));
+            dish.transform.localRotation = Quaternion.Euler(0f, 0f, -50f);
+        }
+
+        if (city.buildings.Contains(BuildingKind.NuclearPlant))
+        {
+            // Central nuclear: dos torres de refrigeración con vapor, cúpula del reactor y una chimenea con franjas
+            Material npConcrete = LitMaterial(new Color(0.82f, 0.82f, 0.8f));
+            Material npDark = LitMaterial(new Color(0.45f, 0.46f, 0.5f));
+            Material npSteam = LitMaterial(new Color(0.95f, 0.95f, 0.97f));
+            Material npRed = LitMaterial(new Color(0.8f, 0.2f, 0.15f));
+            Material npGlow = LitMaterial(new Color(0.4f, 1f, 0.4f));
+            Material npCiv = LitMaterial(civColor);
+            npGlow.EnableKeyword("_EMISSION");
+            if (npGlow.HasProperty("_EmissionColor")) npGlow.SetColor("_EmissionColor", new Color(0.3f, 1f, 0.3f) * 1.5f);
+
+            Vector3 at = new Vector3(size * 1.9f, 0f, 0f);
+
+            // Torres de refrigeración: perfil de reloj de arena apilando cilindros de distinto ancho
+            float[] ringW = { 0.3f, 0.25f, 0.21f, 0.24f };
+            for (int t = 0; t < 2; t++)
+            {
+                Vector3 c = at + new Vector3(size * 0.05f, 0f, (t == 0 ? -1f : 1f) * size * 0.3f);
+                for (int i = 0; i < ringW.Length; i++)
+                    Piece(root.transform, Cylinder, npConcrete, c + new Vector3(0f, size * (0.06f + i * 0.12f), 0f), new Vector3(size * ringW[i], size * 0.065f, size * ringW[i]));
+                Piece(root.transform, Cylinder, npCiv, c + new Vector3(0f, size * 0.52f, 0f), new Vector3(size * 0.245f, size * 0.01f, size * 0.245f));
+                Piece(root.transform, Sphere, npSteam, c + new Vector3(0f, size * 0.68f, 0f), new Vector3(size * 0.32f, size * 0.2f, size * 0.32f));
+            }
+
+            // Edificio y cúpula del reactor con un anillo verde brillante
+            Piece(root.transform, Cube, npDark, at + new Vector3(-size * 0.25f, size * 0.07f, 0f), new Vector3(size * 0.2f, size * 0.14f, size * 0.5f));
+            Piece(root.transform, Sphere, npConcrete, at + new Vector3(-size * 0.25f, size * 0.14f, 0f), new Vector3(size * 0.26f, size * 0.22f, size * 0.26f));
+            Piece(root.transform, Cylinder, npGlow, at + new Vector3(-size * 0.25f, size * 0.2f, 0f), new Vector3(size * 0.27f, size * 0.01f, size * 0.27f));
+
+            // Chimenea con franjas rojas
+            Piece(root.transform, Cylinder, npConcrete, at + new Vector3(-size * 0.28f, size * 0.3f, size * 0.32f), new Vector3(size * 0.04f, size * 0.3f, size * 0.04f));
+            Piece(root.transform, Cylinder, npRed, at + new Vector3(-size * 0.28f, size * 0.52f, size * 0.32f), new Vector3(size * 0.042f, size * 0.04f, size * 0.042f));
+        }
+
         if (city.buildings.Contains(BuildingKind.GutenbergPress))
         {
             // Imprenta de Gutenberg: plataforma de piedra con una gran prensa de tornillo de madera y un libro abierto
@@ -812,6 +892,252 @@ public static class CivViews
             Piece(site, Cube, civMat, at + new Vector3(-size * 0.25f, size * 0.09f, 0f), new Vector3(size * 0.18f, size * 0.05f, size * 0.26f));
             Piece(site, Cube, gbPaper, at + new Vector3(-size * 0.25f, size * 0.125f, 0f), new Vector3(size * 0.16f, size * 0.03f, size * 0.24f));
             Piece(site, Cube, gbPaper, at + new Vector3(size * 0.22f, size * 0.11f, size * 0.1f), new Vector3(size * 0.14f, size * 0.07f, size * 0.12f));
+        }
+
+        if (city.buildings.Contains(BuildingKind.GalileoObservatory))
+        {
+            // Observatorio de Galileo: base de piedra, torre cilíndrica con cúpula del color de la civilización y un telescopio largo apuntando al cielo
+            Material glStone = LitMaterial(new Color(0.78f, 0.76f, 0.7f));
+            Material glBrass = LitMaterial(new Color(0.85f, 0.65f, 0.25f));
+            Material glDark = LitMaterial(new Color(0.15f, 0.15f, 0.18f));
+            Vector3 at = new Vector3(-size * 1.4f, 0f, -size * 1.2f); // si no hay celdilla libre, fuera del disco de la ciudad
+            Transform site = WonderSite(city, BuildingKind.GalileoObservatory, root.transform, grid, earth, ref at);
+
+            Piece(site, Cube, glStone, at + new Vector3(0f, size * 0.03f, 0f), new Vector3(size * 0.7f, size * 0.06f, size * 0.7f));
+            Piece(site, Cylinder, glStone, at + new Vector3(0f, size * 0.3f, 0f), new Vector3(size * 0.4f, size * 0.24f, size * 0.4f));
+            Piece(site, Sphere, civMat, at + new Vector3(0f, size * 0.55f, 0f), new Vector3(size * 0.42f, size * 0.26f, size * 0.42f));
+            Piece(site, Cube, glDark, at + new Vector3(0f, size * 0.32f, size * 0.2f), new Vector3(size * 0.1f, size * 0.16f, size * 0.01f)); // puerta
+
+            // Telescopio de latón inclinado sobre un trípode
+            for (int i = 0; i < 3; i++)
+            {
+                float a = i / 3f * Mathf.PI * 2f;
+                Piece(site, Cube, glDark, at + new Vector3(Mathf.Cos(a) * size * 0.4f + size * 0.45f, size * 0.12f, Mathf.Sin(a) * size * 0.1f), new Vector3(size * 0.03f, size * 0.24f, size * 0.03f));
+            }
+            GameObject tube = Piece(site, Cylinder, glBrass, at + new Vector3(size * 0.45f, size * 0.42f, 0f), new Vector3(size * 0.06f, size * 0.3f, size * 0.06f));
+            tube.transform.localRotation = Quaternion.Euler(0f, 0f, 40f);
+        }
+
+        if (city.buildings.Contains(BuildingKind.FahrenheitStudy))
+        {
+            // Estudio de Fahrenheit: casita de piedra con tejado del color de la civilización y un gran termómetro de mercurio
+            Material fhStone = LitMaterial(new Color(0.8f, 0.76f, 0.68f));
+            Material fhGlass = LitMaterial(new Color(0.85f, 0.92f, 0.95f));
+            Material fhMercury = LitMaterial(new Color(0.85f, 0.15f, 0.12f));
+            Material fhDark = LitMaterial(new Color(0.25f, 0.18f, 0.12f));
+            Vector3 at = new Vector3(-size * 0.2f, 0f, -size * 1.6f); // si no hay celdilla libre, fuera del disco de la ciudad
+            Transform site = WonderSite(city, BuildingKind.FahrenheitStudy, root.transform, grid, earth, ref at);
+
+            Piece(site, Cube, fhStone, at + new Vector3(0f, size * 0.15f, 0f), new Vector3(size * 0.55f, size * 0.3f, size * 0.45f));
+            Piece(site, Cube, civMat, at + new Vector3(0f, size * 0.34f, 0f), new Vector3(size * 0.62f, size * 0.1f, size * 0.52f));
+            Piece(site, Cube, fhDark, at + new Vector3(0f, size * 0.12f, size * 0.23f), new Vector3(size * 0.1f, size * 0.2f, size * 0.01f)); // puerta
+
+            // Termómetro gigante junto a la casa: tubo de cristal, columna de mercurio y bulbo
+            Piece(site, Cylinder, fhGlass, at + new Vector3(size * 0.5f, size * 0.38f, 0f), new Vector3(size * 0.06f, size * 0.38f, size * 0.06f));
+            Piece(site, Cylinder, fhMercury, at + new Vector3(size * 0.5f, size * 0.28f, 0f), new Vector3(size * 0.035f, size * 0.26f, size * 0.035f));
+            Piece(site, Sphere, fhMercury, at + new Vector3(size * 0.5f, size * 0.06f, 0f), new Vector3(size * 0.14f, size * 0.14f, size * 0.14f));
+        }
+
+        if (city.buildings.Contains(BuildingKind.RadioTower))
+        {
+            // Torre de radio de Marconi: torre de celosía con franjas rojas y blancas, travesaños, baliza roja y una caseta de control
+            Material rtSteel = LitMaterial(new Color(0.85f, 0.85f, 0.88f));
+            Material rtRed = LitMaterial(new Color(0.85f, 0.2f, 0.15f));
+            Material rtHut = LitMaterial(new Color(0.75f, 0.75f, 0.72f));
+            Material rtBeacon = LitMaterial(new Color(1f, 0.2f, 0.2f));
+            rtBeacon.EnableKeyword("_EMISSION");
+            if (rtBeacon.HasProperty("_EmissionColor")) rtBeacon.SetColor("_EmissionColor", new Color(1f, 0.1f, 0.1f) * 2f);
+            Vector3 at = new Vector3(size * 1.4f, 0f, size * 1.2f); // si no hay celdilla libre, fuera del disco de la ciudad
+            Transform site = WonderSite(city, BuildingKind.RadioTower, root.transform, grid, earth, ref at);
+
+            Piece(site, Cube, rtHut, at + new Vector3(size * 0.28f, size * 0.06f, 0f), new Vector3(size * 0.22f, size * 0.12f, size * 0.22f));
+            Piece(site, Cube, civMat, at + new Vector3(size * 0.28f, size * 0.13f, 0f), new Vector3(size * 0.24f, size * 0.02f, size * 0.24f));
+
+            // Cuatro patas inclinadas que se juntan en lo alto, con tramos alternos rojos y blancos
+            for (int sx = -1; sx <= 1; sx += 2)
+                for (int sz = -1; sz <= 1; sz += 2)
+                    for (int seg = 0; seg < 5; seg++)
+                    {
+                        float k0 = seg / 5f, k1 = (seg + 1) / 5f;
+                        float w0 = Mathf.Lerp(0.2f, 0.02f, k0), w1 = Mathf.Lerp(0.2f, 0.02f, k1);
+                        Vector3 a = at + new Vector3(sx * size * w0 * 0.5f, size * 1.4f * k0, sz * size * w0 * 0.5f);
+                        Vector3 b = at + new Vector3(sx * size * w1 * 0.5f, size * 1.4f * k1, sz * size * w1 * 0.5f);
+                        ModTube(site, seg % 2 == 0 ? rtRed : rtSteel, a, b, size * 0.018f);
+                    }
+
+            // Travesaños horizontales
+            for (int i = 1; i < 6; i++)
+            {
+                float k = i / 6f;
+                float w = Mathf.Lerp(0.2f, 0.02f, k) * size;
+                Piece(site, Cube, rtSteel, at + new Vector3(0f, size * 1.4f * k, 0f), new Vector3(w, size * 0.012f, size * 0.012f));
+                Piece(site, Cube, rtSteel, at + new Vector3(0f, size * 1.4f * k, 0f), new Vector3(size * 0.012f, size * 0.012f, w));
+            }
+            Piece(site, Cylinder, rtSteel, at + new Vector3(0f, size * 1.55f, 0f), new Vector3(size * 0.012f, size * 0.15f, size * 0.012f));
+            Piece(site, Sphere, rtBeacon, at + new Vector3(0f, size * 1.72f, 0f), Vector3.one * size * 0.05f);
+        }
+
+        if (city.buildings.Contains(BuildingKind.FordAssembly))
+        {
+            // Cadena de montaje de Ford: nave larga con tejado en dientes de sierra, cinta transportadora con coches
+            // en distintas fases de montaje y una chimenea
+            Material fdWall = LitMaterial(new Color(0.7f, 0.7f, 0.68f));
+            Material fdRoof = LitMaterial(new Color(0.35f, 0.38f, 0.42f));
+            Material fdBelt = LitMaterial(new Color(0.15f, 0.15f, 0.17f));
+            Material fdTyre = LitMaterial(new Color(0.06f, 0.06f, 0.06f));
+            Material fdChrome = LitMaterial(new Color(0.8f, 0.82f, 0.85f));
+            Vector3 at = new Vector3(-size * 1.5f, 0f, size * 1.4f); // si no hay celdilla libre, fuera del disco de la ciudad
+            Transform site = WonderSite(city, BuildingKind.FordAssembly, root.transform, grid, earth, ref at);
+
+            Piece(site, Cube, fdWall, at + new Vector3(0f, size * 0.12f, -size * 0.12f), new Vector3(size * 0.9f, size * 0.24f, size * 0.36f));
+            for (int i = 0; i < 4; i++)
+            {
+                GameObject tooth = Piece(site, Cube, fdRoof, at + new Vector3((i - 1.5f) * size * 0.22f, size * 0.29f, -size * 0.12f), new Vector3(size * 0.23f, size * 0.02f, size * 0.38f));
+                tooth.transform.localRotation = Quaternion.Euler(0f, 0f, 16f);
+            }
+            Piece(site, Cube, civMat, at + new Vector3(0f, size * 0.22f, size * 0.07f), new Vector3(size * 0.9f, size * 0.04f, size * 0.01f)); // rótulo
+
+            // Cinta transportadora delante de la nave con coches (más completos hacia la derecha)
+            Piece(site, Cube, fdBelt, at + new Vector3(0f, size * 0.03f, size * 0.22f), new Vector3(size * 0.95f, size * 0.04f, size * 0.12f));
+            for (int i = 0; i < 4; i++)
+            {
+                float x = (i - 1.5f) * size * 0.22f;
+                Piece(site, Cube, civMat, at + new Vector3(x, size * 0.09f, size * 0.22f), new Vector3(size * 0.14f, size * 0.05f, size * 0.08f));
+                if (i >= 1) Piece(site, Cube, fdChrome, at + new Vector3(x, size * 0.125f, size * 0.22f), new Vector3(size * 0.08f, size * 0.035f, size * 0.07f));
+                if (i >= 2)
+                    for (int w = -1; w <= 1; w += 2)
+                        Piece(site, Sphere, fdTyre, at + new Vector3(x + w * size * 0.045f, size * 0.07f, size * 0.265f), Vector3.one * size * 0.035f);
+            }
+
+            Piece(site, Cylinder, fdRoof, at + new Vector3(size * 0.38f, size * 0.38f, -size * 0.25f), new Vector3(size * 0.06f, size * 0.2f, size * 0.06f));
+        }
+
+        if (city.buildings.Contains(BuildingKind.FlemingLab))
+        {
+            // Laboratorio de Fleming: pabellón blanco con tejado de la civilización, un gran matraz con líquido verde brillante
+            // y una enorme placa de Petri con moho
+            Material flWall = LitMaterial(new Color(0.9f, 0.9f, 0.92f));
+            Material flGlass = LitMaterial(new Color(0.75f, 0.9f, 0.95f));
+            Material flLiquid = LitMaterial(new Color(0.3f, 0.9f, 0.4f));
+            Material flMould = LitMaterial(new Color(0.45f, 0.65f, 0.35f));
+            Material flDark = LitMaterial(new Color(0.2f, 0.2f, 0.24f));
+            flLiquid.EnableKeyword("_EMISSION");
+            if (flLiquid.HasProperty("_EmissionColor")) flLiquid.SetColor("_EmissionColor", new Color(0.2f, 0.9f, 0.3f) * 1.2f);
+            Vector3 at = new Vector3(size * 0.6f, 0f, size * 1.7f); // si no hay celdilla libre, fuera del disco de la ciudad
+            Transform site = WonderSite(city, BuildingKind.FlemingLab, root.transform, grid, earth, ref at);
+
+            Piece(site, Cube, flWall, at + new Vector3(0f, size * 0.13f, 0f), new Vector3(size * 0.55f, size * 0.26f, size * 0.4f));
+            Piece(site, Cube, civMat, at + new Vector3(0f, size * 0.29f, 0f), new Vector3(size * 0.6f, size * 0.06f, size * 0.45f));
+            Piece(site, Cube, flDark, at + new Vector3(0f, size * 0.1f, size * 0.205f), new Vector3(size * 0.1f, size * 0.18f, size * 0.01f)); // puerta
+            for (int side = -1; side <= 1; side += 2)
+                Piece(site, Cube, flGlass, at + new Vector3(side * size * 0.18f, size * 0.15f, size * 0.205f), new Vector3(size * 0.1f, size * 0.1f, size * 0.01f));
+
+            // Matraz Erlenmeyer: cuerpo cónico apilando cilindros, cuello y líquido
+            float[] flask = { 0.2f, 0.17f, 0.14f, 0.11f, 0.08f };
+            for (int i = 0; i < flask.Length; i++)
+            {
+                Piece(site, Cylinder, flGlass, at + new Vector3(-size * 0.5f, size * (0.05f + i * 0.045f), 0f), new Vector3(size * flask[i], size * 0.025f, size * flask[i]));
+                if (i < 3) Piece(site, Cylinder, flLiquid, at + new Vector3(-size * 0.5f, size * (0.05f + i * 0.045f), 0f), new Vector3(size * flask[i] * 0.85f, size * 0.026f, size * flask[i] * 0.85f));
+            }
+            Piece(site, Cylinder, flGlass, at + new Vector3(-size * 0.5f, size * 0.33f, 0f), new Vector3(size * 0.05f, size * 0.12f, size * 0.05f));
+
+            // Placa de Petri con moho
+            Piece(site, Cylinder, flGlass, at + new Vector3(size * 0.5f, size * 0.025f, 0f), new Vector3(size * 0.3f, size * 0.015f, size * 0.3f));
+            Piece(site, Sphere, flMould, at + new Vector3(size * 0.5f, size * 0.045f, 0f), new Vector3(size * 0.1f, size * 0.025f, size * 0.1f));
+            Piece(site, Sphere, flMould, at + new Vector3(size * 0.56f, size * 0.04f, size * 0.05f), new Vector3(size * 0.05f, size * 0.02f, size * 0.05f));
+        }
+
+        if (city.buildings.Contains(BuildingKind.ManhattanProject))
+        {
+            // Proyecto Manhattan: gran edificio de hormigón con cúpula, un átomo gigante con tres órbitas de electrones brillantes
+            // sobre el tejado y torres de vigilancia
+            Material mhConcrete = LitMaterial(new Color(0.65f, 0.66f, 0.68f));
+            Material mhDark = LitMaterial(new Color(0.25f, 0.26f, 0.3f));
+            Material mhCore = LitMaterial(new Color(1f, 0.85f, 0.3f));
+            Material mhElectron = LitMaterial(new Color(0.4f, 0.9f, 1f));
+            foreach (Material m in new[] { mhCore, mhElectron })
+            {
+                m.EnableKeyword("_EMISSION");
+                if (m.HasProperty("_EmissionColor")) m.SetColor("_EmissionColor", m.color * 1.6f);
+            }
+            Vector3 at = new Vector3(-size * 0.6f, 0f, -size * 1.7f); // si no hay celdilla libre, fuera del disco de la ciudad
+            Transform site = WonderSite(city, BuildingKind.ManhattanProject, root.transform, grid, earth, ref at);
+
+            Piece(site, Cube, mhConcrete, at + new Vector3(0f, size * 0.06f, 0f), new Vector3(size * 0.9f, size * 0.12f, size * 0.7f));
+            Piece(site, Cube, civMat, at + new Vector3(0f, size * 0.13f, 0f), new Vector3(size * 0.92f, size * 0.02f, size * 0.72f));
+            Piece(site, Cylinder, mhConcrete, at + new Vector3(0f, size * 0.22f, 0f), new Vector3(size * 0.45f, size * 0.1f, size * 0.45f));
+            Piece(site, Sphere, mhDark, at + new Vector3(0f, size * 0.32f, 0f), new Vector3(size * 0.42f, size * 0.2f, size * 0.42f));
+
+            // Átomo: núcleo y tres órbitas inclinadas con cuatro electrones cada una
+            Vector3 center = at + new Vector3(0f, size * 0.72f, 0f);
+            Piece(site, Sphere, mhCore, center, Vector3.one * size * 0.14f);
+            for (int orbit = 0; orbit < 3; orbit++)
+            {
+                Quaternion rot = Quaternion.Euler(orbit * 60f, orbit * 60f, 0f);
+                for (int i = 0; i < 16; i++)
+                {
+                    float a = i / 16f * Mathf.PI * 2f;
+                    Vector3 p = center + rot * new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * size * 0.3f;
+                    Piece(site, Sphere, i % 4 == 0 ? mhElectron : mhDark, p, Vector3.one * size * (i % 4 == 0 ? 0.06f : 0.025f));
+                }
+            }
+
+            // Torres de vigilancia en las esquinas
+            for (int sx = -1; sx <= 1; sx += 2)
+            {
+                Vector3 t = at + new Vector3(sx * size * 0.5f, 0f, size * 0.4f);
+                Piece(site, Cylinder, mhDark, t + new Vector3(0f, size * 0.2f, 0f), new Vector3(size * 0.03f, size * 0.2f, size * 0.03f));
+                Piece(site, Cube, mhConcrete, t + new Vector3(0f, size * 0.42f, 0f), new Vector3(size * 0.1f, size * 0.06f, size * 0.1f));
+            }
+        }
+
+        if (city.buildings.Contains(BuildingKind.Internet))
+        {
+            // Internet: centro de datos con filas de servidores iluminados, un globo terráqueo con nodos conectados
+            // y una antena de satélite
+            Material inWall = LitMaterial(new Color(0.85f, 0.86f, 0.9f));
+            Material inGlass = LitMaterial(new Color(0.2f, 0.35f, 0.5f));
+            Material inDark = LitMaterial(new Color(0.12f, 0.12f, 0.15f));
+            Material inGlobe = LitMaterial(new Color(0.15f, 0.4f, 0.75f));
+            Material inNode = LitMaterial(new Color(0.9f, 1f, 0.4f));
+            Material inLed = LitMaterial(new Color(0.3f, 1f, 0.5f));
+            foreach (Material m in new[] { inNode, inLed })
+            {
+                m.EnableKeyword("_EMISSION");
+                if (m.HasProperty("_EmissionColor")) m.SetColor("_EmissionColor", m.color * 1.6f);
+            }
+            Vector3 at = new Vector3(size * 1.4f, 0f, -size * 1.2f); // si no hay celdilla libre, fuera del disco de la ciudad
+            Transform site = WonderSite(city, BuildingKind.Internet, root.transform, grid, earth, ref at);
+
+            // Centro de datos con racks luminosos
+            Piece(site, Cube, inWall, at + new Vector3(-size * 0.3f, size * 0.1f, 0f), new Vector3(size * 0.45f, size * 0.2f, size * 0.55f));
+            Piece(site, Cube, civMat, at + new Vector3(-size * 0.3f, size * 0.215f, 0f), new Vector3(size * 0.47f, size * 0.03f, size * 0.57f));
+            for (int i = 0; i < 5; i++)
+            {
+                float z = (i - 2) * size * 0.1f;
+                Piece(site, Cube, inGlass, at + new Vector3(-size * 0.075f, size * 0.1f, z), new Vector3(size * 0.012f, size * 0.14f, size * 0.07f));
+                Piece(site, Cube, inLed, at + new Vector3(-size * 0.066f, size * 0.12f, z), new Vector3(size * 0.006f, size * 0.02f, size * 0.04f));
+            }
+
+            // Globo terráqueo sobre un pedestal, con un anillo ecuatorial de nodos y varios nodos en la superficie
+            Vector3 g = at + new Vector3(size * 0.28f, size * 0.38f, 0f);
+            Piece(site, Cylinder, inDark, at + new Vector3(size * 0.28f, size * 0.1f, 0f), new Vector3(size * 0.06f, size * 0.1f, size * 0.06f));
+            Piece(site, Sphere, inGlobe, g, Vector3.one * size * 0.36f);
+            for (int ring = 0; ring < 2; ring++)
+            {
+                Quaternion rot = Quaternion.Euler(ring * 70f, ring * 40f, 0f);
+                for (int i = 0; i < 14; i++)
+                {
+                    float a = i / 14f * Mathf.PI * 2f;
+                    Vector3 p = g + rot * new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * size * 0.2f;
+                    Piece(site, Sphere, i % 3 == 0 ? inNode : inDark, p, Vector3.one * size * (i % 3 == 0 ? 0.045f : 0.02f));
+                }
+            }
+
+            // Antena de satélite
+            Piece(site, Cylinder, inDark, at + new Vector3(-size * 0.3f, size * 0.32f, size * 0.18f), new Vector3(size * 0.015f, size * 0.1f, size * 0.015f));
+            GameObject dish = Piece(site, Sphere, inWall, at + new Vector3(-size * 0.3f, size * 0.44f, size * 0.18f), new Vector3(size * 0.18f, size * 0.035f, size * 0.18f));
+            dish.transform.localRotation = Quaternion.Euler(0f, 0f, -45f);
         }
 
         if (city.buildings.Contains(BuildingKind.FibonacciLab))
@@ -909,6 +1235,61 @@ public static class CivViews
             Piece(t, Cube, stoneDark, new Vector3(-w * 0.3f, wh + rise * 1.4f, 0f), new Vector3(r * 0.2f, rise * 1.3f + r * 0.2f, r * 0.2f));
     }
 
+    // Rascacielos actual: torre de cristal sobre un zócalo de hormigón, franjas de ventanas que rodean las cuatro fachadas,
+    // un escalón superior en algunos, remate con el color de la civilización y antena. La entrada mira a +Z local.
+    static void BuildSkyscraper(Transform parent, Vector3 pos, float r, Material glass, Material glassLight, Material concrete,
+                                Material metal, Material civ, float yaw, System.Random rng)
+    {
+        GameObject tower = new GameObject("Rascacielos");
+        tower.transform.SetParent(parent, false);
+        tower.transform.localPosition = pos;
+        tower.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
+        Transform t = tower.transform;
+
+        float w = r * (1.2f + (float)rng.NextDouble() * 0.3f);   // ancho (eje X)
+        float d = r * (1.1f + (float)rng.NextDouble() * 0.25f);  // fondo (eje Z)
+        float h = r * (3.2f + (float)rng.NextDouble() * 3.8f);   // altura total
+
+        // Zócalo de hormigón, puerta de cristal y cuerpo de la torre
+        float baseH = r * 0.35f;
+        Piece(t, Cube, concrete, new Vector3(0f, baseH * 0.5f, 0f), new Vector3(w * 1.15f, baseH, d * 1.15f));
+        Piece(t, Cube, glassLight, new Vector3(0f, baseH * 0.45f, d * 0.58f), new Vector3(w * 0.4f, baseH * 0.7f, r * 0.04f));
+        float bodyH = h - baseH;
+        Piece(t, Cube, glass, new Vector3(0f, baseH + bodyH * 0.5f, 0f), new Vector3(w, bodyH, d));
+
+        // Franjas de ventanas claras que dan la vuelta a toda la torre
+        int rows = Mathf.Clamp(Mathf.RoundToInt(bodyH / (r * 0.45f)), 4, 14);
+        for (int i = 0; i < rows; i++)
+        {
+            float y = baseH + bodyH * (i + 0.6f) / (rows + 0.2f);
+            Piece(t, Cube, glassLight, new Vector3(0f, y, 0f), new Vector3(w * 1.02f, bodyH / (rows * 2.6f), d * 1.02f));
+        }
+
+        // Cuatro pilares de hormigón en las esquinas
+        for (int sx = -1; sx <= 1; sx += 2)
+            for (int sz = -1; sz <= 1; sz += 2)
+                Piece(t, Cube, concrete, new Vector3(sx * w * 0.5f, baseH + bodyH * 0.5f, sz * d * 0.5f), new Vector3(w * 0.07f, bodyH, d * 0.07f));
+
+        // Algunos tienen un escalón superior más estrecho
+        float topY = h;
+        if (rng.NextDouble() < 0.5)
+        {
+            float h2 = r * (0.8f + (float)rng.NextDouble() * 0.8f);
+            Piece(t, Cube, glass, new Vector3(0f, topY + h2 * 0.5f, 0f), new Vector3(w * 0.65f, h2, d * 0.65f));
+            Piece(t, Cube, glassLight, new Vector3(0f, topY + h2 * 0.55f, 0f), new Vector3(w * 0.67f, h2 * 0.12f, d * 0.67f));
+            topY += h2;
+        }
+
+        // Remate con el color de la civilización y antena
+        Piece(t, Cube, civ, new Vector3(0f, topY + r * 0.04f, 0f), new Vector3(w * 1.04f, r * 0.08f, d * 1.04f));
+        Piece(t, Cube, metal, new Vector3(w * 0.2f, topY + r * 0.15f, -d * 0.15f), new Vector3(w * 0.22f, r * 0.12f, d * 0.22f)); // maquinaria
+        if (rng.NextDouble() < 0.7)
+        {
+            Piece(t, Cylinder, metal, new Vector3(0f, topY + r * 0.5f, 0f), new Vector3(r * 0.025f, r * 0.45f, r * 0.025f));
+            Piece(t, Sphere, civ, new Vector3(0f, topY + r * 0.98f, 0f), Vector3.one * r * 0.06f);
+        }
+    }
+
     // Choza paleolítica: cúpula de pieles sobre un armazón de ramas, con remiendos, entrada oscura
     // y huesos de mamut cruzados en lo alto
     static void BuildHut(Transform parent, Vector3 pos, float r, Material hide, Material hideDark, Material bone, Material dark,
@@ -961,7 +1342,10 @@ public static class CivViews
         unit.view = root;
 
         // Tras el Cambio de era (Edad Media) las unidades usan su modelo medieval
-        if (unit.owner.Has(TechKind.EraChange))
+        // y tras el tercero (Edad Contemporánea) su modelo actual
+        if (unit.owner.Has(TechKind.EraChange3))
+            BuildContemporaryUnit(root.transform, size, unit);
+        else if (unit.owner.Has(TechKind.EraChange))
             BuildMedievalUnit(root.transform, size, unit);
         else
         switch (unit.kind)
@@ -1788,6 +2172,36 @@ public static class CivViews
         Piece(root, Cube, steel, new Vector3(s * 0.2f, s * 0.54f, s * 1.02f), new Vector3(s * 0.01f, s * 0.01f, s * 0.2f));
     }
 
+    // Granadero: casaca del color de la civilización, gorro alto y una granada de hierro en la mano
+    static void BuildGrenadier(Transform root, float s, Color civ)
+    {
+        Material coat = LitMaterial(civ);
+        Material hat = LitMaterial(new Color(0.1f, 0.1f, 0.14f));
+        Material skin = LitMaterial(new Color(0.9f, 0.72f, 0.56f));
+        Material trousers = LitMaterial(new Color(0.22f, 0.24f, 0.3f));
+        Material boots = LitMaterial(new Color(0.12f, 0.08f, 0.05f));
+        Material leather = LitMaterial(new Color(0.8f, 0.78f, 0.7f));
+        Material iron = LitMaterial(new Color(0.15f, 0.15f, 0.17f));
+        Material fuse = LitMaterial(new Color(0.95f, 0.55f, 0.15f));
+
+        MedLegs(root, s, trousers, boots);
+        MedTorso(root, s, coat, leather, false);
+        MedHead(root, s, skin);
+
+        // Alto gorro de granadero con plaquita del color de la civilización
+        Piece(root, Cylinder, hat, new Vector3(0f, s * 1.08f, 0f), new Vector3(s * 0.18f, s * 0.2f, s * 0.18f));
+        Piece(root, Cube, coat, new Vector3(0f, s * 1.1f, s * 0.09f), new Vector3(s * 0.08f, s * 0.1f, s * 0.01f));
+
+        // Granada esférica con mecha encendida, sostenida en alto
+        MedHand(root, s, skin, s * 0.2f, s * 0.7f, s * 0.25f);
+        Piece(root, Sphere, iron, new Vector3(s * 0.2f, s * 0.8f, s * 0.25f), new Vector3(s * 0.16f, s * 0.16f, s * 0.16f));
+        Piece(root, Cube, fuse, new Vector3(s * 0.2f, s * 0.91f, s * 0.25f), new Vector3(s * 0.02f, s * 0.07f, s * 0.02f));
+
+        // Bandolera con más granadas
+        Piece(root, Sphere, iron, new Vector3(-s * 0.12f, s * 0.45f, s * 0.14f), new Vector3(s * 0.08f, s * 0.08f, s * 0.08f));
+        Piece(root, Sphere, iron, new Vector3(s * 0.12f, s * 0.45f, s * 0.14f), new Vector3(s * 0.08f, s * 0.08f, s * 0.08f));
+    }
+
     // Cañón: cureña de madera con dos ruedas, un largo tubo de hierro y una pila de balas
     static void BuildCannon(Transform root, float s, Color civ)
     {
@@ -2110,6 +2524,7 @@ public static class CivViews
             case UnitKind.Galleon:   BuildGalleon(root, s, civ); break;
             case UnitKind.Musketeer: BuildMusketeer(root, s, civ); break;
             case UnitKind.Rifleman:  BuildRifleman(root, s, civ); break;
+            case UnitKind.Grenadier: BuildGrenadier(root, s, civ); break;
             case UnitKind.Cannon:    BuildCannon(root, s, civ); break;
             case UnitKind.Steamship: BuildSteamship(root, s, civ); break;
             case UnitKind.Crossbowman: BuildCrossbowman(root, s, civ); break;
@@ -2136,6 +2551,431 @@ public static class CivViews
             }
 
             default:                 BuildMedievalSoldier(root, s, civ, 0); break;
+        }
+    }
+
+    // ---------------------------------------------------------------- Unidades contemporáneas
+    // Tras el tercer Cambio de era (Edad Contemporánea) cada unidad se dibuja con su versión actual. Todas miran hacia +Z.
+
+    static void ModWheel(Transform r, Material tyre, Material hub, float x, float y, float z, float diameter, float width)
+    {
+        GameObject w = Piece(r, Cylinder, tyre, new Vector3(x, y, z), new Vector3(diameter, width, diameter));
+        w.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+        GameObject h = Piece(r, Cylinder, hub, new Vector3(x + Mathf.Sign(x) * width * 0.6f, y, z), new Vector3(diameter * 0.5f, width * 0.2f, diameter * 0.5f));
+        h.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+    }
+
+    static GameObject ModTube(Transform r, Material m, Vector3 from, Vector3 to, float thickness)
+    {
+        GameObject t = Piece(r, Cylinder, m, (from + to) * 0.5f, new Vector3(thickness, (to - from).magnitude * 0.5f, thickness));
+        t.transform.localRotation = Quaternion.FromToRotation(Vector3.up, to - from);
+        return t;
+    }
+
+    // Soldado actual. kind: 0 = fusilero (casco, chaleco y fusil de asalto), 1 = infantería pesada (escudo antibalas),
+    // 2 = granadero, 3 = tirador de precisión (fusil largo con mira)
+    static void BuildModernSoldier(Transform root, float s, Color civ, int kind)
+    {
+        Color olive = new Color(0.3f, 0.35f, 0.24f);
+        Material uni = LitMaterial(Color.Lerp(civ, olive, 0.65f));
+        Material pants = LitMaterial(Color.Lerp(civ, olive, 0.8f));
+        Material boots = LitMaterial(new Color(0.1f, 0.09f, 0.08f));
+        Material skin = LitMaterial(new Color(0.9f, 0.72f, 0.56f));
+        Material helmet = LitMaterial(Color.Lerp(civ, olive, 0.75f));
+        Material vest = LitMaterial(new Color(0.16f, 0.18f, 0.16f));
+        Material gun = LitMaterial(new Color(0.08f, 0.08f, 0.09f));
+        Material patch = LitMaterial(civ);
+        Material glass = LitMaterial(new Color(0.5f, 0.7f, 0.85f));
+        Material grenade = LitMaterial(new Color(0.25f, 0.3f, 0.2f));
+
+        MedLegs(root, s, pants, boots);
+        MedTorso(root, s, uni, vest, false);
+        MedHead(root, s, skin);
+
+        // Casco con parche de la civilización, chaleco antibalas y brazalete
+        Piece(root, Sphere, helmet, new Vector3(0f, s * 0.93f, -s * 0.01f), new Vector3(s * 0.25f, s * 0.17f, s * 0.26f));
+        Piece(root, Cube, patch, new Vector3(0f, s * 0.95f, s * 0.12f), new Vector3(s * 0.07f, s * 0.05f, s * 0.01f));
+        Piece(root, Cube, vest, new Vector3(0f, s * 0.6f, s * 0.12f), new Vector3(s * 0.3f, s * 0.3f, s * 0.05f));
+        Piece(root, Cube, vest, new Vector3(0f, s * 0.6f, -s * 0.12f), new Vector3(s * 0.3f, s * 0.3f, s * 0.05f));
+        Piece(root, Cylinder, patch, new Vector3(-s * 0.25f, s * 0.62f, s * 0.02f), new Vector3(s * 0.1f, s * 0.025f, s * 0.1f));
+
+        switch (kind)
+        {
+            case 1:
+            {
+                // Escudo balístico transparente con marco de la civilización y una pistola
+                MedHand(root, s, skin, -s * 0.28f, s * 0.55f, s * 0.2f);
+                Piece(root, Cube, patch, new Vector3(-s * 0.28f, s * 0.58f, s * 0.3f), new Vector3(s * 0.42f, s * 0.62f, s * 0.03f));
+                Piece(root, Cube, glass, new Vector3(-s * 0.28f, s * 0.6f, s * 0.32f), new Vector3(s * 0.34f, s * 0.5f, s * 0.03f));
+                MedHand(root, s, skin, s * 0.2f, s * 0.55f, s * 0.25f);
+                Piece(root, Cube, gun, new Vector3(s * 0.2f, s * 0.57f, s * 0.33f), new Vector3(s * 0.04f, s * 0.05f, s * 0.2f));
+                break;
+            }
+            case 2:
+            {
+                // Fusil corto y una granada de mano en alto
+                MedHand(root, s, skin, s * 0.2f, s * 0.5f, s * 0.2f);
+                Piece(root, Cube, gun, new Vector3(s * 0.2f, s * 0.52f, s * 0.3f), new Vector3(s * 0.04f, s * 0.06f, s * 0.45f));
+                MedHand(root, s, skin, -s * 0.2f, s * 0.7f, s * 0.25f);
+                Piece(root, Sphere, grenade, new Vector3(-s * 0.2f, s * 0.78f, s * 0.25f), new Vector3(s * 0.12f, s * 0.14f, s * 0.12f));
+                Piece(root, Cube, gun, new Vector3(-s * 0.2f, s * 0.87f, s * 0.25f), new Vector3(s * 0.03f, s * 0.03f, s * 0.05f));
+                Piece(root, Sphere, grenade, new Vector3(s * 0.12f, s * 0.45f, s * 0.15f), new Vector3(s * 0.07f, s * 0.08f, s * 0.07f));
+                break;
+            }
+            case 3:
+            {
+                // Fusil de precisión con mira telescópica y bípode
+                MedHand(root, s, skin, s * 0.2f, s * 0.5f, s * 0.2f);
+                MedHand(root, s, skin, s * 0.2f, s * 0.54f, s * 0.5f);
+                Piece(root, Cube, gun, new Vector3(s * 0.2f, s * 0.52f, s * 0.15f), new Vector3(s * 0.05f, s * 0.08f, s * 0.3f));
+                Piece(root, Cube, gun, new Vector3(s * 0.2f, s * 0.54f, s * 0.7f), new Vector3(s * 0.025f, s * 0.025f, s * 0.95f));
+                GameObject scope = Piece(root, Cylinder, gun, new Vector3(s * 0.2f, s * 0.62f, s * 0.4f), new Vector3(s * 0.04f, s * 0.12f, s * 0.04f));
+                scope.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                Piece(root, Cube, gun, new Vector3(s * 0.2f, s * 0.47f, s * 0.95f), new Vector3(s * 0.1f, s * 0.01f, s * 0.01f));
+                break;
+            }
+            default:
+            {
+                // Fusil de asalto con cargador y culata
+                MedHand(root, s, skin, s * 0.2f, s * 0.5f, s * 0.18f);
+                MedHand(root, s, skin, s * 0.2f, s * 0.54f, s * 0.42f);
+                Piece(root, Cube, gun, new Vector3(s * 0.2f, s * 0.53f, s * 0.3f), new Vector3(s * 0.045f, s * 0.07f, s * 0.55f));
+                Piece(root, Cube, gun, new Vector3(s * 0.2f, s * 0.54f, s * 0.7f), new Vector3(s * 0.02f, s * 0.02f, s * 0.25f));
+                Piece(root, Cube, gun, new Vector3(s * 0.2f, s * 0.44f, s * 0.32f), new Vector3(s * 0.035f, s * 0.14f, s * 0.07f));
+                break;
+            }
+        }
+    }
+
+    // Colono actual: ropa de calle del color de la civilización, gorra, mochila y una maleta de ruedas
+    static void BuildModernSettler(Transform root, float s, Color civ)
+    {
+        Material jacket = LitMaterial(civ);
+        Material jeans = LitMaterial(new Color(0.18f, 0.25f, 0.4f));
+        Material shoes = LitMaterial(new Color(0.9f, 0.9f, 0.9f));
+        Material skin = LitMaterial(new Color(0.9f, 0.72f, 0.56f));
+        Material cap = LitMaterial(Color.Lerp(civ, Color.white, 0.5f));
+        Material pack = LitMaterial(new Color(0.2f, 0.2f, 0.22f));
+        Material suitcase = LitMaterial(new Color(0.7f, 0.72f, 0.76f));
+        Material dark = LitMaterial(new Color(0.1f, 0.1f, 0.1f));
+
+        MedLegs(root, s, jeans, shoes);
+        MedTorso(root, s, jacket, dark, false);
+        MedHead(root, s, skin);
+        Piece(root, Sphere, cap, new Vector3(0f, s * 0.94f, 0f), new Vector3(s * 0.23f, s * 0.14f, s * 0.23f));
+        Piece(root, Cube, cap, new Vector3(0f, s * 0.9f, s * 0.14f), new Vector3(s * 0.2f, s * 0.015f, s * 0.12f));
+        Piece(root, Cube, pack, new Vector3(0f, s * 0.58f, -s * 0.2f), new Vector3(s * 0.28f, s * 0.34f, s * 0.14f));
+
+        // Maleta con asa extensible
+        MedHand(root, s, skin, s * 0.26f, s * 0.46f, s * 0.12f);
+        Piece(root, Cube, suitcase, new Vector3(s * 0.3f, s * 0.22f, s * 0.2f), new Vector3(s * 0.16f, s * 0.32f, s * 0.24f));
+        Piece(root, Cylinder, dark, new Vector3(s * 0.3f, s * 0.42f, s * 0.12f), new Vector3(s * 0.025f, s * 0.12f, s * 0.025f));
+    }
+
+    // Trabajador actual: casco amarillo, chaleco reflectante naranja, vaqueros y un martillo neumático
+    static void BuildModernWorker(Transform root, float s, Color civ)
+    {
+        Material shirt = LitMaterial(new Color(0.85f, 0.85f, 0.88f));
+        Material vest = LitMaterial(new Color(1f, 0.5f, 0.1f));
+        Material strip = LitMaterial(new Color(0.9f, 0.9f, 0.85f));
+        Material hat = LitMaterial(new Color(1f, 0.85f, 0.1f));
+        Material jeans = LitMaterial(new Color(0.2f, 0.27f, 0.42f));
+        Material boots = LitMaterial(new Color(0.28f, 0.2f, 0.12f));
+        Material skin = LitMaterial(new Color(0.9f, 0.7f, 0.54f));
+        Material tool = LitMaterial(new Color(0.45f, 0.47f, 0.5f));
+        Material patch = LitMaterial(civ);
+
+        MedLegs(root, s, jeans, boots);
+        MedTorso(root, s, shirt, vest, false);
+        Piece(root, Cube, vest, new Vector3(0f, s * 0.6f, s * 0.12f), new Vector3(s * 0.3f, s * 0.3f, s * 0.04f));
+        Piece(root, Cube, strip, new Vector3(0f, s * 0.58f, s * 0.145f), new Vector3(s * 0.3f, s * 0.03f, s * 0.01f));
+        MedHead(root, s, skin);
+        Piece(root, Sphere, hat, new Vector3(0f, s * 0.94f, 0f), new Vector3(s * 0.25f, s * 0.15f, s * 0.25f));
+        Piece(root, Cube, patch, new Vector3(0f, s * 0.95f, s * 0.12f), new Vector3(s * 0.06f, s * 0.04f, s * 0.01f));
+
+        // Martillo neumático
+        MedHand(root, s, skin, s * 0.2f, s * 0.6f, s * 0.2f);
+        Piece(root, Cylinder, tool, new Vector3(s * 0.2f, s * 0.38f, s * 0.2f), new Vector3(s * 0.07f, s * 0.26f, s * 0.07f));
+        Piece(root, Cylinder, tool, new Vector3(s * 0.2f, s * 0.08f, s * 0.2f), new Vector3(s * 0.025f, s * 0.12f, s * 0.025f));
+        Piece(root, Cube, tool, new Vector3(s * 0.2f, s * 0.66f, s * 0.2f), new Vector3(s * 0.22f, s * 0.03f, s * 0.03f));
+    }
+
+    // Todoterreno militar con ametralladora en el techo
+    static void BuildModernJeep(Transform root, float s, Color civ)
+    {
+        Material body = LitMaterial(Color.Lerp(civ, new Color(0.3f, 0.35f, 0.24f), 0.6f));
+        Material tyre = LitMaterial(new Color(0.08f, 0.08f, 0.08f));
+        Material hub = LitMaterial(new Color(0.6f, 0.6f, 0.62f));
+        Material glass = LitMaterial(new Color(0.5f, 0.7f, 0.85f));
+        Material gun = LitMaterial(new Color(0.1f, 0.1f, 0.11f));
+        Material flag = LitMaterial(civ);
+
+        Piece(root, Cube, body, new Vector3(0f, s * 0.3f, 0f), new Vector3(s * 0.55f, s * 0.18f, s * 1.0f));
+        Piece(root, Cube, body, new Vector3(0f, s * 0.45f, -s * 0.15f), new Vector3(s * 0.5f, s * 0.18f, s * 0.42f));
+        GameObject wind = Piece(root, Cube, glass, new Vector3(0f, s * 0.5f, s * 0.08f), new Vector3(s * 0.46f, s * 0.2f, s * 0.02f));
+        wind.transform.localRotation = Quaternion.Euler(-25f, 0f, 0f);
+        for (int side = -1; side <= 1; side += 2)
+        {
+            ModWheel(root, tyre, hub, side * s * 0.3f, s * 0.15f, s * 0.32f, s * 0.3f, s * 0.12f);
+            ModWheel(root, tyre, hub, side * s * 0.3f, s * 0.15f, -s * 0.32f, s * 0.3f, s * 0.12f);
+        }
+        Piece(root, Cube, gun, new Vector3(0f, s * 0.64f, -s * 0.12f), new Vector3(s * 0.06f, s * 0.08f, s * 0.14f));
+        Piece(root, Cube, gun, new Vector3(0f, s * 0.66f, s * 0.12f), new Vector3(s * 0.025f, s * 0.025f, s * 0.35f));
+        Piece(root, Cube, flag, new Vector3(0f, s * 0.58f, s * 0.46f), new Vector3(s * 0.2f, s * 0.04f, s * 0.04f));
+    }
+
+    // Camión: cabina y gran contenedor del color de la civilización. armed: camión blindado con torreta
+    static void BuildModernTruck(Transform root, float s, Color civ, bool gold)
+    {
+        Material cab = LitMaterial(new Color(0.88f, 0.88f, 0.9f));
+        Material box = LitMaterial(civ);
+        Material stripe = LitMaterial(gold ? new Color(0.95f, 0.8f, 0.3f) : new Color(0.95f, 0.95f, 0.95f));
+        Material tyre = LitMaterial(new Color(0.08f, 0.08f, 0.08f));
+        Material hub = LitMaterial(new Color(0.6f, 0.6f, 0.62f));
+        Material glass = LitMaterial(new Color(0.5f, 0.7f, 0.85f));
+        Material chassis = LitMaterial(new Color(0.15f, 0.15f, 0.17f));
+
+        Piece(root, Cube, chassis, new Vector3(0f, s * 0.2f, -s * 0.05f), new Vector3(s * 0.45f, s * 0.08f, s * 1.5f));
+        Piece(root, Cube, cab, new Vector3(0f, s * 0.42f, s * 0.58f), new Vector3(s * 0.5f, s * 0.38f, s * 0.36f));
+        Piece(root, Cube, glass, new Vector3(0f, s * 0.5f, s * 0.77f), new Vector3(s * 0.44f, s * 0.2f, s * 0.02f));
+        Piece(root, Cube, box, new Vector3(0f, s * 0.5f, -s * 0.2f), new Vector3(s * 0.56f, s * 0.54f, s * 0.95f));
+        Piece(root, Cube, stripe, new Vector3(0f, s * 0.5f, -s * 0.2f), new Vector3(s * 0.58f, s * 0.08f, s * 0.96f));
+        for (int side = -1; side <= 1; side += 2)
+        {
+            ModWheel(root, tyre, hub, side * s * 0.3f, s * 0.15f, s * 0.58f, s * 0.3f, s * 0.12f);
+            ModWheel(root, tyre, hub, side * s * 0.3f, s * 0.15f, -s * 0.3f, s * 0.3f, s * 0.12f);
+            ModWheel(root, tyre, hub, side * s * 0.3f, s * 0.15f, -s * 0.6f, s * 0.3f, s * 0.12f);
+        }
+    }
+
+    // Transporte blindado de ruedas con torreta y cañón automático
+    static void BuildModernApc(Transform root, float s, Color civ)
+    {
+        Material body = LitMaterial(Color.Lerp(civ, new Color(0.3f, 0.35f, 0.24f), 0.6f));
+        Material tyre = LitMaterial(new Color(0.08f, 0.08f, 0.08f));
+        Material hub = LitMaterial(new Color(0.5f, 0.5f, 0.52f));
+        Material gun = LitMaterial(new Color(0.1f, 0.1f, 0.11f));
+        Material flag = LitMaterial(civ);
+
+        Piece(root, Cube, body, new Vector3(0f, s * 0.32f, 0f), new Vector3(s * 0.6f, s * 0.26f, s * 1.3f));
+        GameObject nose = Piece(root, Cube, body, new Vector3(0f, s * 0.38f, s * 0.7f), new Vector3(s * 0.56f, s * 0.2f, s * 0.3f));
+        nose.transform.localRotation = Quaternion.Euler(-20f, 0f, 0f);
+        Piece(root, Cylinder, body, new Vector3(0f, s * 0.54f, -s * 0.1f), new Vector3(s * 0.34f, s * 0.06f, s * 0.34f));
+        GameObject barrel = Piece(root, Cylinder, gun, new Vector3(0f, s * 0.56f, s * 0.3f), new Vector3(s * 0.05f, s * 0.28f, s * 0.05f));
+        barrel.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+        for (int side = -1; side <= 1; side += 2)
+            for (int i = 0; i < 4; i++)
+                ModWheel(root, tyre, hub, side * s * 0.33f, s * 0.16f, s * (0.5f - i * 0.34f), s * 0.32f, s * 0.12f);
+        Piece(root, Cube, flag, new Vector3(0f, s * 0.46f, s * 0.2f), new Vector3(s * 0.2f, s * 0.03f, s * 0.2f));
+    }
+
+    // Carro de combate: orugas, casco, torreta y largo cañón
+    static void BuildModernTank(Transform root, float s, Color civ)
+    {
+        Material body = LitMaterial(Color.Lerp(civ, new Color(0.3f, 0.35f, 0.24f), 0.6f));
+        Material track = LitMaterial(new Color(0.1f, 0.1f, 0.11f));
+        Material gun = LitMaterial(new Color(0.12f, 0.12f, 0.13f));
+        Material flag = LitMaterial(civ);
+
+        for (int side = -1; side <= 1; side += 2)
+        {
+            Piece(root, Cube, track, new Vector3(side * s * 0.34f, s * 0.15f, 0f), new Vector3(s * 0.2f, s * 0.26f, s * 1.1f));
+            Piece(root, Cylinder, track, new Vector3(side * s * 0.34f, s * 0.15f, s * 0.55f), new Vector3(s * 0.26f, s * 0.1f, s * 0.26f)).transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+            Piece(root, Cylinder, track, new Vector3(side * s * 0.34f, s * 0.15f, -s * 0.55f), new Vector3(s * 0.26f, s * 0.1f, s * 0.26f)).transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+        }
+        Piece(root, Cube, body, new Vector3(0f, s * 0.3f, 0f), new Vector3(s * 0.56f, s * 0.14f, s * 1.0f));
+        Piece(root, Cube, body, new Vector3(0f, s * 0.46f, -s * 0.05f), new Vector3(s * 0.4f, s * 0.14f, s * 0.5f));
+        Piece(root, Cylinder, body, new Vector3(0f, s * 0.55f, -s * 0.05f), new Vector3(s * 0.2f, s * 0.04f, s * 0.2f));
+        GameObject barrel = Piece(root, Cylinder, gun, new Vector3(0f, s * 0.49f, s * 0.55f), new Vector3(s * 0.07f, s * 0.5f, s * 0.07f));
+        barrel.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+        Piece(root, Cube, flag, new Vector3(0f, s * 0.6f, -s * 0.2f), new Vector3(s * 0.03f, s * 0.1f, s * 0.14f));
+    }
+
+    // Obús remolcado: dos ruedas, patas de apoyo y un largo tubo elevado
+    static void BuildModernHowitzer(Transform root, float s, Color civ)
+    {
+        Material body = LitMaterial(Color.Lerp(civ, new Color(0.3f, 0.35f, 0.24f), 0.6f));
+        Material tyre = LitMaterial(new Color(0.08f, 0.08f, 0.08f));
+        Material hub = LitMaterial(new Color(0.55f, 0.55f, 0.58f));
+        Material gun = LitMaterial(new Color(0.14f, 0.14f, 0.15f));
+        Material flag = LitMaterial(civ);
+
+        Piece(root, Cube, body, new Vector3(0f, s * 0.26f, 0f), new Vector3(s * 0.4f, s * 0.14f, s * 0.4f));
+        for (int side = -1; side <= 1; side += 2)
+        {
+            ModWheel(root, tyre, hub, side * s * 0.3f, s * 0.2f, 0f, s * 0.38f, s * 0.1f);
+            GameObject leg = Piece(root, Cube, gun, new Vector3(side * s * 0.15f, s * 0.14f, -s * 0.42f), new Vector3(s * 0.05f, s * 0.05f, s * 0.6f));
+            leg.transform.localRotation = Quaternion.Euler(0f, side * 14f, 0f);
+        }
+        Piece(root, Cube, body, new Vector3(0f, s * 0.38f, s * 0.02f), new Vector3(s * 0.34f, s * 0.14f, s * 0.2f)); // escudo
+        GameObject barrel = Piece(root, Cylinder, gun, new Vector3(0f, s * 0.5f, s * 0.35f), new Vector3(s * 0.09f, s * 0.55f, s * 0.09f));
+        barrel.transform.localRotation = Quaternion.Euler(65f, 0f, 0f);
+        Piece(root, Cube, flag, new Vector3(0f, s * 0.42f, -s * 0.1f), new Vector3(s * 0.01f, s * 0.12f, s * 0.14f));
+    }
+
+    // Lanzamisiles móvil: camión con rampa inclinada y tres misiles con la punta del color de la civilización
+    static void BuildModernMissileLauncher(Transform root, float s, Color civ)
+    {
+        BuildModernTruck(root, s, Color.Lerp(civ, new Color(0.3f, 0.35f, 0.24f), 0.6f), false);
+        Material rail = LitMaterial(new Color(0.15f, 0.15f, 0.17f));
+        Material missile = LitMaterial(new Color(0.88f, 0.88f, 0.9f));
+        Material tip = LitMaterial(civ);
+
+        GameObject ramp = Piece(root, Cube, rail, new Vector3(0f, s * 0.9f, -s * 0.25f), new Vector3(s * 0.5f, s * 0.04f, s * 0.95f));
+        ramp.transform.localRotation = Quaternion.Euler(-35f, 0f, 0f);
+        for (int i = -1; i <= 1; i++)
+        {
+            Vector3 from = new Vector3(i * s * 0.15f, s * 0.95f, -s * 0.5f);
+            Vector3 to = new Vector3(i * s * 0.15f, s * 1.35f, s * 0.0f);
+            ModTube(root, missile, from, to, s * 0.1f);
+            GameObject cone = Piece(root, Sphere, tip, to, new Vector3(s * 0.1f, s * 0.12f, s * 0.1f));
+            cone.transform.localRotation = Quaternion.FromToRotation(Vector3.up, to - from);
+        }
+    }
+
+    // Lancha motora: casco con parabrisas, cabina y dos motores fueraborda con una franja de la civilización
+    static void BuildModernMotorboat(Transform root, float s, Color civ)
+    {
+        Material hull = LitMaterial(new Color(0.9f, 0.9f, 0.92f));
+        Material band = LitMaterial(civ);
+        Material glass = LitMaterial(new Color(0.5f, 0.7f, 0.85f));
+        Material engine = LitMaterial(new Color(0.12f, 0.12f, 0.13f));
+
+        Piece(root, ShipHull(), hull, Vector3.zero, new Vector3(s * 0.8f, s * 0.8f, s * 1.3f));
+        Piece(root, Cube, band, new Vector3(0f, s * 0.36f, 0f), new Vector3(s * 0.52f, s * 0.04f, s * 1.0f));
+        Piece(root, Cube, hull, new Vector3(0f, s * 0.5f, -s * 0.1f), new Vector3(s * 0.34f, s * 0.2f, s * 0.4f));
+        GameObject wind = Piece(root, Cube, glass, new Vector3(0f, s * 0.58f, s * 0.12f), new Vector3(s * 0.32f, s * 0.16f, s * 0.02f));
+        wind.transform.localRotation = Quaternion.Euler(-30f, 0f, 0f);
+        for (int side = -1; side <= 1; side += 2)
+            Piece(root, Cube, engine, new Vector3(side * s * 0.12f, s * 0.38f, -s * 0.62f), new Vector3(s * 0.12f, s * 0.26f, s * 0.14f));
+    }
+
+    // Buque de guerra: casco gris, superestructura, cañón de proa, radar y chimenea con franja de la civilización.
+    // big: crucero con dos cañones y más superestructura
+    static void BuildModernWarship(Transform root, float s, Color civ, bool big)
+    {
+        Material hull = LitMaterial(new Color(0.5f, 0.54f, 0.58f));
+        Material deck = LitMaterial(new Color(0.4f, 0.43f, 0.47f));
+        Material superMat = LitMaterial(new Color(0.62f, 0.65f, 0.68f));
+        Material dark = LitMaterial(new Color(0.12f, 0.12f, 0.13f));
+        Material band = LitMaterial(civ);
+        Material glass = LitMaterial(new Color(0.4f, 0.55f, 0.7f));
+
+        float len = big ? 1.9f : 1.6f;
+        Piece(root, ShipHull(), hull, Vector3.zero, new Vector3(s * 1.1f, s * 1.0f, s * len));
+        Piece(root, Cube, deck, new Vector3(0f, s * 0.44f, 0f), new Vector3(s * 0.56f, s * 0.05f, s * (len - 0.5f)));
+
+        // Superestructura con ventanas, chimenea y mástil con radar
+        Piece(root, Cube, superMat, new Vector3(0f, s * 0.64f, -s * 0.1f), new Vector3(s * 0.4f, s * 0.34f, s * 0.6f));
+        Piece(root, Cube, glass, new Vector3(0f, s * 0.7f, s * 0.21f), new Vector3(s * 0.34f, s * 0.08f, s * 0.02f));
+        Piece(root, Cylinder, superMat, new Vector3(0f, s * 0.94f, -s * 0.3f), new Vector3(s * 0.2f, s * 0.14f, s * 0.2f));
+        Piece(root, Cylinder, band, new Vector3(0f, s * 1.06f, -s * 0.3f), new Vector3(s * 0.21f, s * 0.03f, s * 0.21f));
+        Piece(root, Cylinder, dark, new Vector3(0f, s * 1.2f, -s * 0.05f), new Vector3(s * 0.03f, s * 0.3f, s * 0.03f));
+        GameObject dish = Piece(root, Cube, dark, new Vector3(0f, s * 1.5f, -s * 0.05f), new Vector3(s * 0.3f, s * 0.03f, s * 0.05f));
+        dish.transform.localRotation = Quaternion.Euler(0f, 30f, 0f);
+
+        // Cañones de proa en torretas (uno o dos)
+        int turrets = big ? 2 : 1;
+        for (int i = 0; i < turrets; i++)
+        {
+            float z = s * (0.5f + i * 0.28f);
+            Piece(root, Cylinder, deck, new Vector3(0f, s * 0.53f, z), new Vector3(s * 0.22f, s * 0.05f, s * 0.22f));
+            GameObject barrel = Piece(root, Cylinder, dark, new Vector3(0f, s * 0.56f, z + s * 0.2f), new Vector3(s * 0.04f, s * 0.22f, s * 0.04f));
+            barrel.transform.localRotation = Quaternion.Euler(85f, 0f, 0f);
+        }
+
+        // Helipuerto en popa con el color de la civilización
+        Piece(root, Cylinder, band, new Vector3(0f, s * 0.47f, -s * 0.62f), new Vector3(s * 0.34f, s * 0.01f, s * 0.34f));
+    }
+
+    // Avión: fuselaje, cabina, alas en flecha, cola y toberas, con franjas de la civilización.
+    // bomber: bombardero grande de cuatro motores; si no, caza ágil de un solo reactor
+    static void BuildModernAircraft(Transform root, float s, Color civ, bool bomber)
+    {
+        Material body = LitMaterial(bomber ? new Color(0.5f, 0.54f, 0.5f) : new Color(0.62f, 0.66f, 0.72f));
+        Material glass = LitMaterial(new Color(0.25f, 0.4f, 0.55f));
+        Material stripe = LitMaterial(civ);
+        Material dark = LitMaterial(new Color(0.12f, 0.12f, 0.13f));
+
+        float len = bomber ? 1.5f : 1.1f;
+        float wing = bomber ? 0.7f : 0.45f;
+        float y = s * 0.3f;
+
+        // Fuselaje (cilindro tumbado a lo largo de Z), morro y cabina
+        GameObject fus = Piece(root, Cylinder, body, new Vector3(0f, y, 0f), new Vector3(s * (bomber ? 0.2f : 0.13f), s * len * 0.5f, s * (bomber ? 0.2f : 0.13f)));
+        fus.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+        Piece(root, Sphere, body, new Vector3(0f, y, s * len * 0.5f), new Vector3(s * (bomber ? 0.2f : 0.13f), s * (bomber ? 0.2f : 0.13f), s * 0.3f));
+        Piece(root, Sphere, glass, new Vector3(0f, y + s * 0.07f, s * len * 0.32f), new Vector3(s * 0.1f, s * 0.07f, s * 0.24f));
+
+        // Alas en flecha con franja de la civilización en la punta
+        for (int side = -1; side <= 1; side += 2)
+        {
+            GameObject w = Piece(root, Cube, body, new Vector3(side * s * wing * 0.5f, y - s * 0.01f, -s * 0.05f), new Vector3(s * wing, s * 0.015f, s * (bomber ? 0.3f : 0.26f)));
+            w.transform.localRotation = Quaternion.Euler(0f, -side * 22f, 0f);
+            GameObject tip = Piece(root, Cube, stripe, new Vector3(side * s * wing * 0.93f, y - s * 0.01f, -s * 0.05f - s * wing * 0.38f), new Vector3(s * wing * 0.16f, s * 0.018f, s * 0.14f));
+            tip.transform.localRotation = Quaternion.Euler(0f, -side * 22f, 0f);
+        }
+
+        // Cola: deriva vertical y estabilizadores horizontales
+        float tailZ = -s * len * 0.45f;
+        Piece(root, Cube, stripe, new Vector3(0f, y + s * 0.15f, tailZ), new Vector3(s * 0.015f, s * 0.22f, s * 0.2f));
+        for (int side = -1; side <= 1; side += 2)
+        {
+            GameObject st = Piece(root, Cube, body, new Vector3(side * s * 0.14f, y, tailZ - s * 0.03f), new Vector3(s * 0.26f, s * 0.012f, s * 0.14f));
+            st.transform.localRotation = Quaternion.Euler(0f, -side * 20f, 0f);
+        }
+
+        // Motores: un reactor trasero en el caza; cuatro góndolas bajo las alas en el bombardero
+        if (bomber)
+        {
+            for (int side = -1; side <= 1; side += 2)
+                for (int i = 0; i < 2; i++)
+                {
+                    float x = side * s * (0.2f + i * 0.22f);
+                    GameObject eng = Piece(root, Cylinder, dark, new Vector3(x, y - s * 0.06f, -s * (0.02f + i * 0.08f)), new Vector3(s * 0.06f, s * 0.12f, s * 0.06f));
+                    eng.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                }
+        }
+        else
+        {
+            GameObject nozzle = Piece(root, Cylinder, dark, new Vector3(0f, y, -s * len * 0.5f - s * 0.02f), new Vector3(s * 0.09f, s * 0.05f, s * 0.09f));
+            nozzle.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+        }
+    }
+
+    // Dibuja la versión actual de la unidad (todas las unidades tienen una)
+    static void BuildContemporaryUnit(Transform root, float size, Unit unit)
+    {
+        Color civ = unit.owner.color;
+        float s = size;
+
+        switch (unit.kind)
+        {
+            case UnitKind.Settler:     BuildModernSettler(root, s, civ); break;
+            case UnitKind.Worker:      BuildModernWorker(root, s, civ); break;
+            case UnitKind.Warrior:     BuildModernSoldier(root, s, civ, 0); break;
+            case UnitKind.Spearman:    BuildModernSoldier(root, s, civ, 0); break;
+            case UnitKind.Musketeer:   BuildModernSoldier(root, s, civ, 0); break;
+            case UnitKind.Rifleman:    BuildModernSoldier(root, s, civ, 0); break;
+            case UnitKind.Phalanx:     BuildModernSoldier(root, s, civ, 1); break;
+            case UnitKind.Legion:      BuildModernSoldier(root, s, civ, 1); break;
+            case UnitKind.Grenadier:   BuildModernSoldier(root, s, civ, 2); break;
+            case UnitKind.Archer:      BuildModernSoldier(root, s, civ, 3); break;
+            case UnitKind.Crossbowman: BuildModernSoldier(root, s, civ, 3); break;
+            case UnitKind.Horseman:    BuildModernJeep(root, s, civ); break;
+            case UnitKind.Chariot:     BuildModernApc(root, s, civ); break;
+            case UnitKind.Caravan:     BuildModernTruck(root, s, civ, false); break;
+            case UnitKind.Merchant:    BuildModernTruck(root, s, civ, true); break;
+            case UnitKind.Catapult:    BuildModernMissileLauncher(root, s, civ); break;
+            case UnitKind.Ballista:    BuildModernHowitzer(root, s, civ); break;
+            case UnitKind.Cannon:      BuildModernHowitzer(root, s, civ); break;
+            case UnitKind.Tank:        BuildModernTank(root, s, civ); break;
+            case UnitKind.Fighter:     BuildModernAircraft(root, s, civ, false); break;
+            case UnitKind.Bomber:      BuildModernAircraft(root, s, civ, true); break;
+            case UnitKind.Sailboat:    BuildModernMotorboat(root, s, civ); break;
+            case UnitKind.Galleon:     BuildModernWarship(root, s, civ, false); break;
+            case UnitKind.Steamship:   BuildModernWarship(root, s, civ, true); break;
+            default:                   BuildModernSoldier(root, s, civ, 0); break;
         }
     }
 
@@ -2410,6 +3250,10 @@ public static class CivViews
             stoneRoadCobble = LitMaterial(new Color(0.55f, 0.54f, 0.51f));        // adoquines
             stoneRoadCobbleDark = LitMaterial(new Color(0.42f, 0.41f, 0.4f));     // adoquines más oscuros
             stoneRoadCobbleLight = LitMaterial(new Color(0.68f, 0.66f, 0.62f));   // adoquines más claros
+            asphaltMaterial = FlatMaterial(new Color(0.17f, 0.17f, 0.19f, 1f));   // asfalto
+            asphaltShoulderMaterial = FlatMaterial(new Color(0.5f, 0.5f, 0.52f, 1f));
+            asphaltLineMaterial = FlatMaterial(new Color(0.95f, 0.95f, 0.95f, 1f));
+            asphaltDashMaterial = LitMaterial(new Color(0.98f, 0.82f, 0.15f));
         }
 
         float lift = grid.radius * 0.006f;
@@ -2483,6 +3327,34 @@ public static class CivViews
                 sleeper.transform.localRotation = Quaternion.LookRotation(lateral, up);
             }
         }
+        else if (builder != null && builder.Has(TechKind.EraChange3))
+        {
+            // Carretera actual: asfalto oscuro con arcenes claros, líneas blancas en los bordes y línea central amarilla discontinua
+            AddRoadLine(go.transform, "Arcén", points, grid.spacing * 0.105f, asphaltShoulderMaterial, 3000);
+            AddRoadLine(go.transform, "Asfalto", points, grid.spacing * 0.085f, asphaltMaterial, 3001);
+
+            for (int side = -1; side <= 1; side += 2)
+            {
+                Vector3[] edge = new Vector3[points.Length];
+                for (int i = 0; i < points.Length; i++)
+                {
+                    Vector3 up = points[i].normalized;
+                    Vector3 tangent = (points[Mathf.Min(i + 1, points.Length - 1)] - points[Mathf.Max(i - 1, 0)]).normalized;
+                    Vector3 lateral = Vector3.Cross(up, tangent).normalized;
+                    edge[i] = points[i] + lateral * side * grid.spacing * 0.036f + up * grid.spacing * 0.002f;
+                }
+                AddRoadLine(go.transform, "Línea de borde", edge, grid.spacing * 0.004f, asphaltLineMaterial, 3002);
+            }
+
+            for (int i = 1; i < steps; i += 2)
+            {
+                Vector3 up = points[i].normalized;
+                Vector3 tangent = (points[i + 1] - points[i - 1]).normalized;
+                GameObject dash = Piece(go.transform, Cube, asphaltDashMaterial, points[i] + up * grid.spacing * 0.004f,
+                    new Vector3(grid.spacing * 0.006f, grid.spacing * 0.002f, grid.spacing * 0.03f));
+                dash.transform.localRotation = Quaternion.LookRotation(tangent, up);
+            }
+        }
         else if (builder != null && builder.Has(TechKind.EraChange))
         {
             // Camino empedrado: calzada ancha de piedra con un borde de bordillos oscuros y tres hileras de adoquines
@@ -2536,6 +3408,7 @@ public static class CivViews
     static Material roadBorderMaterial;
     static Material stoneRoadCobbleDark, stoneRoadCobbleLight;
     static Material pathPebbleMaterial;
+    static Material asphaltMaterial, asphaltShoulderMaterial, asphaltLineMaterial, asphaltDashMaterial;
     static Material railBedMaterial, railSteelMaterial, railSleeperMaterial;
 
     static void AddRoadLine(Transform parent, string name, Vector3[] points, float width, Material material, int queue)
