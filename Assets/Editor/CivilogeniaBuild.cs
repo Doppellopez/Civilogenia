@@ -40,6 +40,7 @@ public static class CivilogeniaBuild
         EnsureShaderIncluded("Standard");
         EnsureShaderIncluded("Sprites/Default");
         EnsureShaderIncluded("Unlit/Texture");
+        EnsureShaderIncluded("Civilogenia/Fog");
 
         BuildPlayerOptions options = new BuildPlayerOptions
         {

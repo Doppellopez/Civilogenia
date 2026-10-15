@@ -3932,7 +3932,10 @@ public static class CivViews
             fogObject.AddComponent<MeshFilter>();
 
             MeshRenderer r = fogObject.AddComponent<MeshRenderer>();
-            Material m = FlatMaterial(Color.white);   // el color y la transparencia vienen de cada vértice
+            // Shader propio con stencil: las casillas se solapan sin dejar huecos y sin oscurecer dos veces el solape.
+            // El color y la transparencia vienen de cada vértice. Sin el shader se usa el material plano de siempre.
+            Shader fogShader = Shader.Find("Civilogenia/Fog");
+            Material m = fogShader != null ? new Material(fogShader) : FlatMaterial(Color.white);
             m.renderQueue = 3500;                      // por encima de carreteras y territorios
             r.sharedMaterial = m;
             r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
@@ -3943,7 +3946,7 @@ public static class CivViews
         fogColors.Clear();
         fogTriangles.Clear();
 
-        float ang = grid.angularSpacing * 0.62f;   // un poco más grande que la casilla para que no queden huecos
+        float ang = grid.angularSpacing * 0.8f;   // más grande que la casilla: se solapan y no queda ningún hueco entre ellas
         float lift = grid.radius * 0.0045f;
         Color32 unknown = new Color32(0, 0, 4, 245);
         Color32 seen = new Color32(0, 0, 8, 140);
