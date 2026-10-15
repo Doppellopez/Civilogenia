@@ -455,6 +455,7 @@ public partial class CivGame : MonoBehaviour
         if (city.owner.Has(TechKind.Universities)) city.scienceRate *= 1.25f; // Universidades: +25 % en todas las ciudades
         if (city.owner.Has(TechKind.Electricity)) city.scienceRate *= 1.25f; // Electricidad: +25 % en todas las ciudades
         if (city.owner.Has(TechKind.Radio)) city.scienceRate *= 1.25f; // Radio: +25 % en todas las ciudades
+        if (city.owner.Has(TechKind.SpaceFlight)) city.scienceRate *= 1.5f; // Vuelo espacial: +50 % en todas las ciudades
         if (city.buildings.Contains(BuildingKind.ComputerLab)) city.scienceRate *= 2f; // Laboratorio informático: +100 % en esta ciudad
         if (city.owner.Has(TechKind.Philosophy)) city.scienceRate *= 1.5f; // Filosofía: +50 % en todas las ciudades
         if (city.buildings.Contains(BuildingKind.University)) city.scienceRate *= 1.75f; // Universidad: +75 % en esta ciudad
@@ -2093,7 +2094,7 @@ public partial class CivGame : MonoBehaviour
         TechKind.HeavyPlow, TechKind.WaterMill, TechKind.Camshaft, TechKind.ArabicNumerals, TechKind.Universities, TechKind.Cities,
         TechKind.Clock, TechKind.PrintingPress, TechKind.SteamEngine, TechKind.Electricity, TechKind.Railway, TechKind.MovableType,
         TechKind.Telescope, TechKind.Thermometer, TechKind.CombustionEngine, TechKind.Radio, TechKind.SteelConcrete,
-        TechKind.Penicillin, TechKind.Computers, TechKind.NuclearEnergy
+        TechKind.Penicillin, TechKind.Computers, TechKind.NuclearEnergy, TechKind.SpaceFlight
     };
 
     static bool IsEraChangeTech(TechKind t)

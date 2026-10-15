@@ -83,11 +83,15 @@ public partial class CivGame
             if (u.Moving) MarkVision(u.moveTo, depth);
         }
 
+        // Vuelo espacial: los satélites cartografían todo el planeta (queda explorado, aunque no visible)
+        bool satellites = human.Has(TechKind.SpaceFlight);
+
         bool changed = false;
         for (int i = 0; i < n; i++)
         {
             if (fogNew[i] != fogVisible[i]) changed = true;
             if (fogNew[i]) fogExplored[i] = true;
+            if (satellites && !fogExplored[i]) { fogExplored[i] = true; changed = true; }
         }
 
         bool[] swap = fogVisible; fogVisible = fogNew; fogNew = swap;
