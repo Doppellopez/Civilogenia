@@ -925,11 +925,16 @@ public partial class CivGame : MonoBehaviour
         // Tercer Cambio de era del jugador: vídeo "Cambio a edad contemporanea con jazz"
         if (civ.isHuman && def == GameDefs.Techs[TechKind.EraChange3])
             IntroVideo.PlayClip(EraChange3Video);
+
+        // Cuarto Cambio de era del jugador: vídeo "Cambio a edad futurista con audio"
+        if (civ.isHuman && def == GameDefs.Techs[TechKind.EraChange4])
+            IntroVideo.PlayClip(EraChange4Video);
     }
 
     const string EraChangeVideo = "Video cambio a edad media";
     const string EraChange2Video = "Video cambio a edad moderna";
     const string EraChange3Video = "Cambio a edad contemporanea con jazz";
+    const string EraChange4Video = "Cambio a edad futurista con audio";
 
     // ---------------------------------------------------------------- Unidades
 

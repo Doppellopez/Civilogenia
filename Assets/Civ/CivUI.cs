@@ -448,6 +448,7 @@ public class CivUI : MonoBehaviour
     // Edad en la que está la civilización: cada Cambio de era pasa a la siguiente
     static string EraName(Civ civ)
     {
+        if (civ.Has(TechKind.EraChange4)) return "Edad Futura";
         if (civ.Has(TechKind.EraChange3)) return "Edad Contemporánea";
         if (civ.Has(TechKind.EraChange2)) return "Edad Moderna";
         if (civ.Has(TechKind.EraChange)) return "Edad Media";

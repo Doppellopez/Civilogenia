@@ -4,7 +4,7 @@ using UnityEngine;
 // Tipos y datos del juego de civilizaciones en tiempo real.
 
 public enum UnitKind { Settler, Worker, Warrior, Spearman, Sailboat, Caravan, Archer, Horseman, Chariot, Phalanx, Legion, Catapult, Merchant, Galleon, Musketeer, Crossbowman, Ballista, Rifleman, Cannon, Steamship, Grenadier, Tank, Fighter, Bomber }
-public enum TechKind { Fire, Agriculture, Husbandry, Mining, Sailing, Archery, Pottery, Riding, Wheel, Masonry, Bronze, Writing, Construction, Iron, Astronomy, Mathematics, Currency, Philosophy, EraChange, HeavyPlow, WaterMill, Camshaft, ArabicNumerals, Universities, Cities, EraChange2, Bridges, Compass, Clock, Gunpowder, PrintingPress, Crossbow, SteamEngine, Electricity, Railway, Rifle, Artillery, MovableType, Grenade, Telescope, Thermometer, EraChange3, CombustionEngine, Aviation, Radio, SteelConcrete, Penicillin, Tanks, Computers, NuclearEnergy }
+public enum TechKind { Fire, Agriculture, Husbandry, Mining, Sailing, Archery, Pottery, Riding, Wheel, Masonry, Bronze, Writing, Construction, Iron, Astronomy, Mathematics, Currency, Philosophy, EraChange, HeavyPlow, WaterMill, Camshaft, ArabicNumerals, Universities, Cities, EraChange2, Bridges, Compass, Clock, Gunpowder, PrintingPress, Crossbow, SteamEngine, Electricity, Railway, Rifle, Artillery, MovableType, Grenade, Telescope, Thermometer, EraChange3, CombustionEngine, Aviation, Radio, SteelConcrete, Penicillin, Tanks, Computers, NuclearEnergy, EraChange4 }
 public enum BuildingKind{ Granary, Workshop, Market, Library, Walls, PublicBaths, GreatLibrary, Observatory, FibonacciLab, Bank, Academy, FullingMill, University, AlexandriaLibrary, PrintingHouse, GutenbergPress, Factory, HydroDam, HooverDam, Newspaper, GutenbergPrint, GalileoObservatory, FahrenheitStudy, ComputerLab, NuclearPlant, RadioTower, FordAssembly, FlemingLab, ManhattanProject, Internet }
 
 public class UnitDef
@@ -84,6 +84,9 @@ public static class GameDefs
         { TechKind.Tanks,      new TechDef { name = "Carro de combate", cost = 3300, unlocks = "Tanque (mejora del Cañón)", requires = TechKind.CombustionEngine } },
         { TechKind.Computers,  new TechDef { name = "Ordenadores", cost = 3600, unlocks = "Laboratorio informático (+100% de ciencia en su ciudad)", requires = TechKind.Radio } },
         { TechKind.NuclearEnergy, new TechDef { name = "Energía nuclear", cost = 4200, unlocks = "Central nuclear (+10 de producción en su ciudad)", requires = TechKind.Computers, alsoRequires = TechKind.Aviation } },
+        // Aparece cuando se han descubierto todas las tecnologías de la Edad Contemporánea
+        { TechKind.EraChange4, new TechDef { name = "Cambio de era", cost = 5000, unlocks = "la Edad Futura",
+            requiresAll = new[] { TechKind.CombustionEngine, TechKind.Aviation, TechKind.Radio, TechKind.SteelConcrete, TechKind.Penicillin, TechKind.Tanks, TechKind.Computers, TechKind.NuclearEnergy } } },
         { TechKind.Currency, new TechDef { name = "Moneda",      cost = 120, unlocks = "Caravana de comercio", requires = TechKind.Bronze, alsoRequires = TechKind.Writing } },
         { TechKind.Mathematics,new TechDef { name = "Matemáticas", cost = 120, unlocks = "Catapulta", requires = TechKind.Writing, alsoRequires = TechKind.Wheel } },
         { TechKind.Astronomy,  new TechDef { name = "Astronomía",  cost = 165, unlocks = "Observatorio", requires = TechKind.Writing } },
