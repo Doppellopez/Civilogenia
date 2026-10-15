@@ -327,6 +327,7 @@ public class CivUI : MonoBehaviour
         {
             if (!u.alive || u.carriedBy != null) continue;
             if (onlyHuman && u.owner != game.human) continue;
+            if (u.owner != game.human && !game.IsVisible(u.cell)) continue;   // niebla de guerra: no se puede elegir lo que no se ve
 
             float a = Mathf.Acos(Mathf.Clamp(Vector3.Dot(dir, u.currentDir), -1f, 1f));
             if (a < best) { best = a; result = u; }
@@ -343,6 +344,7 @@ public class CivUI : MonoBehaviour
         foreach (City c in game.allCities)
         {
             if (!c.alive) continue;
+            if (c.owner != game.human && !game.IsExplored(c.cell)) continue;   // niebla de guerra
 
             float a = Mathf.Acos(Mathf.Clamp(Vector3.Dot(dir, game.grid.dir[c.cell]), -1f, 1f));
             if (a < best) { best = a; result = c; }

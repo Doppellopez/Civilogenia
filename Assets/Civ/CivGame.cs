@@ -237,6 +237,8 @@ public partial class CivGame : MonoBehaviour
         if (!ready) return;
         if (IntroVideo.Active || MainMenu.Active) return;   // la partida espera mientras suena la introducción y está el menú
 
+        TickFog();   // niebla de guerra: solo se ve en torno a las unidades y ciudades propias
+
         float dt = Time.deltaTime * gameSpeed * SimulationScale;
         if (dt <= 0f) return;
         gameTime += dt;
@@ -1913,6 +1915,7 @@ public partial class CivGame : MonoBehaviour
             : grid.HasRiver(u.cell, u.moveTo)
             ? WorldGrid.RoadSpeedFactor
             : Mathf.Max(0.2f, GameDefs.MoveFactor(grid.biome[u.moveTo]));
+        if (!u.def.air && !u.def.naval && u.owner.Has(TechKind.CombustionEngine)) factor *= 1.33f; // Motor de combustión: +33 % de velocidad en tierra
         u.t += u.def.speed * factor * dt;
 
         if (u.t >= 1f)
@@ -2045,19 +2048,22 @@ public partial class CivGame : MonoBehaviour
 
     void AiThink(Civ civ)
     {
-        // Investigación: elige una tecnología pendiente al azar
-        if (!civ.researching)
-        {
-            List<TechKind> options = new List<TechKind>();
-            foreach (TechKind t in GameDefs.Techs.Keys) if (civ.CanResearch(t)) options.Add(t);
-            if (options.Count > 0) StartResearch(civ, options[Random.Range(0, options.Count)]);
-        }
+        // Investigación: prefiere la economía, la ciencia y los cambios de era, y las más baratas
+        if (!civ.researching) AiResearch(civ);
 
         // Colonos inactivos buscan dónde fundar
         foreach (Unit u in civ.units.ToArray())
         {
             if (u.kind != UnitKind.Settler || !u.alive || u.Moving || u.path.Count > 0 || u.foundAt >= 0 || u.roadGoal >= 0) continue;
             AiSendSettler(u);
+        }
+
+        // Trabajadores inactivos mejoran el terreno de sus ciudades y las unen con carreteras
+        foreach (Unit u in civ.units.ToArray())
+        {
+            if (u.kind != UnitKind.Worker || !u.alive || u.Moving || u.path.Count > 0 || u.roadGoal >= 0
+                || u.farmAt >= 0 || u.mineAt >= 0 || u.irrigateAt >= 0) continue;
+            AiWorkerJob(u);
         }
 
         // Producción
@@ -2077,6 +2083,95 @@ public partial class CivGame : MonoBehaviour
         }
 
         if (gameTime > aiGraceSeconds) AiMilitary(civ);
+    }
+
+    // Tecnologías que mejoran la economía, la ciencia o la población: la IA las prefiere para prosperar
+    static readonly HashSet<TechKind> AiEconomyTechs = new HashSet<TechKind>
+    {
+        TechKind.Agriculture, TechKind.Pottery, TechKind.Writing, TechKind.Mathematics, TechKind.Astronomy, TechKind.Philosophy,
+        TechKind.Currency, TechKind.Construction, TechKind.Husbandry, TechKind.Mining, TechKind.Bridges,
+        TechKind.HeavyPlow, TechKind.WaterMill, TechKind.Camshaft, TechKind.ArabicNumerals, TechKind.Universities, TechKind.Cities,
+        TechKind.Clock, TechKind.PrintingPress, TechKind.SteamEngine, TechKind.Electricity, TechKind.Railway, TechKind.MovableType,
+        TechKind.Telescope, TechKind.Thermometer, TechKind.CombustionEngine, TechKind.Radio, TechKind.SteelConcrete,
+        TechKind.Penicillin, TechKind.Computers, TechKind.NuclearEnergy
+    };
+
+    static bool IsEraChangeTech(TechKind t)
+    {
+        return t == TechKind.EraChange || t == TechKind.EraChange2 || t == TechKind.EraChange3 || t == TechKind.EraChange4;
+    }
+
+    // Elige una tecnología al azar con pesos: economía x4, cambio de era x8 y las baratas más probables
+    void AiResearch(Civ civ)
+    {
+        List<TechKind> options = new List<TechKind>();
+        List<float> weights = new List<float>();
+        float total = 0f;
+
+        foreach (TechKind t in GameDefs.Techs.Keys)
+        {
+            if (!civ.CanResearch(t)) continue;
+
+            float w = IsEraChangeTech(t) ? 8f : AiEconomyTechs.Contains(t) ? 4f : 1.5f;
+            w *= 300f / (GameDefs.Techs[t].cost + 300f);
+
+            options.Add(t);
+            weights.Add(w);
+            total += w;
+        }
+
+        if (options.Count == 0) return;
+
+        float pick = Random.value * total;
+        for (int i = 0; i < options.Count; i++)
+        {
+            pick -= weights[i];
+            if (pick <= 0f || i == options.Count - 1) { StartResearch(civ, options[i]); return; }
+        }
+    }
+
+    // Un trabajador de la IA irriga, mina o hace granjas en el territorio de sus ciudades; si no hay nada, une las ciudades con carreteras
+    void AiWorkerJob(Unit u)
+    {
+        Civ civ = u.owner;
+        bool canIrrigate = civ.Has(TechKind.Agriculture), canMine = civ.Has(TechKind.Mining), canFarm = civ.Has(TechKind.HeavyPlow);
+
+        if ((canIrrigate || canMine || canFarm) && civ.cities.Count > 0)
+        {
+            for (int attempt = 0; attempt < 14; attempt++)
+            {
+                City city = civ.cities[Random.Range(0, civ.cities.Count)];
+                if (city.tiles.Count == 0) continue;
+
+                int cell = city.tiles[Random.Range(0, city.tiles.Count)];
+                if (grid.tileCity[cell] != city || grid.cityAt[cell] != null) continue;
+
+                if (canFarm && grid.CanFarm(cell) && OrderFarm(u, cell)) return;
+                if (canIrrigate && grid.CanIrrigate(cell) && OrderIrrigate(u, cell)) return;
+                if (canMine && grid.CanMine(cell) && OrderMine(u, cell)) return;
+            }
+        }
+
+        // Sin mejoras a mano: carreteras entre sus ciudades (no cada vez, para no recalcular rutas sin parar)
+        if (Random.value < 0.35f) AiRoad(u);
+    }
+
+    // La unidad militar terrestre más potente que la civilización puede construir (las demás ya no se construyen)
+    UnitKind AiBestMilitary(Civ civ)
+    {
+        UnitKind best = UnitKind.Warrior;
+        float bestPower = -1f;
+
+        foreach (KeyValuePair<UnitKind, UnitDef> kv in GameDefs.Units)
+        {
+            UnitDef d = kv.Value;
+            if (!d.IsMilitary || d.naval || d.air || !Available(civ, kv.Key)) continue;
+
+            float power = (d.attack * 0.6f + d.defense * 0.4f) * d.hp;
+            if (power > bestPower) { bestPower = power; best = kv.Key; }
+        }
+
+        return best;
     }
 
     void AiSendSettler(Unit u)
@@ -2153,29 +2248,45 @@ public partial class CivGame : MonoBehaviour
         foreach (Unit u in civ.units) if (u.kind == UnitKind.Settler) settlers++;
         foreach (City o in civ.cities) if (o.hasItem && o.itemIsUnit && o.itemUnit == UnitKind.Settler) settlers++;
 
+        int workers = 0;
+        foreach (Unit u in civ.units) if (u.kind == UnitKind.Worker) workers++;
+        foreach (City o in civ.cities) if (o.hasItem && o.itemIsUnit && o.itemUnit == UnitKind.Worker) workers++;
+
         int military = 0;
-        foreach (Unit u in civ.units) if (u.def.IsMilitary && !u.def.naval) military++;
+        foreach (Unit u in civ.units) if (u.def.IsMilitary && !u.def.naval && !u.def.air) military++;
 
-        // La más actual que se pueda construir (las antiguas quedan obsoletas)
-        UnitKind bestMilitary = Available(civ, UnitKind.Tank) ? UnitKind.Tank
-                              : Available(civ, UnitKind.Rifleman) ? UnitKind.Rifleman
-                              : Available(civ, UnitKind.Musketeer) ? UnitKind.Musketeer
-                              : Available(civ, UnitKind.Legion) ? UnitKind.Legion
-                              : Available(civ, UnitKind.Spearman) ? UnitKind.Spearman : UnitKind.Warrior;
+        // La más potente que se pueda construir (las antiguas quedan obsoletas)
+        UnitKind bestMilitary = AiBestMilitary(civ);
 
-        if (civ.cities.Count + settlers < 5 && settlers == 0 && c.pop >= 2)
+        // 1) Expandirse: fundar ciudades hasta AiMaxCities
+        if (civ.cities.Count + settlers < AiMaxCities && settlers == 0 && c.pop >= 2)
         {
             SetProduction(c, UnitKind.Settler);
             return;
         }
 
-        if (military < 2 * civ.cities.Count + 2)
+        // 2) Defensa mínima
+        if (military < civ.cities.Count + 2)
         {
             SetProduction(c, bestMilitary);
             return;
         }
 
-        BuildingKind[] priority = { BuildingKind.Granary, BuildingKind.Workshop, BuildingKind.Library, BuildingKind.Market, BuildingKind.Walls };
+        // 3) Trabajadores para mejorar el terreno y construir carreteras
+        if (workers < Mathf.Min(civ.cities.Count + 1, 5) && c.pop >= 2)
+        {
+            SetProduction(c, UnitKind.Worker);
+            return;
+        }
+
+        // 4) Edificios que hacen prosperar a la ciudad, por orden de utilidad
+        BuildingKind[] priority =
+        {
+            BuildingKind.Granary, BuildingKind.Workshop, BuildingKind.Library, BuildingKind.Market,
+            BuildingKind.FullingMill, BuildingKind.University, BuildingKind.Bank, BuildingKind.Observatory,
+            BuildingKind.Factory, BuildingKind.HydroDam, BuildingKind.PrintingHouse, BuildingKind.Newspaper,
+            BuildingKind.ComputerLab, BuildingKind.NuclearPlant, BuildingKind.Walls
+        };
         foreach (BuildingKind b in priority)
         {
             if (!Available(c, b)) continue;
@@ -2183,8 +2294,30 @@ public partial class CivGame : MonoBehaviour
             return;
         }
 
+        // 5) Maravillas: la más barata disponible, solo en ciudades con buena producción
+        if (c.prodRate >= 6f)
+        {
+            BuildingKind? wonder = null;
+            float wonderCost = float.MaxValue;
+            foreach (BuildingKind b in GameDefs.Buildings.Keys)
+            {
+                if (!IsWonder(b) || !Available(c, b)) continue;
+                float cost = c.BuildingCost(b);
+                if (cost < wonderCost) { wonderCost = cost; wonder = b; }
+            }
+
+            if (wonder.HasValue)
+            {
+                SetProduction(c, wonder.Value);
+                return;
+            }
+        }
+
+        // 6) Más ejército (con el que atacar a los rivales)
         SetProduction(c, bestMilitary);
     }
+
+    const int AiMaxCities = 8;
 
     void AiMilitary(Civ civ)
     {
@@ -2197,26 +2330,31 @@ public partial class CivGame : MonoBehaviour
         // Se dejan algunos de guarnición
         if (idle.Count < civ.cities.Count + 3) return;
 
-        // Ciudad enemiga más cercana que se pueda alcanzar por tierra
+        // Objetivo: la ciudad enemiga alcanzable por tierra con mejor relación cercanía/debilidad
         Unit scout = idle[0];
         City target = null;
-        float bestAngle = float.MaxValue;
+        float bestScore = float.MaxValue;
 
         foreach (City c in allCities)
         {
             if (!c.alive || c.owner == civ) continue;
-
-            float a = grid.AngleBetween(scout.cell, c.cell);
-            if (a >= bestAngle) continue;
             if (grid.component[scout.cell] != grid.component[c.cell]) continue;
 
-            bestAngle = a;
+            float a = grid.AngleBetween(scout.cell, c.cell) / grid.angularSpacing;   // distancia en casillas
+            float score = a + 12f * (c.hp / Mathf.Max(1f, c.maxHp)) + c.pop * 0.5f;  // más lejos, más sana y más grande = peor objetivo
+            if (score >= bestScore) continue;
+
+            bestScore = score;
             target = c;
         }
 
         if (target == null) return;
 
+        // No ataca hasta reunir un ejército suficiente para esa ciudad (murallas y población la hacen más difícil)
+        int needed = 3 + target.pop / 3 + (target.buildings.Contains(BuildingKind.Walls) ? 3 : 0);
         int send = idle.Count - civ.cities.Count;
+        if (send < needed) return;
+
         for (int i = 0; i < send; i++) OrderAttack(idle[i], target);
 
         if (target.owner.isHuman) AddLog(civ.name + " marcha contra " + target.name + "!", civ.color);

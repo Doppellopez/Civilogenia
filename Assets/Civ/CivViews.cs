@@ -3648,6 +3648,7 @@ public static class CivViews
     /// <summary>Olvida las carreteras, granjas, riegos y minas dibujados (al cargar una partida se vuelven a crear).</summary>
     public static void ResetStatics()
     {
+        fogObject = null;
         roadSegments.Clear();
         roadRoot = null;
         irrigationRoot = null;
@@ -3910,6 +3911,87 @@ public static class CivViews
         line.sharedMaterial = new Material(material) { renderQueue = queue };
         line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         line.receiveShadows = false;
+    }
+
+    // ---------------------------------------------------------------- Niebla de guerra
+
+    static GameObject fogObject;
+    static Mesh fogMesh;
+    static readonly List<Vector3> fogVertices = new List<Vector3>();
+    static readonly List<Color32> fogColors = new List<Color32>();
+    static readonly List<int> fogTriangles = new List<int>();
+
+    // Malla de hexágonos oscuros sobre las casillas que el jugador no ve: casi negros si nunca se exploraron,
+    // atenuados si ya se vieron alguna vez
+    public static void RebuildFog(bool[] visible, bool[] explored, WorldGrid grid, EarthTopography earth, Transform earthTransform)
+    {
+        if (fogObject == null)
+        {
+            fogObject = new GameObject("Niebla de guerra");
+            fogObject.transform.SetParent(earthTransform, false);
+            fogObject.AddComponent<MeshFilter>();
+
+            MeshRenderer r = fogObject.AddComponent<MeshRenderer>();
+            Material m = FlatMaterial(Color.white);   // el color y la transparencia vienen de cada vértice
+            m.renderQueue = 3500;                      // por encima de carreteras y territorios
+            r.sharedMaterial = m;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            r.receiveShadows = false;
+        }
+
+        fogVertices.Clear();
+        fogColors.Clear();
+        fogTriangles.Clear();
+
+        float ang = grid.angularSpacing * 0.62f;   // un poco más grande que la casilla para que no queden huecos
+        float lift = grid.radius * 0.0045f;
+        Color32 unknown = new Color32(0, 0, 4, 245);
+        Color32 seen = new Color32(0, 0, 8, 140);
+
+        for (int cell = 0; cell < grid.count; cell++)
+        {
+            if (visible[cell]) continue;
+
+            Color32 col = explored[cell] ? seen : unknown;
+
+            Vector3 d = grid.dir[cell];
+            Vector3 t1 = Vector3.Cross(Vector3.up, d);
+            if (t1.sqrMagnitude < 1e-6f) t1 = Vector3.Cross(Vector3.right, d);
+            t1.Normalize();
+            Vector3 t2 = Vector3.Cross(d, t1);
+
+            int start = fogVertices.Count;
+            fogVertices.Add(grid.pos[cell] + d * lift);
+            fogColors.Add(col);
+
+            for (int i = 0; i < 6; i++)
+            {
+                float a = i / 6f * Mathf.PI * 2f;
+                Vector3 cd = (d + (t1 * Mathf.Cos(a) + t2 * Mathf.Sin(a)) * ang).normalized;
+                fogVertices.Add(earth.LocalSurfacePoint(cd) + cd * lift);
+                fogColors.Add(col);
+            }
+
+            for (int i = 0; i < 6; i++)
+            {
+                fogTriangles.Add(start);
+                fogTriangles.Add(start + 1 + (i + 1) % 6);
+                fogTriangles.Add(start + 1 + i);
+            }
+        }
+
+        if (fogMesh == null)
+        {
+            fogMesh = new Mesh { name = "Niebla de guerra" };
+            fogMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+        }
+
+        fogMesh.Clear();
+        fogMesh.SetVertices(fogVertices);
+        fogMesh.SetColors(fogColors);
+        fogMesh.SetTriangles(fogTriangles, 0);
+        fogMesh.RecalculateBounds();
+        fogObject.GetComponent<MeshFilter>().sharedMesh = fogMesh;
     }
 
     // ---------------------------------------------------------------- Territorio

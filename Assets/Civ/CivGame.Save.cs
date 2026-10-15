@@ -207,6 +207,8 @@ public partial class CivGame
         foreach (GameObject go in extra) Destroy(go);
 
         CivViews.ResetStatics();
+        ResetFog();
+        fogMeshStale = true;
 
         civs.Clear();
         allCities.Clear();
