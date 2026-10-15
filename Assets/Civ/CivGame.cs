@@ -901,7 +901,7 @@ public partial class CivGame : MonoBehaviour
         }
 
         // Cambio de era: las carreteras de la civilización pasan a piedra y sus unidades a su modelo medieval
-        bool eraChanged = civ.currentTech == TechKind.EraChange || civ.currentTech == TechKind.EraChange3;
+        bool eraChanged = civ.currentTech == TechKind.EraChange || civ.currentTech == TechKind.EraChange3 || civ.currentTech == TechKind.EraChange4;
         if (eraChanged)
             CivViews.UpgradeRoads(civ, grid, earth, EarthT);
 

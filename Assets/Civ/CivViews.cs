@@ -121,6 +121,24 @@ public static class CivViews
             houseWood = LitMaterial(new Color(0.34f, 0.22f, 0.11f));      // puerta y marcos
         }
 
+        // Tras el cuarto Cambio de era (Edad Futura) los rascacielos se sustituyen por torres de cristal con neones
+        bool futuristic = city.owner.Has(TechKind.EraChange4);
+        Material futGlass = null, futCivGlow = null, futRing = null;
+        Material[] futNeons = null;
+        if (futuristic)
+        {
+            futGlass = LitMaterial(new Color(0.07f, 0.1f, 0.2f));
+            futGlass.SetFloat("_Glossiness", 0.85f);
+            futNeons = new[]
+            {
+                FutGlow(new Color(0.2f, 0.95f, 1f), 2.2f),   // cian
+                FutGlow(new Color(1f, 0.2f, 0.9f), 2.2f),    // magenta
+                FutGlow(new Color(0.6f, 0.3f, 1f), 2.2f)     // violeta
+            };
+            futCivGlow = FutGlow(civColor, 2.2f);
+            futRing = FutGlow(civColor, 1.6f);
+        }
+
         // Tras el tercer Cambio de era (Edad Contemporánea) las casas se sustituyen por rascacielos
         bool contemporary = city.owner.Has(TechKind.EraChange3);
         Material towerGlass = null, towerGlassLight = null, towerConcrete = null, towerMetal = null;
@@ -153,6 +171,7 @@ public static class CivViews
 
             // Base con el color de la civilización
             Piece(district, Cylinder, civMat, new Vector3(0f, size * 0.05f, 0f), new Vector3(size * 1.7f, size * 0.05f, size * 1.7f));
+            if (futuristic) Piece(district, Cylinder, futRing, new Vector3(0f, size * 0.062f, 0f), new Vector3(size * 1.74f, size * 0.012f, size * 1.74f)); // aro de neón
 
             // Edificios: más cuantos más habitantes
             System.Random rng = new System.Random(city.cell * 7 + 1 + k * 101);
@@ -165,7 +184,9 @@ public static class CivViews
                 float radius = size * (0.16f + (float)rng.NextDouble() * 0.05f);
                 Vector3 p = new Vector3(Mathf.Cos(angle) * dist, 0f, Mathf.Sin(angle) * dist);
 
-                if (contemporary)
+                if (futuristic)
+                    BuildFuturisticTower(district, p, radius, futGlass, futNeons, futCivGlow, -angle * Mathf.Rad2Deg + 90f, rng);
+                else if (contemporary)
                     BuildSkyscraper(district, p, radius, towerGlass, towerGlassLight, towerConcrete, towerMetal, civMat, -angle * Mathf.Rad2Deg + 90f, rng);
                 else if (medieval)
                     BuildStoneHouse(district, p, radius, houseStone, houseStoneDark, houseRoof, houseWood, dark, -angle * Mathf.Rad2Deg + 90f, rng);
@@ -1290,6 +1311,60 @@ public static class CivViews
         }
     }
 
+    // Torre futurista: cristal oscuro recorrido por neones. Tipo 0 = obelisco escalonado con bandas de neón en cada nivel;
+    // tipo 1 = torre cilíndrica con anillos luminosos. Algunas llevan un anillo flotante; todas, una aguja de luz y un remate
+    // del color de la civilización.
+    static void BuildFuturisticTower(Transform parent, Vector3 pos, float r, Material glass, Material[] neons, Material civGlow,
+                                     float yaw, System.Random rng)
+    {
+        GameObject tower = new GameObject("Torre futurista");
+        tower.transform.SetParent(parent, false);
+        tower.transform.localPosition = pos;
+        tower.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
+        Transform t = tower.transform;
+
+        Material edge = neons[rng.Next(neons.Length)];
+        Material band = neons[rng.Next(neons.Length)];
+        float w = r * (1.0f + (float)rng.NextDouble() * 0.4f);
+        float h = r * (3.5f + (float)rng.NextDouble() * 4f);
+        float top;
+
+        if (rng.NextDouble() < 0.5)
+        {
+            // Obelisco escalonado de tres niveles
+            float[] hf = { 0.55f, 0.3f, 0.15f };
+            float[] wf = { 1f, 0.72f, 0.46f };
+            float y = 0f;
+            for (int i = 0; i < 3; i++)
+            {
+                float th = h * hf[i], tw = w * wf[i];
+                Piece(t, Cube, glass, new Vector3(0f, y + th * 0.5f, 0f), new Vector3(tw, th, tw));
+                for (int sx = -1; sx <= 1; sx += 2)
+                    for (int sz = -1; sz <= 1; sz += 2)
+                        Piece(t, Cube, edge, new Vector3(sx * tw * 0.5f, y + th * 0.5f, sz * tw * 0.5f), new Vector3(tw * 0.05f, th, tw * 0.05f));
+                y += th;
+                Piece(t, Cube, band, new Vector3(0f, y, 0f), new Vector3(tw * 1.08f, r * 0.04f, tw * 1.08f));
+            }
+            top = y;
+        }
+        else
+        {
+            // Torre cilíndrica con anillos luminosos
+            Piece(t, Cylinder, glass, new Vector3(0f, h * 0.5f, 0f), new Vector3(w, h * 0.5f, w));
+            int rings = Mathf.Clamp(Mathf.RoundToInt(h / (r * 0.7f)), 4, 10);
+            for (int i = 1; i <= rings; i++)
+                Piece(t, Cylinder, i % 2 == 0 ? band : edge, new Vector3(0f, h * i / (rings + 0.5f), 0f), new Vector3(w * 1.04f, r * 0.02f, w * 1.04f));
+            Piece(t, Sphere, band, new Vector3(0f, h, 0f), new Vector3(w * 0.7f, w * 0.35f, w * 0.7f));
+            top = h;
+        }
+
+        // Aguja de luz con remate del color de la civilización, y a veces un anillo flotante
+        Piece(t, Cylinder, edge, new Vector3(0f, top + r * 0.5f, 0f), new Vector3(r * 0.03f, r * 0.5f, r * 0.03f));
+        Piece(t, Sphere, civGlow, new Vector3(0f, top + r * 1.02f, 0f), Vector3.one * r * 0.1f);
+        if (rng.NextDouble() < 0.5)
+            Piece(t, Cylinder, band, new Vector3(0f, top + r * 0.35f, 0f), new Vector3(w * 1.25f, r * 0.012f, w * 1.25f));
+    }
+
     // Choza paleolítica: cúpula de pieles sobre un armazón de ramas, con remiendos, entrada oscura
     // y huesos de mamut cruzados en lo alto
     static void BuildHut(Transform parent, Vector3 pos, float r, Material hide, Material hideDark, Material bone, Material dark,
@@ -1343,7 +1418,10 @@ public static class CivViews
 
         // Tras el Cambio de era (Edad Media) las unidades usan su modelo medieval
         // y tras el tercero (Edad Contemporánea) su modelo actual
-        if (unit.owner.Has(TechKind.EraChange3))
+        // y tras el cuarto (Edad Futura) su modelo futurista
+        if (unit.owner.Has(TechKind.EraChange4))
+            BuildFuturisticUnit(root.transform, size, unit);
+        else if (unit.owner.Has(TechKind.EraChange3))
             BuildContemporaryUnit(root.transform, size, unit);
         else if (unit.owner.Has(TechKind.EraChange))
             BuildMedievalUnit(root.transform, size, unit);
@@ -2943,6 +3021,372 @@ public static class CivViews
         }
     }
 
+    // ---------------------------------------------------------------- Unidades futuristas
+    // Tras el cuarto Cambio de era (Edad Futura): armaduras blancas con luces de energía, vehículos antigravedad y naves.
+    // Todas miran hacia +Z.
+
+    static Material FutGlow(Color c, float k = 1.8f)
+    {
+        Material m = LitMaterial(c);
+        m.EnableKeyword("_EMISSION");
+        if (m.HasProperty("_EmissionColor")) m.SetColor("_EmissionColor", c * k);
+        return m;
+    }
+
+    static readonly Color FutCyan = new Color(0.3f, 0.9f, 1f);
+    static readonly Color FutWhite = new Color(0.9f, 0.93f, 0.97f);
+    static readonly Color FutGraphite = new Color(0.14f, 0.15f, 0.19f);
+
+    // Soldado futurista. kind: 0 = trooper (armadura y rifle de plasma), 1 = pesado (escudo de energía),
+    // 2 = granadero (orbe de plasma), 3 = francotirador (rifle de energía largo con mira)
+    static void BuildFuturisticSoldier(Transform root, float s, Color civ, int kind)
+    {
+        Material armor = LitMaterial(FutWhite);
+        Material dark = LitMaterial(FutGraphite);
+        Material accent = LitMaterial(civ);
+        Material glow = FutGlow(FutCyan);
+        Material skin = LitMaterial(new Color(0.9f, 0.72f, 0.56f));
+
+        MedLegs(root, s, dark, armor);
+        MedTorso(root, s, armor, dark, false);
+        MedHead(root, s, skin);
+
+        // Casco con visera luminosa, placa pectoral del color de la civilización y mochila de energía
+        Piece(root, Sphere, armor, new Vector3(0f, s * 0.9f, -s * 0.01f), new Vector3(s * 0.26f, s * 0.24f, s * 0.27f));
+        Piece(root, Cube, glow, new Vector3(0f, s * 0.9f, s * 0.12f), new Vector3(s * 0.2f, s * 0.07f, s * 0.04f));
+        Piece(root, Cube, accent, new Vector3(0f, s * 0.62f, s * 0.13f), new Vector3(s * 0.26f, s * 0.2f, s * 0.04f));
+        Piece(root, Cube, dark, new Vector3(0f, s * 0.6f, -s * 0.18f), new Vector3(s * 0.26f, s * 0.3f, s * 0.12f));
+        Piece(root, Cube, glow, new Vector3(0f, s * 0.6f, -s * 0.25f), new Vector3(s * 0.1f, s * 0.2f, s * 0.02f));
+        for (int side = -1; side <= 1; side += 2)
+            Piece(root, Cube, glow, new Vector3(side * s * 0.1f, s * 0.24f, s * 0.07f), new Vector3(s * 0.02f, s * 0.1f, s * 0.02f)); // luces de las rodillas
+
+        switch (kind)
+        {
+            case 1:
+            {
+                // Escudo de energía translúcido y pistola de plasma
+                MedHand(root, s, armor, -s * 0.28f, s * 0.55f, s * 0.2f);
+                Piece(root, Cube, accent, new Vector3(-s * 0.28f, s * 0.6f, s * 0.3f), new Vector3(s * 0.46f, s * 0.7f, s * 0.02f));
+                Piece(root, Cube, glow, new Vector3(-s * 0.28f, s * 0.6f, s * 0.315f), new Vector3(s * 0.4f, s * 0.62f, s * 0.02f));
+                MedHand(root, s, armor, s * 0.2f, s * 0.55f, s * 0.25f);
+                Piece(root, Cube, dark, new Vector3(s * 0.2f, s * 0.57f, s * 0.33f), new Vector3(s * 0.04f, s * 0.05f, s * 0.2f));
+                Piece(root, Cube, glow, new Vector3(s * 0.2f, s * 0.57f, s * 0.44f), new Vector3(s * 0.025f, s * 0.025f, s * 0.04f));
+                break;
+            }
+            case 2:
+            {
+                MedHand(root, s, armor, s * 0.2f, s * 0.5f, s * 0.2f);
+                Piece(root, Cube, dark, new Vector3(s * 0.2f, s * 0.52f, s * 0.3f), new Vector3(s * 0.04f, s * 0.06f, s * 0.4f));
+                MedHand(root, s, armor, -s * 0.2f, s * 0.7f, s * 0.25f);
+                Piece(root, Sphere, glow, new Vector3(-s * 0.2f, s * 0.8f, s * 0.25f), Vector3.one * s * 0.14f);
+                break;
+            }
+            case 3:
+            {
+                MedHand(root, s, armor, s * 0.2f, s * 0.5f, s * 0.2f);
+                MedHand(root, s, armor, s * 0.2f, s * 0.54f, s * 0.5f);
+                Piece(root, Cube, armor, new Vector3(s * 0.2f, s * 0.52f, s * 0.15f), new Vector3(s * 0.05f, s * 0.08f, s * 0.3f));
+                Piece(root, Cube, dark, new Vector3(s * 0.2f, s * 0.54f, s * 0.7f), new Vector3(s * 0.03f, s * 0.03f, s * 0.95f));
+                Piece(root, Cube, glow, new Vector3(s * 0.2f, s * 0.54f, s * 1.18f), new Vector3(s * 0.02f, s * 0.02f, s * 0.04f));
+                GameObject scope = Piece(root, Cylinder, glow, new Vector3(s * 0.2f, s * 0.62f, s * 0.4f), new Vector3(s * 0.04f, s * 0.1f, s * 0.04f));
+                scope.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                break;
+            }
+            default:
+            {
+                // Rifle de plasma con cañón luminoso
+                MedHand(root, s, armor, s * 0.2f, s * 0.5f, s * 0.18f);
+                MedHand(root, s, armor, s * 0.2f, s * 0.54f, s * 0.42f);
+                Piece(root, Cube, armor, new Vector3(s * 0.2f, s * 0.53f, s * 0.3f), new Vector3(s * 0.05f, s * 0.08f, s * 0.5f));
+                Piece(root, Cube, dark, new Vector3(s * 0.2f, s * 0.54f, s * 0.68f), new Vector3(s * 0.03f, s * 0.03f, s * 0.3f));
+                Piece(root, Cube, glow, new Vector3(s * 0.2f, s * 0.54f, s * 0.84f), new Vector3(s * 0.025f, s * 0.025f, s * 0.05f));
+                break;
+            }
+        }
+    }
+
+    // Colono futurista: traje del color de la civilización con casco burbuja, mochila propulsora y maleta flotante
+    static void BuildFuturisticSettler(Transform root, float s, Color civ)
+    {
+        Material suit = LitMaterial(civ);
+        Material white = LitMaterial(FutWhite);
+        Material dark = LitMaterial(FutGraphite);
+        Material glow = FutGlow(FutCyan);
+        Material skin = LitMaterial(new Color(0.9f, 0.72f, 0.56f));
+
+        MedLegs(root, s, suit, white);
+        MedTorso(root, s, suit, dark, false);
+        MedHead(root, s, skin);
+        Piece(root, Sphere, white, new Vector3(0f, s * 0.9f, 0f), new Vector3(s * 0.3f, s * 0.28f, s * 0.3f)); // casco burbuja
+        Piece(root, Cube, glow, new Vector3(0f, s * 0.9f, s * 0.14f), new Vector3(s * 0.22f, s * 0.08f, s * 0.03f));
+        Piece(root, Cube, dark, new Vector3(0f, s * 0.58f, -s * 0.2f), new Vector3(s * 0.28f, s * 0.34f, s * 0.14f)); // mochila propulsora
+        for (int side = -1; side <= 1; side += 2)
+            Piece(root, Cylinder, glow, new Vector3(side * s * 0.08f, s * 0.38f, -s * 0.2f), new Vector3(s * 0.05f, s * 0.02f, s * 0.05f));
+
+        // Maleta flotante con base luminosa
+        MedHand(root, s, white, s * 0.27f, s * 0.46f, s * 0.12f);
+        Piece(root, Cube, white, new Vector3(s * 0.32f, s * 0.3f, s * 0.2f), new Vector3(s * 0.16f, s * 0.2f, s * 0.24f));
+        Piece(root, Cylinder, glow, new Vector3(s * 0.32f, s * 0.17f, s * 0.2f), new Vector3(s * 0.12f, s * 0.01f, s * 0.12f));
+    }
+
+    // Trabajador futurista: robot con cuerpo de grafito, franja del color de la civilización, visor y herramienta de haz de energía
+    static void BuildFuturisticWorker(Transform root, float s, Color civ)
+    {
+        Material dark = LitMaterial(FutGraphite);
+        Material white = LitMaterial(FutWhite);
+        Material accent = LitMaterial(civ);
+        Material glow = FutGlow(FutCyan);
+
+        for (int side = -1; side <= 1; side += 2)
+        {
+            Piece(root, Cube, dark, new Vector3(side * s * 0.1f, s * 0.16f, 0f), new Vector3(s * 0.09f, s * 0.32f, s * 0.12f));
+            Piece(root, Cube, white, new Vector3(side * s * 0.1f, s * 0.03f, s * 0.04f), new Vector3(s * 0.12f, s * 0.06f, s * 0.2f));
+        }
+        Piece(root, Cube, white, new Vector3(0f, s * 0.5f, 0f), new Vector3(s * 0.36f, s * 0.36f, s * 0.26f));
+        Piece(root, Cube, accent, new Vector3(0f, s * 0.5f, s * 0.14f), new Vector3(s * 0.38f, s * 0.08f, s * 0.02f));
+        Piece(root, Cube, dark, new Vector3(0f, s * 0.78f, 0f), new Vector3(s * 0.22f, s * 0.18f, s * 0.2f));
+        Piece(root, Cube, glow, new Vector3(0f, s * 0.8f, s * 0.11f), new Vector3(s * 0.18f, s * 0.05f, s * 0.02f)); // visor
+        Piece(root, Cylinder, dark, new Vector3(0f, s * 0.92f, 0f), new Vector3(s * 0.01f, s * 0.07f, s * 0.01f)); // antena
+        for (int side = -1; side <= 1; side += 2)
+            Piece(root, Cube, dark, new Vector3(side * s * 0.26f, s * 0.5f, s * 0.04f), new Vector3(s * 0.08f, s * 0.26f, s * 0.08f));
+
+        // Herramienta: soplete de energía en el brazo derecho
+        Piece(root, Cube, dark, new Vector3(s * 0.26f, s * 0.36f, s * 0.2f), new Vector3(s * 0.07f, s * 0.07f, s * 0.2f));
+        Piece(root, Cube, glow, new Vector3(s * 0.26f, s * 0.36f, s * 0.34f), new Vector3(s * 0.03f, s * 0.03f, s * 0.08f));
+    }
+
+    // Base de vehículo antigravedad: casco aerodinámico y cuatro discos de empuje luminosos bajo el chasis
+    static void FutHoverBase(Transform root, float s, Material body, Material glow, float width, float length)
+    {
+        Piece(root, Cube, body, new Vector3(0f, s * 0.2f, 0f), new Vector3(s * width, s * 0.14f, s * length));
+        for (int sx = -1; sx <= 1; sx += 2)
+            for (int sz = -1; sz <= 1; sz += 2)
+                Piece(root, Cylinder, glow, new Vector3(sx * s * width * 0.32f, s * 0.1f, sz * s * length * 0.32f), new Vector3(s * 0.16f, s * 0.012f, s * 0.16f));
+        Piece(root, Cube, glow, new Vector3(0f, s * 0.2f, 0f), new Vector3(s * (width + 0.02f), s * 0.025f, s * (length + 0.02f)));
+    }
+
+    // Moto antigravedad (Jinete): chasis delgado, parabrisas luminoso y dos propulsores traseros
+    static void BuildFuturisticHoverbike(Transform root, float s, Color civ)
+    {
+        Material body = LitMaterial(FutWhite);
+        Material accent = LitMaterial(civ);
+        Material glow = FutGlow(FutCyan);
+        Material dark = LitMaterial(FutGraphite);
+
+        FutHoverBase(root, s, body, glow, 0.3f, 0.95f);
+        Piece(root, Cube, accent, new Vector3(0f, s * 0.3f, -s * 0.05f), new Vector3(s * 0.22f, s * 0.1f, s * 0.4f));
+        GameObject wind = Piece(root, Cube, glow, new Vector3(0f, s * 0.38f, s * 0.2f), new Vector3(s * 0.2f, s * 0.12f, s * 0.02f));
+        wind.transform.localRotation = Quaternion.Euler(-35f, 0f, 0f);
+        Piece(root, Cube, dark, new Vector3(0f, s * 0.36f, s * 0.22f), new Vector3(s * 0.4f, s * 0.02f, s * 0.02f)); // manillar
+        for (int side = -1; side <= 1; side += 2)
+            Piece(root, Cylinder, glow, new Vector3(side * s * 0.1f, s * 0.26f, -s * 0.5f), new Vector3(s * 0.07f, s * 0.01f, s * 0.07f)).transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+    }
+
+    // Transporte blindado antigravedad con torreta de plasma
+    static void BuildFuturisticApc(Transform root, float s, Color civ)
+    {
+        Material body = LitMaterial(FutWhite);
+        Material accent = LitMaterial(civ);
+        Material glow = FutGlow(FutCyan);
+        Material dark = LitMaterial(FutGraphite);
+
+        FutHoverBase(root, s, body, glow, 0.62f, 1.25f);
+        Piece(root, Cube, body, new Vector3(0f, s * 0.38f, -s * 0.1f), new Vector3(s * 0.5f, s * 0.22f, s * 0.8f));
+        Piece(root, Cube, accent, new Vector3(0f, s * 0.5f, -s * 0.1f), new Vector3(s * 0.52f, s * 0.03f, s * 0.82f));
+        GameObject nose = Piece(root, Cube, glow, new Vector3(0f, s * 0.4f, s * 0.36f), new Vector3(s * 0.4f, s * 0.07f, s * 0.04f));
+        nose.transform.localRotation = Quaternion.Euler(-25f, 0f, 0f);
+        Piece(root, Sphere, dark, new Vector3(0f, s * 0.56f, -s * 0.05f), new Vector3(s * 0.28f, s * 0.14f, s * 0.28f));
+        GameObject barrel = Piece(root, Cylinder, dark, new Vector3(0f, s * 0.58f, s * 0.24f), new Vector3(s * 0.04f, s * 0.2f, s * 0.04f));
+        barrel.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+        Piece(root, Sphere, glow, new Vector3(0f, s * 0.58f, s * 0.45f), Vector3.one * s * 0.05f);
+    }
+
+    // Camión de carga antigravedad: cabina y contenedor del color de la civilización con franja de energía
+    static void BuildFuturisticCargo(Transform root, float s, Color civ, bool gold)
+    {
+        Material body = LitMaterial(FutWhite);
+        Material box = LitMaterial(civ);
+        Material glow = FutGlow(gold ? new Color(1f, 0.85f, 0.3f) : FutCyan);
+        Material dark = LitMaterial(FutGraphite);
+
+        FutHoverBase(root, s, body, glow, 0.55f, 1.5f);
+        Piece(root, Cube, body, new Vector3(0f, s * 0.4f, s * 0.55f), new Vector3(s * 0.5f, s * 0.3f, s * 0.36f));
+        GameObject wind = Piece(root, Cube, glow, new Vector3(0f, s * 0.45f, s * 0.74f), new Vector3(s * 0.42f, s * 0.12f, s * 0.02f));
+        wind.transform.localRotation = Quaternion.Euler(-20f, 0f, 0f);
+        Piece(root, Cube, box, new Vector3(0f, s * 0.46f, -s * 0.22f), new Vector3(s * 0.56f, s * 0.46f, s * 0.9f));
+        Piece(root, Cube, glow, new Vector3(0f, s * 0.46f, -s * 0.22f), new Vector3(s * 0.58f, s * 0.05f, s * 0.92f));
+        Piece(root, Cube, dark, new Vector3(0f, s * 0.7f, -s * 0.22f), new Vector3(s * 0.4f, s * 0.03f, s * 0.7f));
+    }
+
+    // Carro de combate antigravedad: casco afilado, torreta esférica y cañón con la punta luminosa.
+    // kind: 0 = tanque, 1 = cañón de plasma (obús con bobinas y cañón muy largo)
+    static void BuildFuturisticHoverTank(Transform root, float s, Color civ, int kind)
+    {
+        Material body = LitMaterial(FutWhite);
+        Material accent = LitMaterial(civ);
+        Material glow = FutGlow(FutCyan);
+        Material dark = LitMaterial(FutGraphite);
+
+        FutHoverBase(root, s, body, glow, 0.7f, 1.1f);
+        Piece(root, Cube, body, new Vector3(0f, s * 0.34f, 0f), new Vector3(s * 0.55f, s * 0.14f, s * 0.8f));
+        Piece(root, Cube, accent, new Vector3(0f, s * 0.42f, -s * 0.1f), new Vector3(s * 0.4f, s * 0.04f, s * 0.4f));
+        Piece(root, Sphere, dark, new Vector3(0f, s * 0.5f, -s * 0.05f), new Vector3(s * 0.34f, s * 0.2f, s * 0.34f));
+
+        float len = kind == 1 ? 1.1f : 0.8f;
+        GameObject barrel = Piece(root, Cylinder, dark, new Vector3(0f, s * 0.52f, s * (0.1f + len * 0.5f)), new Vector3(s * 0.06f, s * len * 0.5f, s * 0.06f));
+        barrel.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+        Piece(root, Sphere, glow, new Vector3(0f, s * 0.52f, s * (0.1f + len)), Vector3.one * s * 0.07f);
+        if (kind == 1)
+            for (int i = 0; i < 3; i++)
+            {
+                GameObject coil = Piece(root, Cylinder, glow, new Vector3(0f, s * 0.52f, s * (0.3f + i * 0.28f)), new Vector3(s * 0.11f, s * 0.012f, s * 0.11f));
+                coil.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            }
+    }
+
+    // Lanzamisiles antigravedad: plataforma con rampa y tres misiles de plasma
+    static void BuildFuturisticLauncher(Transform root, float s, Color civ)
+    {
+        Material body = LitMaterial(FutWhite);
+        Material glow = FutGlow(FutCyan);
+        Material dark = LitMaterial(FutGraphite);
+        Material tip = FutGlow(civ);
+
+        FutHoverBase(root, s, body, glow, 0.62f, 1.2f);
+        GameObject ramp = Piece(root, Cube, dark, new Vector3(0f, s * 0.5f, -s * 0.1f), new Vector3(s * 0.5f, s * 0.04f, s * 0.9f));
+        ramp.transform.localRotation = Quaternion.Euler(-35f, 0f, 0f);
+        for (int i = -1; i <= 1; i++)
+        {
+            Vector3 from = new Vector3(i * s * 0.15f, s * 0.4f, -s * 0.4f);
+            Vector3 to = new Vector3(i * s * 0.15f, s * 0.85f, s * 0.15f);
+            ModTube(root, body, from, to, s * 0.1f);
+            Piece(root, Sphere, tip, to, new Vector3(s * 0.1f, s * 0.12f, s * 0.1f));
+        }
+    }
+
+    // Caza o bombardero futurista: ala delta de fuselaje luminoso. bomber: ala volante grande con tres motores
+    static void BuildFuturisticAircraft(Transform root, float s, Color civ, bool bomber)
+    {
+        Material body = LitMaterial(FutWhite);
+        Material accent = LitMaterial(civ);
+        Material glow = FutGlow(FutCyan);
+        Material dark = LitMaterial(FutGraphite);
+
+        float y = s * 0.3f;
+        float span = bomber ? 0.85f : 0.55f;
+        float len = bomber ? 1.2f : 1.0f;
+
+        // Fuselaje central alargado con morro
+        GameObject fus = Piece(root, Capsule, body, new Vector3(0f, y, 0f), new Vector3(s * (bomber ? 0.22f : 0.13f), s * len * 0.5f, s * (bomber ? 0.14f : 0.1f)));
+        fus.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+        Piece(root, Cube, glow, new Vector3(0f, y + s * 0.07f, s * len * 0.25f), new Vector3(s * 0.08f, s * 0.03f, s * 0.2f)); // cabina luminosa
+
+        // Alas en delta (dos placas en flecha) con bordes luminosos
+        for (int side = -1; side <= 1; side += 2)
+        {
+            GameObject w = Piece(root, Cube, body, new Vector3(side * s * span * 0.45f, y - s * 0.01f, -s * 0.12f), new Vector3(s * span, s * 0.015f, s * (bomber ? 0.5f : 0.4f)));
+            w.transform.localRotation = Quaternion.Euler(0f, -side * 30f, 0f);
+            GameObject e = Piece(root, Cube, glow, new Vector3(side * s * span * 0.52f, y - s * 0.005f, s * 0.04f), new Vector3(s * span * 0.95f, s * 0.012f, s * 0.02f));
+            e.transform.localRotation = Quaternion.Euler(0f, -side * 30f, 0f);
+            Piece(root, Cube, accent, new Vector3(side * s * span * 0.9f, y - s * 0.01f, -s * 0.3f), new Vector3(s * 0.1f, s * 0.02f, s * 0.12f));
+        }
+
+        // Motores luminosos
+        int engines = bomber ? 3 : 1;
+        for (int i = 0; i < engines; i++)
+        {
+            float x = (i - (engines - 1) * 0.5f) * s * 0.28f;
+            Piece(root, Cylinder, dark, new Vector3(x, y, -s * len * 0.5f), new Vector3(s * 0.1f, s * 0.04f, s * 0.1f)).transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            Piece(root, Sphere, glow, new Vector3(x, y, -s * len * 0.5f - s * 0.06f), Vector3.one * s * 0.09f);
+        }
+    }
+
+    // Barco antigravedad (Barco de Vela): casco blanco aerodinámico con una franja de energía y un pequeño puente
+    static void BuildFuturisticBoat(Transform root, float s, Color civ)
+    {
+        Material hull = LitMaterial(FutWhite);
+        Material accent = LitMaterial(civ);
+        Material glow = FutGlow(FutCyan);
+
+        Piece(root, ShipHull(), hull, Vector3.zero, new Vector3(s * 0.8f, s * 0.8f, s * 1.4f));
+        Piece(root, Cube, glow, new Vector3(0f, s * 0.36f, 0f), new Vector3(s * 0.52f, s * 0.03f, s * 1.0f));
+        Piece(root, Cube, accent, new Vector3(0f, s * 0.5f, -s * 0.1f), new Vector3(s * 0.3f, s * 0.2f, s * 0.4f));
+        GameObject wind = Piece(root, Cube, glow, new Vector3(0f, s * 0.58f, s * 0.12f), new Vector3(s * 0.28f, s * 0.12f, s * 0.02f));
+        wind.transform.localRotation = Quaternion.Euler(-30f, 0f, 0f);
+    }
+
+    // Buque futurista: casco blanco, superestructura con cúpula luminosa, cañones de riel y anillos de energía.
+    // big: portanaves/crucero con dos cañones y más anillos
+    static void BuildFuturisticWarship(Transform root, float s, Color civ, bool big)
+    {
+        Material hull = LitMaterial(FutWhite);
+        Material dark = LitMaterial(FutGraphite);
+        Material accent = LitMaterial(civ);
+        Material glow = FutGlow(FutCyan);
+
+        float len = big ? 2.0f : 1.7f;
+        Piece(root, ShipHull(), hull, Vector3.zero, new Vector3(s * 1.1f, s * 1.0f, s * len));
+        Piece(root, Cube, glow, new Vector3(0f, s * 0.42f, 0f), new Vector3(s * 0.58f, s * 0.02f, s * (len - 0.4f)));
+        Piece(root, Cube, accent, new Vector3(0f, s * 0.46f, 0f), new Vector3(s * 0.2f, s * 0.02f, s * (len - 0.6f)));
+
+        // Superestructura con cúpula de energía y antena
+        Piece(root, Cube, hull, new Vector3(0f, s * 0.62f, -s * 0.15f), new Vector3(s * 0.36f, s * 0.3f, s * 0.6f));
+        Piece(root, Sphere, glow, new Vector3(0f, s * 0.84f, -s * 0.15f), new Vector3(s * 0.26f, s * 0.2f, s * 0.26f));
+        Piece(root, Cylinder, dark, new Vector3(0f, s * 1.1f, -s * 0.15f), new Vector3(s * 0.02f, s * 0.22f, s * 0.02f));
+
+        // Cañones de riel en proa
+        int turrets = big ? 2 : 1;
+        for (int i = 0; i < turrets; i++)
+        {
+            float z = s * (0.5f + i * 0.3f);
+            Piece(root, Sphere, dark, new Vector3(0f, s * 0.52f, z), new Vector3(s * 0.2f, s * 0.12f, s * 0.2f));
+            GameObject barrel = Piece(root, Cylinder, dark, new Vector3(0f, s * 0.55f, z + s * 0.24f), new Vector3(s * 0.04f, s * 0.26f, s * 0.04f));
+            barrel.transform.localRotation = Quaternion.Euler(85f, 0f, 0f);
+            Piece(root, Sphere, glow, new Vector3(0f, s * 0.56f, z + s * 0.5f), Vector3.one * s * 0.05f);
+        }
+
+        // Anillos de energía en popa
+        int rings = big ? 3 : 2;
+        for (int i = 0; i < rings; i++)
+            Piece(root, Cylinder, glow, new Vector3(0f, s * 0.46f, -s * (0.55f + i * 0.14f)), new Vector3(s * (0.34f - i * 0.05f), s * 0.01f, s * (0.34f - i * 0.05f)));
+    }
+
+    // Dibuja la versión futurista de la unidad (todas las unidades tienen una)
+    static void BuildFuturisticUnit(Transform root, float size, Unit unit)
+    {
+        Color civ = unit.owner.color;
+        float s = size;
+
+        switch (unit.kind)
+        {
+            case UnitKind.Settler:     BuildFuturisticSettler(root, s, civ); break;
+            case UnitKind.Worker:      BuildFuturisticWorker(root, s, civ); break;
+            case UnitKind.Warrior:
+            case UnitKind.Spearman:
+            case UnitKind.Musketeer:
+            case UnitKind.Rifleman:    BuildFuturisticSoldier(root, s, civ, 0); break;
+            case UnitKind.Phalanx:
+            case UnitKind.Legion:      BuildFuturisticSoldier(root, s, civ, 1); break;
+            case UnitKind.Grenadier:   BuildFuturisticSoldier(root, s, civ, 2); break;
+            case UnitKind.Archer:
+            case UnitKind.Crossbowman: BuildFuturisticSoldier(root, s, civ, 3); break;
+            case UnitKind.Horseman:    BuildFuturisticHoverbike(root, s, civ); break;
+            case UnitKind.Chariot:     BuildFuturisticApc(root, s, civ); break;
+            case UnitKind.Caravan:     BuildFuturisticCargo(root, s, civ, false); break;
+            case UnitKind.Merchant:    BuildFuturisticCargo(root, s, civ, true); break;
+            case UnitKind.Catapult:    BuildFuturisticLauncher(root, s, civ); break;
+            case UnitKind.Ballista:
+            case UnitKind.Cannon:      BuildFuturisticHoverTank(root, s, civ, 1); break;
+            case UnitKind.Tank:        BuildFuturisticHoverTank(root, s, civ, 0); break;
+            case UnitKind.Fighter:     BuildFuturisticAircraft(root, s, civ, false); break;
+            case UnitKind.Bomber:      BuildFuturisticAircraft(root, s, civ, true); break;
+            case UnitKind.Sailboat:    BuildFuturisticBoat(root, s, civ); break;
+            case UnitKind.Galleon:     BuildFuturisticWarship(root, s, civ, false); break;
+            case UnitKind.Steamship:   BuildFuturisticWarship(root, s, civ, true); break;
+            default:                   BuildFuturisticSoldier(root, s, civ, 0); break;
+        }
+    }
+
     // Dibuja la versión actual de la unidad (todas las unidades tienen una)
     static void BuildContemporaryUnit(Transform root, float size, Unit unit)
     {
@@ -3254,6 +3698,14 @@ public static class CivViews
             asphaltShoulderMaterial = FlatMaterial(new Color(0.5f, 0.5f, 0.52f, 1f));
             asphaltLineMaterial = FlatMaterial(new Color(0.95f, 0.95f, 0.95f, 1f));
             asphaltDashMaterial = LitMaterial(new Color(0.98f, 0.82f, 0.15f));
+            glassMaterial = FlatMaterial(new Color(0.45f, 0.78f, 0.95f, 0.7f));   // cristal translúcido
+            glassBorderMaterial = FlatMaterial(new Color(0.1f, 0.2f, 0.35f, 0.65f));
+            neonCyanMaterial = FlatMaterial(new Color(0.75f, 1f, 1f, 1f));        // núcleo brillante del neón
+            neonMagentaMaterial = FlatMaterial(new Color(1f, 0.75f, 0.95f, 1f));
+            neonCyanGlowMaterial = FlatMaterial(new Color(0.1f, 0.85f, 1f, 0.45f));   // halo de luz
+            neonMagentaGlowMaterial = FlatMaterial(new Color(1f, 0.15f, 0.85f, 0.45f));
+            neonCyanLight = FutGlow(new Color(0.2f, 0.95f, 1f));
+            neonMagentaLight = FutGlow(new Color(1f, 0.25f, 0.9f));
         }
 
         float lift = grid.radius * 0.006f;
@@ -3325,6 +3777,36 @@ public static class CivViews
                 GameObject sleeper = Piece(go.transform, Cube, railSleeperMaterial, points[i] + up * grid.spacing * 0.003f,
                     new Vector3(grid.spacing * 0.012f, grid.spacing * 0.006f, grid.spacing * 0.06f));
                 sleeper.transform.localRotation = Quaternion.LookRotation(lateral, up);
+            }
+        }
+        else if (builder != null && builder.Has(TechKind.EraChange4))
+        {
+            // Carretera futurista: calzada de cristal translúcido con un borde oscuro, dos neones laterales (cian y magenta)
+            // con halo de luz y una hilera de pilotos luminosos en el centro
+            AddRoadLine(go.transform, "Borde de cristal", points, grid.spacing * 0.105f, glassBorderMaterial, 3000);
+            AddRoadLine(go.transform, "Cristal", points, grid.spacing * 0.085f, glassMaterial, 3001);
+
+            for (int side = -1; side <= 1; side += 2)
+            {
+                Vector3[] edge = new Vector3[points.Length];
+                for (int i = 0; i < points.Length; i++)
+                {
+                    Vector3 up = points[i].normalized;
+                    Vector3 tangent = (points[Mathf.Min(i + 1, points.Length - 1)] - points[Mathf.Max(i - 1, 0)]).normalized;
+                    Vector3 lateral = Vector3.Cross(up, tangent).normalized;
+                    edge[i] = points[i] + lateral * side * grid.spacing * 0.038f + up * grid.spacing * 0.002f;
+                }
+                AddRoadLine(go.transform, "Halo de neón", edge, grid.spacing * 0.016f, side < 0 ? neonCyanGlowMaterial : neonMagentaGlowMaterial, 3002);
+                AddRoadLine(go.transform, "Neón", edge, grid.spacing * 0.005f, side < 0 ? neonCyanMaterial : neonMagentaMaterial, 3003);
+            }
+
+            for (int i = 1; i < steps; i++)
+            {
+                Vector3 up = points[i].normalized;
+                Vector3 tangent = (points[i + 1] - points[i - 1]).normalized;
+                GameObject light = Piece(go.transform, Cube, i % 2 == 0 ? neonCyanLight : neonMagentaLight, points[i] + up * grid.spacing * 0.004f,
+                    new Vector3(grid.spacing * 0.008f, grid.spacing * 0.003f, grid.spacing * 0.02f));
+                light.transform.localRotation = Quaternion.LookRotation(tangent, up);
             }
         }
         else if (builder != null && builder.Has(TechKind.EraChange3))
@@ -3409,6 +3891,7 @@ public static class CivViews
     static Material stoneRoadCobbleDark, stoneRoadCobbleLight;
     static Material pathPebbleMaterial;
     static Material asphaltMaterial, asphaltShoulderMaterial, asphaltLineMaterial, asphaltDashMaterial;
+    static Material glassMaterial, glassBorderMaterial, neonCyanMaterial, neonMagentaMaterial, neonCyanGlowMaterial, neonMagentaGlowMaterial, neonCyanLight, neonMagentaLight;
     static Material railBedMaterial, railSteelMaterial, railSleeperMaterial;
 
     static void AddRoadLine(Transform parent, string name, Vector3[] points, float width, Material material, int queue)
