@@ -8,7 +8,7 @@ using UnityEngine;
 ///   Clic derecho     mover / atacar (Mayús: mover y fundar ciudad al llegar)
 ///   B                fundar ciudad con el colono seleccionado
 ///   T                tecnologías      H  ayuda      C  centrar en la capital / selección
-///   Espacio          pausa            1 2 3 4  velocidad x1 x2 x4 x8
+///   Espacio          pausa
 /// </summary>
 public class CivUI : MonoBehaviour
 {
@@ -66,10 +66,6 @@ public class CivUI : MonoBehaviour
             else game.gameSpeed = lastSpeed > 0f ? lastSpeed : 1f;
         }
 
-        if (Input.GetKeyDown(KeyCode.Alpha1)) game.gameSpeed = 1f;
-        if (Input.GetKeyDown(KeyCode.Alpha2)) game.gameSpeed = 2f;
-        if (Input.GetKeyDown(KeyCode.Alpha3)) game.gameSpeed = 4f;
-        if (Input.GetKeyDown(KeyCode.Alpha4)) game.gameSpeed = 8f;
 
         if (Input.GetKeyDown(KeyCode.H)) showHelp = !showHelp;
         if (Input.GetKeyDown(KeyCode.T)) showTech = !showTech;
@@ -436,10 +432,6 @@ public class CivUI : MonoBehaviour
         GUILayout.FlexibleSpace();
 
         if (GUILayout.Button(game.gameSpeed <= 0f ? "▶" : "❚❚", GUILayout.Width(36))) HandleKeyPause();
-        if (GUILayout.Button("x1", GUILayout.Width(34))) game.gameSpeed = 1f;
-        if (GUILayout.Button("x2", GUILayout.Width(34))) game.gameSpeed = 2f;
-        if (GUILayout.Button("x4", GUILayout.Width(34))) game.gameSpeed = 4f;
-        if (GUILayout.Button("x8", GUILayout.Width(34))) game.gameSpeed = 8f;
 
         GUILayout.EndHorizontal();
         GUILayout.EndArea();
@@ -510,7 +502,7 @@ public class CivUI : MonoBehaviour
         GUILayout.Label("Mayús + clic der. (colono): mover y fundar", small);
         GUILayout.Label("B: fundar ciudad   R o Ctrl+clic der.: carretera", small);
         GUILayout.Label("T: tecnologías   C: centrar", small);
-        GUILayout.Label("Espacio: pausa   1-4: velocidad   H: ocultar", small);
+        GUILayout.Label("Espacio: pausa   H: ocultar", small);
         GUILayout.Label("Cursores / , . + - : mover y girar la cámara", small);
         GUILayout.Label("Esc: salir", small);
         GUILayout.EndArea();

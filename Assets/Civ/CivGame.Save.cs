@@ -226,6 +226,7 @@ public partial class CivGame
             yield break;
         }
 
+        startCancelled = true;   // la partida nueva que esperaba el menú ya no se crea
         ready = false;
         yield return null;
 

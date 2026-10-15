@@ -16,6 +16,9 @@ public partial class CivGame : MonoBehaviour
     public int gridCells = 6000;
     public float gameSpeed = 1f;
 
+    /// <summary>Todo (producción, investigación, crecimiento, movimiento, combate...) tarda 3 veces más que antes.</summary>
+    public const float SimulationScale = 1f / 3f;
+
     [Header("Carreteras")]
     [Tooltip("Segundos que tarda un colono en construir un tramo de carretera")]
     public float roadBuildSeconds = 5f;
@@ -42,6 +45,10 @@ public partial class CivGame : MonoBehaviour
     // No serializado: si Unity recompila los scripts durante el Play, el estado de la partida se pierde
     // (civilizaciones, mapa...) y "ready" debe volver a false en vez de quedarse en true con datos vacíos
     [System.NonSerialized] public bool ready;
+    [System.NonSerialized] public bool worldBuilt;      // el planeta y el mapa ya están generados (aún puede faltar crear las civilizaciones)
+    [System.NonSerialized] public bool matchRequested;  // el menú ya eligió cuántos rivales habrá
+    [System.NonSerialized] public bool startCancelled;  // se cargó una partida guardada: no se crea la partida nueva
+    [System.NonSerialized] public bool startFailed;     // no hubo tierra suficiente para empezar
     public float gameTime;
 
     public struct LogEntry { public string text; public float time; public Color color; }
@@ -82,13 +89,30 @@ public partial class CivGame : MonoBehaviour
         CivViews.BuildRivers(grid, earth, EarthT);
         Debug.Log("[Civilogenia] Mapa: " + grid.riverPaths.Count + " ríos.");
 
+        worldBuilt = true;
+
+        // El menú principal pregunta cuántas civilizaciones enemigas (manejadas por la IA) habrá; sin menú se usa civCount.
+        // Si se carga una partida guardada, esta preparación se cancela.
+        while (MainMenu.Enabled && !matchRequested && !startCancelled) yield return null;
+        if (startCancelled) yield break;
+
         if (!SetupCivs())
         {
             Debug.LogError("[Civilogenia] No hay tierra suficiente para empezar la partida.");
+            startFailed = true;
             yield break;
         }
 
         ready = true;
+    }
+
+    /// <summary>El jugador elige cuántas civilizaciones enemigas habrá (0-5); todas las demás las maneja la IA. Empieza la partida.</summary>
+    public void StartMatch(int enemies)
+    {
+        civCount = Mathf.Clamp(1 + enemies, 1, GameDefs.CivNames.Length);
+        aiEnabled = true;
+        startFailed = false;
+        matchRequested = true;
     }
 
     // ---------------------------------------------------------------- Preparación
@@ -213,7 +237,7 @@ public partial class CivGame : MonoBehaviour
         if (!ready) return;
         if (IntroVideo.Active || MainMenu.Active) return;   // la partida espera mientras suena la introducción y está el menú
 
-        float dt = Time.deltaTime * gameSpeed;
+        float dt = Time.deltaTime * gameSpeed * SimulationScale;
         if (dt <= 0f) return;
         gameTime += dt;
 
@@ -1889,7 +1913,6 @@ public partial class CivGame : MonoBehaviour
             : grid.HasRiver(u.cell, u.moveTo)
             ? WorldGrid.RoadSpeedFactor
             : Mathf.Max(0.2f, GameDefs.MoveFactor(grid.biome[u.moveTo]));
-        if (!u.def.air && !u.def.naval && u.owner.Has(TechKind.CombustionEngine)) factor *= 1.25f; // Motor de combustión: +25 % en tierra
         u.t += u.def.speed * factor * dt;
 
         if (u.t >= 1f)

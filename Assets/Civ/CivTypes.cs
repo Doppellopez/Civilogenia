@@ -76,7 +76,7 @@ public static class GameDefs
         { TechKind.EraChange3, new TechDef { name = "Cambio de era", cost = 2600, unlocks = "la Edad Contemporánea",
             requiresAll = new[] { TechKind.SteamEngine, TechKind.Electricity, TechKind.Railway, TechKind.MovableType, TechKind.Rifle, TechKind.Telescope, TechKind.Thermometer, TechKind.Grenade, TechKind.Artillery } } },
         // Tecnologías de la Edad Contemporánea: solo se pueden investigar tras el tercer Cambio de era
-        { TechKind.CombustionEngine, new TechDef { name = "Motor de combustión", cost = 2800, unlocks = "+50% de producción en todas las ciudades y las unidades terrestres se mueven un 25% más rápido", requires = TechKind.EraChange3 } },
+        { TechKind.CombustionEngine, new TechDef { name = "Motor de combustión", cost = 2800, unlocks = "+50% de producción en todas las ciudades", requires = TechKind.EraChange3 } },
         { TechKind.Aviation,   new TechDef { name = "Aviación", cost = 3200, unlocks = "Caza y Bombardero (vuelan sobre tierra y mar)", requires = TechKind.CombustionEngine } },
         { TechKind.Radio,      new TechDef { name = "Radio", cost = 2900, unlocks = "+25% de ciencia en todas las ciudades", requires = TechKind.EraChange3 } },
         { TechKind.SteelConcrete, new TechDef { name = "Acero y hormigón", cost = 3000, unlocks = "los edificios cuestan un 15% menos (rascacielos)", requires = TechKind.EraChange3 } },

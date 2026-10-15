@@ -17,11 +17,15 @@ public class MainMenu : MonoBehaviour
 
     bool shown;
     bool showControls;
+    bool choosingRivals;       // pantalla "¿Cuántos rivales?" que sale al pulsar Jugar
+    int rivals = 3;            // civilizaciones enemigas, manejadas por la IA
+    const int MaxRivals = 5;
     bool loading;
+    string loadingText = "Cargando partida…";
     float openTime;
     float previousTimeScale = 1f;
 
-    GUIStyle title, subtitle, button, body, hint;
+    GUIStyle title, subtitle, button, body, hint, hint2, number;
     float styleScale = -1f;
 
     static readonly string[] Controls =
@@ -31,7 +35,7 @@ public class MainMenu : MonoBehaviour
         "B: fundar ciudad con el colono seleccionado",
         "R: construir carretera    V: mejorar a ferrocarril    F: granja",
         "T: tecnologías    H: ayuda    C: centrar la cámara",
-        "Espacio: pausa    1 2 3 4: velocidad x1 x2 x4 x8",
+        "Espacio: pausa",
         "Cursores o , . : mover la cámara    Rueda: zoom    Doble clic: seguir un punto",
         "F5: guardar partida    F9: cargar partida",
         "Esc: salir del juego"
@@ -58,13 +62,18 @@ public class MainMenu : MonoBehaviour
 
         if (!Active || loading || Time.unscaledTime - openTime < IgnoreInputSeconds) return;
 
-        if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)) Play();
+        if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
+        {
+            if (choosingRivals) StartCoroutine(StartRoutine());
+            else if (!showControls) choosingRivals = true;
+        }
     }
 
     void Open()
     {
         Active = true;
         showControls = false;
+        choosingRivals = false;
         openTime = Time.unscaledTime;
         previousTimeScale = Time.timeScale > 0f ? Time.timeScale : 1f;
         Time.timeScale = 0f;
@@ -75,14 +84,35 @@ public class MainMenu : MonoBehaviour
     System.Collections.IEnumerator LoadRoutine()
     {
         loading = true;
+        loadingText = "Cargando partida…";
         yield return null;
         yield return null;   // deja pintar el aviso "Cargando partida…" antes de que el trabajo bloquee el hilo principal
 
         CivGame game = CivGame.Instance;
-        while (game == null || !game.ready) { yield return null; game = CivGame.Instance; }
+        while (game == null || !game.worldBuilt) { yield return null; game = CivGame.Instance; }
 
         yield return StartCoroutine(game.LoadRoutine());
         loading = false;
+        Play();
+    }
+
+    // Nueva partida: el juego crea tu civilización y las enemigas (manejadas por la IA) y empieza
+    System.Collections.IEnumerator StartRoutine()
+    {
+        loading = true;
+        loadingText = "Preparando partida…";
+        yield return null;
+        yield return null;
+
+        CivGame game = CivGame.Instance;
+        while (game == null || !game.worldBuilt) { yield return null; game = CivGame.Instance; }
+
+        game.StartMatch(rivals);
+        while (!game.ready && !game.startFailed) yield return null;
+
+        loading = false;
+        if (game.startFailed) { choosingRivals = false; yield break; }   // no había tierra: se vuelve al menú
+        choosingRivals = false;
         Play();
     }
 
@@ -126,6 +156,12 @@ public class MainMenu : MonoBehaviour
         hint = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.LowerCenter, fontSize = Mathf.RoundToInt(16 * k) };
         hint.normal.textColor = new Color(1f, 1f, 1f, 0.5f);
 
+        hint2 = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = Mathf.RoundToInt(16 * k) };
+        hint2.normal.textColor = new Color(1f, 1f, 1f, 0.6f);
+
+        number = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = Mathf.RoundToInt(44 * k), fontStyle = FontStyle.Bold };
+        number.normal.textColor = new Color(1f, 0.95f, 0.82f);
+
         styleScale = k;
     }
 
@@ -162,9 +198,26 @@ public class MainMenu : MonoBehaviour
         float bw = 340f * k, bh = 58f * k, gap = 16f * k;
         float y = Screen.height * 0.43f;
 
-        if (!showControls)
+        if (choosingRivals)
         {
-            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Jugar", button)) Play();
+            GUI.Label(new Rect(0, y - 20f * k, Screen.width, 44f * k), "Civilizaciones enemigas", body);
+            GUI.Label(new Rect(0, y + 14f * k, Screen.width, 30f * k), "Las manejará la IA", hint2);
+            y += 64f * k;
+
+            // Selector: − número +
+            float sw = 64f * k;
+            if (GUI.Button(new Rect(cx - 150f * k, y, sw, bh), "−", button)) rivals = Mathf.Max(0, rivals - 1);
+            GUI.Label(new Rect(cx - 70f * k, y, 140f * k, bh), rivals.ToString(), number);
+            if (GUI.Button(new Rect(cx + 150f * k - sw, y, sw, bh), "+", button)) rivals = Mathf.Min(MaxRivals, rivals + 1);
+            y += bh + gap;
+
+            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Comenzar", button)) StartCoroutine(StartRoutine());
+            y += bh + gap;
+            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Volver", button)) choosingRivals = false;
+        }
+        else if (!showControls)
+        {
+            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Jugar", button)) choosingRivals = true;
             y += bh + gap;
 
             // Cargar partida: solo si hay una guardada (F5 en la partida guarda)
@@ -196,10 +249,10 @@ public class MainMenu : MonoBehaviour
             GUI.color = new Color(0f, 0f, 0f, 0.75f);
             GUI.DrawTexture(new Rect(-4, -4, Screen.width + 8, Screen.height + 8), Texture2D.whiteTexture);
             GUI.color = Color.white;
-            GUI.Label(new Rect(0, 0, Screen.width, Screen.height), "Cargando partida…", title);
+            GUI.Label(new Rect(0, 0, Screen.width, Screen.height), loadingText, title);
             return;
         }
 
-        GUI.Label(new Rect(0, 0, Screen.width, Screen.height - 14f * k), "Enter: jugar", hint);
+        GUI.Label(new Rect(0, 0, Screen.width, Screen.height - 14f * k), choosingRivals ? "Enter: comenzar" : "Enter: jugar", hint);
     }
 }
