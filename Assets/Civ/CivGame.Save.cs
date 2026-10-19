@@ -17,6 +17,8 @@ public class CivSaveData
     public int version = 1;
     public int seed;
     public int gridCells;
+    public int difficulty = 1;   // 0 fácil, 1 normal, 2 difícil
+    public List<int> diplomacy = new List<int>();   // relaciones: civilización A, civilización B, estado (0 guerra, 1 paz, 2 alianza)
     public float gameTime;
     public string savedAt;
     public List<CivSaveCiv> civs = new List<CivSaveCiv>();
@@ -126,9 +128,11 @@ public partial class CivGame
         {
             seed = earth.seed,
             gridCells = gridCells,
+            difficulty = (int)difficulty,
             gameTime = gameTime,
             savedAt = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
         };
+        ExportDiplomacy(data.diplomacy);
 
         foreach (Civ civ in civs)
         {
@@ -207,6 +211,7 @@ public partial class CivGame
         foreach (GameObject go in extra) Destroy(go);
 
         CivViews.ResetStatics();
+        ResetDiplomacy();
         ResetFog();
         fogMeshStale = true;
 
@@ -247,6 +252,7 @@ public partial class CivGame
         yield return null;
 
         gridCells = data.gridCells;
+        difficulty = (Difficulty)Mathf.Clamp(data.difficulty, 0, 2);
         grid = new WorldGrid();
         grid.Build(earth, gridCells);
         CivViews.BuildRivers(grid, earth, EarthT);
@@ -281,6 +287,7 @@ public partial class CivGame
         }
 
         if (human == null && civs.Count > 0) human = civs[0];
+        ImportDiplomacy(data.diplomacy);   // paz, guerra y alianzas entre civilizaciones
 
         // Carreteras y ferrocarril (antes de calcular las ciudades): cada tramo se dibuja con el aspecto de quien lo construyó
         for (int i = 0; i + 2 < data.roads.Count; i += 3)

@@ -75,20 +75,26 @@ public partial class CivGame
         if (human.Has(TechKind.Omniscience))
             for (int i = 0; i < n; i++) fogNew[i] = true;
 
-        foreach (City c in human.cities)
-            if (c.alive) MarkVision(c.cell, CityVision);
-
-        foreach (Unit u in human.units)
+        // Visión propia y la de las civilizaciones aliadas (las alianzas comparten el mapa)
+        foreach (Civ viewer in civs)
         {
-            if (!u.alive) continue;
+            if (viewer != human && !AreAllies(human, viewer)) continue;
 
-            int depth = (u.def.naval || u.def.air) ? FarUnitVision : UnitVision;
-            MarkVision(u.cell, depth);
-            if (u.Moving) MarkVision(u.moveTo, depth);
+            foreach (City c in viewer.cities)
+                if (c.alive) MarkVision(c.cell, CityVision);
+
+            foreach (Unit u in viewer.units)
+            {
+                if (!u.alive) continue;
+
+                int depth = (u.def.naval || u.def.air) ? FarUnitVision : UnitVision;
+                MarkVision(u.cell, depth);
+                if (u.Moving) MarkVision(u.moveTo, depth);
+            }
         }
 
         // Satélite (se construye con el Vuelo espacial): cartografía todo el planeta (queda explorado, aunque no visible)
-        bool satellites = OwnsBuilding(human, BuildingKind.Satellite);
+        bool satellites = OwnsBuilding(human, BuildingKind.Satellite) || OwnsBuilding(human, BuildingKind.ApolloProgram);
 
         bool changed = false;
         for (int i = 0; i < n; i++)

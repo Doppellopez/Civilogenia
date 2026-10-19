@@ -19,6 +19,14 @@ public class MainMenu : MonoBehaviour
     bool showControls;
     bool choosingRivals;       // pantalla "¿Cuántos rivales?" que sale al pulsar Jugar
     int rivals = 3;            // civilizaciones enemigas, manejadas por la IA
+    int difficultyIndex = 1;   // 0 fácil, 1 normal, 2 difícil
+    static readonly string[] DifficultyNames = { "Fácil", "Normal", "Difícil" };
+    static readonly string[] DifficultyHints =
+    {
+        "La IA produce y crece un 30% menos y tarda más en atacar",
+        "La IA juega con las mismas reglas que tú",
+        "La IA produce y crece un 30% más y ataca antes"
+    };
     const int MaxRivals = 5;
     bool loading;
     string loadingText = "Cargando partida…";
@@ -38,6 +46,10 @@ public class MainMenu : MonoBehaviour
         "T: tecnologías    H: ayuda    C: centrar la cámara",
         "Espacio: pausa",
         "Cursores o , . : mover la cámara    Rueda: zoom    Doble clic: seguir un punto",
+        "N: minimapa (clic para ir a un punto del planeta)",
+        "D: diplomacia (proponer paz o alianzas, declarar guerra)",
+        "F2: activar o silenciar los efectos de sonido",
+        "Mayús+T: desarrollar todas las tecnologías de la edad actual",
         "F5: guardar partida    F9: cargar partida",
         "Esc: menú de pausa (guardar y salir)"
     };
@@ -108,7 +120,7 @@ public class MainMenu : MonoBehaviour
         CivGame game = CivGame.Instance;
         while (game == null || !game.worldBuilt) { yield return null; game = CivGame.Instance; }
 
-        game.StartMatch(rivals);
+        game.StartMatch(rivals, (Difficulty)difficultyIndex);
         while (!game.ready && !game.startFailed) yield return null;
 
         loading = false;
@@ -210,7 +222,15 @@ public class MainMenu : MonoBehaviour
             if (GUI.Button(new Rect(cx - 150f * k, y, sw, bh), "−", button)) rivals = Mathf.Max(0, rivals - 1);
             GUI.Label(new Rect(cx - 70f * k, y, 140f * k, bh), rivals.ToString(), number);
             if (GUI.Button(new Rect(cx + 150f * k - sw, y, sw, bh), "+", button)) rivals = Mathf.Min(MaxRivals, rivals + 1);
-            y += bh + gap;
+            y += bh + gap * 0.6f;
+
+            // Dificultad de la IA
+            GUI.Label(new Rect(0, y, Screen.width, 30f * k), "Dificultad", body);
+            y += 32f * k;
+            difficultyIndex = GUI.Toolbar(new Rect(cx - 180f * k, y, 360f * k, 44f * k), difficultyIndex, DifficultyNames, button);
+            y += 46f * k;
+            GUI.Label(new Rect(0, y, Screen.width, 24f * k), DifficultyHints[difficultyIndex], hint2);
+            y += 30f * k + gap * 0.6f;
 
             if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Comenzar", button)) StartCoroutine(StartRoutine());
             y += bh + gap;

@@ -5,7 +5,8 @@ using UnityEngine;
 
 public enum UnitKind { Settler, Worker, Warrior, Spearman, Sailboat, Caravan, Archer, Horseman, Chariot, Phalanx, Legion, Catapult, Merchant, Galleon, Musketeer, Crossbowman, Ballista, Rifleman, Cannon, Steamship, Grenadier, Tank, Fighter, Bomber, Mecha }
 public enum TechKind { Fire, Agriculture, Husbandry, Mining, Sailing, Archery, Pottery, Riding, Wheel, Masonry, Bronze, Writing, Construction, Iron, Astronomy, Mathematics, Currency, Philosophy, EraChange, HeavyPlow, WaterMill, Camshaft, ArabicNumerals, Universities, Cities, EraChange2, Bridges, Compass, Clock, Gunpowder, PrintingPress, Crossbow, SteamEngine, Electricity, Railway, Rifle, Artillery, MovableType, Grenade, Telescope, Thermometer, EraChange3, CombustionEngine, Aviation, Radio, SteelConcrete, Penicillin, Tanks, Computers, NuclearEnergy, EraChange4, SpaceFlight, ArtificialIntelligence, Robotics, FusionEnergy, QuantumComputing, GeneticEngineering, Nanotech, Antigravity, PlasmaWeapons, EnergyShields, SpaceColonization, Omniscience }
-public enum BuildingKind{ Granary, Workshop, Market, Library, Walls, PublicBaths, GreatLibrary, Observatory, FibonacciLab, Bank, Academy, FullingMill, University, AlexandriaLibrary, PrintingHouse, GutenbergPress, Factory, HydroDam, HooverDam, Newspaper, GutenbergPrint, GalileoObservatory, FahrenheitStudy, ComputerLab, NuclearPlant, RadioTower, FordAssembly, FlemingLab, ManhattanProject, Internet, Satellite, FusionReactor, QuantumComputer, LunarBase, GeneBank, SpaceElevator }
+public enum BuildingKind{ Granary, Workshop, Market, Library, Walls, PublicBaths, GreatLibrary, Observatory, FibonacciLab, Bank, Academy, FullingMill, University, AlexandriaLibrary, PrintingHouse, GutenbergPress, Factory, HydroDam, HooverDam, Newspaper, GutenbergPrint, GalileoObservatory, FahrenheitStudy, ComputerLab, NuclearPlant, RadioTower, FordAssembly, FlemingLab, ManhattanProject, Internet, Satellite, FusionReactor, QuantumComputer, LunarBase, GeneBank, SpaceElevator, Temple, Amphitheater, Cathedral, Theater, Hospital, Stadium, Park, Mall, Cinema, VRPark, OrbitalGarden, Pyramids, LighthouseAlex, GreatWall, Colosseum, SistineChapel, MarcoPolo, EiffelTower, StatueOfLiberty, Hollywood, ApolloProgram, UnitedNations, Biosphere }
+public enum Difficulty { Easy, Normal, Hard }   // dificultad de la IA: fácil, normal o difícil
 
 public class UnitDef
 {
@@ -191,7 +192,30 @@ public static class GameDefs
         { BuildingKind.GeneBank, new BuildingDef { name = "Banco genético", cost = 1000, effect = "maravilla única: +40% de crecimiento en todas tus ciudades" } },
         { BuildingKind.SpaceElevator, new BuildingDef { name = "Ascensor espacial", cost = 1400, effect = "maravilla única: +40% de oro en todas tus ciudades" } },
         { BuildingKind.NuclearPlant, new BuildingDef { name = "Central nuclear", cost = 500, effect = "+10 producción" } },
-        { BuildingKind.PublicBaths, new BuildingDef { name = "Baños públicos", cost = 70, effect = "+50% velocidad de crecimiento" } },
+        { BuildingKind.Temple, new BuildingDef { name = "Templo", cost = 60, effect = "+2 de felicidad" } },
+        { BuildingKind.Amphitheater, new BuildingDef { name = "Anfiteatro", cost = 100, effect = "+3 de felicidad" } },
+        { BuildingKind.Cathedral, new BuildingDef { name = "Catedral", cost = 220, effect = "+4 de felicidad y +1 de ciencia" } },
+        { BuildingKind.Theater, new BuildingDef { name = "Teatro", cost = 180, effect = "+3 de felicidad" } },
+        { BuildingKind.Hospital, new BuildingDef { name = "Hospital", cost = 250, effect = "+3 de felicidad y +10% de crecimiento" } },
+        { BuildingKind.Stadium, new BuildingDef { name = "Estadio", cost = 300, effect = "+5 de felicidad" } },
+        { BuildingKind.Park, new BuildingDef { name = "Parque", cost = 150, effect = "+2 de felicidad" } },
+        { BuildingKind.Mall, new BuildingDef { name = "Centro comercial", cost = 280, effect = "+3 de felicidad y +25% de oro" } },
+        { BuildingKind.Cinema, new BuildingDef { name = "Cine", cost = 350, effect = "+5 de felicidad" } },
+        { BuildingKind.VRPark, new BuildingDef { name = "Parque de realidad virtual", cost = 450, effect = "+6 de felicidad" } },
+        { BuildingKind.OrbitalGarden, new BuildingDef { name = "Jardín orbital", cost = 600, effect = "+8 de felicidad" } },
+        { BuildingKind.Pyramids, new BuildingDef { name = "Pirámides", cost = 250, effect = "maravilla única: +25% de producción en todas tus ciudades" } },
+        { BuildingKind.LighthouseAlex, new BuildingDef { name = "Faro de Alejandría", cost = 200, effect = "maravilla única: tus barcos van un 50% más rápido" } },
+        { BuildingKind.GreatWall, new BuildingDef { name = "Gran Muralla", cost = 300, effect = "maravilla única: +4 de defensa en todas tus ciudades" } },
+        { BuildingKind.Colosseum, new BuildingDef { name = "Coliseo", cost = 300, effect = "maravilla única: +2 de felicidad en todas tus ciudades" } },
+        { BuildingKind.SistineChapel, new BuildingDef { name = "Capilla Sixtina", cost = 450, effect = "maravilla única: +3 de felicidad en todas tus ciudades" } },
+        { BuildingKind.MarcoPolo, new BuildingDef { name = "Ruta de la seda de Marco Polo", cost = 400, effect = "maravilla única: +30% de oro en todas tus ciudades" } },
+        { BuildingKind.EiffelTower, new BuildingDef { name = "Torre Eiffel", cost = 600, effect = "maravilla única: +25% de oro y +1 de felicidad en todas tus ciudades" } },
+        { BuildingKind.StatueOfLiberty, new BuildingDef { name = "Estatua de la Libertad", cost = 650, effect = "maravilla única: +15% de crecimiento y +1 de felicidad en todas tus ciudades" } },
+        { BuildingKind.Hollywood, new BuildingDef { name = "Hollywood", cost = 800, effect = "maravilla única: +3 de felicidad en todas tus ciudades" } },
+        { BuildingKind.ApolloProgram, new BuildingDef { name = "Programa Apolo", cost = 1100, effect = "maravilla única: +30% de ciencia en todas tus ciudades y descubre todo el mapa" } },
+        { BuildingKind.UnitedNations, new BuildingDef { name = "Naciones Unidas", cost = 900, effect = "maravilla única: mientras exista, todas las civilizaciones aceptan la paz y no hay cansancio de guerra" } },
+        { BuildingKind.Biosphere, new BuildingDef { name = "Biosfera", cost = 1200, effect = "maravilla única: +30% de crecimiento y +2 de felicidad en todas tus ciudades" } },
+        { BuildingKind.PublicBaths, new BuildingDef { name = "Baños públicos", cost = 70, effect = "+50% velocidad de crecimiento y +3 de felicidad" } },
     };
 
     // Comida, producción, oro por casilla
@@ -261,6 +285,10 @@ public class Civ
     // Tecnologías descubiertas y la que se está investigando ahora (con ciencia)
     public HashSet<TechKind> techs = new HashSet<TechKind>();
     public bool researching;
+    public float aiNavalTimer;      // cuenta atrás para volver a buscar sitios que colonizar por mar
+    public bool aiThreatened;       // la IA tiene enemigos cerca de alguna de sus ciudades (se actualiza en AiDefend)
+    public float aiDiploTimer;      // cuenta atrás para la próxima decisión diplomática de la IA
+    public bool aiWantsTransport;   // la IA necesita un barco de transporte para colonizar o invadir por mar
     public TechKind currentTech;
     public float researchProgress;
 
@@ -301,6 +329,8 @@ public class City
     public float food, prodStock;
     public float foodRate, prodRate, goldRate, scienceRate;
     public float hp, maxHp;
+    public float happiness;      // felicidad calculada (ver CivGame.Happiness.cs)
+    public int mood = 2;         // 0 disturbios, 1 descontenta, 2 contenta, 3 feliz
     public bool shieldApplied;   // el bonus de vida de los Escudos de energía ya se sumó a maxHp
     public float shotCooldown;
 
@@ -383,7 +413,20 @@ public class Unit
     public List<int> path = new List<int>();
 
     public float hp;
+    // Operaciones por mar de la IA (en el barco que las lleva)
+    public City aiInvade;                 // ciudad enemiga que invadir
+    public bool aiColonize;               // o bien: llevar colonos a aiTargetCell para fundar allí una ciudad
+    public int aiTargetCell = -1;
+    public bool aiSailing;                // false = cargando en el puerto, true = navegando hacia la costa
+    public List<Unit> aiPassengers;       // los que tienen que embarcar
+    public float aiOpTimer;               // segundos de juego en la fase actual
+    public bool aiWaitBoat;               // colono que no tiene sitio en su isla y espera un barco
+    public bool AiBusy { get { return aiInvade != null || aiColonize; } }
+    public GameObject fortifyView;   // defensa que se dibuja alrededor de la unidad mientras está fortificada
     public bool fortified;   // fortificada: no se mueve y gana +25 % de defensa (+50 % dentro de una ciudad propia con muro)
+    public bool fortifying;   // se está fortificando: tarda FortifySeconds en terminar
+    public float fortifyProgress;   // segundos de fortificación acumulados (con el juego a velocidad normal)
+    public const float FortifySeconds = 10f;
     public const float FortifyBonus = 0.25f;
     public const float WalledFortifyBonus = 0.5f;
     public float attackCooldown;

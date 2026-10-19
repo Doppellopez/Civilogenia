@@ -5,7 +5,7 @@ using UnityEngine;
 /// Creación de los objetos visibles del juego: ciudades, unidades, marcadores y territorio.
 /// Todo cuelga de la Tierra para que gire con ella.
 /// </summary>
-public static class CivViews
+public static partial class CivViews
 {
     static Mesh sphere, cube, cylinder, capsule;
     static Material litTemplate;
@@ -852,6 +852,10 @@ public static class CivViews
             GameObject dish = Piece(root.transform, Sphere, clConcrete, at + new Vector3(-size * 0.1f, size * 0.41f, 0f), new Vector3(size * 0.2f, size * 0.04f, size * 0.2f));
             dish.transform.localRotation = Quaternion.Euler(0f, 0f, -50f);
         }
+
+        // Edificios de felicidad y maravillas nuevas (ver CivViews.Extra.cs)
+        BuildHappinessBuildings(city, root.transform, size, civMat);
+        BuildExtraWonders(city, root.transform, grid, earth, size, civMat);
 
         if (city.buildings.Contains(BuildingKind.FusionReactor))
         {
@@ -3217,6 +3221,103 @@ public static class CivViews
             GameObject nozzle = Piece(root, Cylinder, dark, new Vector3(0f, y, -s * len * 0.5f - s * 0.02f), new Vector3(s * 0.09f, s * 0.05f, s * 0.09f));
             nozzle.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
         }
+    }
+
+    // ---------------------------------------------------------------- Unidades fortificadas
+
+    // Dibuja (o quita) la defensa que rodea a una unidad fortificada: empalizada de estacas (Edad Antigua), muro bajo de
+    // piedra (Edad Media), sacos terreros (Edad Moderna y Contemporánea) o un cerco de luz con pilones (Edad Futura),
+    // más una bandera del color de la civilización. Cuelga de la unidad, así que se mueve con ella.
+    public static void SyncFortifyMarker(Unit u, WorldGrid grid)
+    {
+        if (u.view == null) return;
+
+        if (!u.fortified && !u.fortifying)
+        {
+            if (u.fortifyView != null) Object.Destroy(u.fortifyView);
+            u.fortifyView = null;
+            return;
+        }
+
+        // Mientras se fortifica, la defensa "crece" desde el suelo hasta completarse
+        float built = u.fortified ? 1f : Mathf.Clamp01(u.fortifyProgress / Unit.FortifySeconds);
+        if (u.fortifyView != null)
+        {
+            u.fortifyView.transform.localScale = new Vector3(1f, 0.15f + 0.85f * built, 1f);
+            return;
+        }
+
+        float size = grid.spacing * 0.35f;
+        float radius = size * 0.62f;
+
+        GameObject g = new GameObject("Fortificación");
+        g.transform.SetParent(u.view.transform, false);
+        u.fortifyView = g;
+        g.transform.localScale = new Vector3(1f, 0.15f + 0.85f * built, 1f);
+        Transform t = g.transform;
+
+        Material dark = LitMaterial(FutGraphite);
+        Material civ = LitMaterial(u.owner.color);
+
+        if (u.owner.Has(TechKind.EraChange4))
+        {
+            // Futuro: cerco de luz y cuatro pilones con la punta luminosa
+            Material glow = FutGlow(FutCyan, 2f);
+            for (int i = 0; i < 14; i++)
+            {
+                float a = i / 14f * Mathf.PI * 2f;
+                Piece(t, Sphere, glow, new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * radius + new Vector3(0f, size * 0.04f, 0f), Vector3.one * size * 0.06f);
+            }
+            for (int i = 0; i < 4; i++)
+            {
+                float a = i * Mathf.PI * 0.5f + Mathf.PI * 0.25f;
+                Vector3 p = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * radius;
+                Piece(t, Cylinder, dark, p + new Vector3(0f, size * 0.17f, 0f), new Vector3(size * 0.04f, size * 0.17f, size * 0.04f));
+                Piece(t, Sphere, glow, p + new Vector3(0f, size * 0.36f, 0f), Vector3.one * size * 0.07f);
+            }
+        }
+        else if (u.owner.Has(TechKind.EraChange2))
+        {
+            // Moderna y contemporánea: dos hileras de sacos terreros
+            Material bag = LitMaterial(new Color(0.72f, 0.62f, 0.42f));
+            for (int layer = 0; layer < 2; layer++)
+                for (int i = 0; i < 12; i++)
+                {
+                    float a = (i + layer * 0.5f) / 12f * Mathf.PI * 2f;
+                    Vector3 r = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
+                    GameObject b = Piece(t, Sphere, bag, r * radius + new Vector3(0f, size * (0.06f + layer * 0.1f), 0f), new Vector3(size * 0.2f, size * 0.1f, size * 0.13f));
+                    b.transform.localRotation = Quaternion.LookRotation(r, Vector3.up);
+                }
+        }
+        else if (u.owner.Has(TechKind.EraChange))
+        {
+            // Edad Media: muro bajo de piedra
+            Material stone = LitMaterial(new Color(0.58f, 0.57f, 0.55f));
+            Material stoneDark = LitMaterial(new Color(0.42f, 0.41f, 0.4f));
+            for (int i = 0; i < 12; i++)
+            {
+                float a = i / 12f * Mathf.PI * 2f;
+                Vector3 r = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
+                GameObject b = Piece(t, Cube, i % 2 == 0 ? stone : stoneDark, r * radius + new Vector3(0f, size * 0.1f, 0f), new Vector3(size * 0.22f, size * 0.2f, size * 0.12f));
+                b.transform.localRotation = Quaternion.LookRotation(r, Vector3.up);
+            }
+        }
+        else
+        {
+            // Edad Antigua: empalizada de estacas inclinadas hacia fuera
+            Material wood = LitMaterial(new Color(0.45f, 0.3f, 0.16f));
+            for (int i = 0; i < 12; i++)
+            {
+                float a = i / 12f * Mathf.PI * 2f;
+                Vector3 r = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
+                GameObject b = Piece(t, Cylinder, wood, r * radius + new Vector3(0f, size * 0.14f, 0f), new Vector3(size * 0.045f, size * 0.15f, size * 0.045f));
+                b.transform.localRotation = Quaternion.AngleAxis(22f, Vector3.Cross(Vector3.up, r));
+            }
+        }
+
+        // Bandera de la civilización detrás de la unidad
+        Piece(t, Cylinder, dark, new Vector3(-radius * 0.55f, size * 0.3f, -radius * 0.55f), new Vector3(size * 0.015f, size * 0.3f, size * 0.015f));
+        Piece(t, Cube, civ, new Vector3(-radius * 0.55f + size * 0.09f, size * 0.52f, -radius * 0.55f), new Vector3(size * 0.16f, size * 0.1f, size * 0.01f));
     }
 
     // ---------------------------------------------------------------- Unidades futuristas

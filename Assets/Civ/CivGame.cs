@@ -29,6 +29,18 @@ public partial class CivGame : MonoBehaviour
     [Tooltip("Segundos antes de que la IA empiece a atacar")]
     public float aiGraceSeconds = 90f;
 
+    [Tooltip("Dificultad de las civilizaciones de la IA (se elige al empezar la partida)")]
+    public Difficulty difficulty = Difficulty.Normal;
+
+    // Efectos de la dificultad en la IA (el jugador no cambia):
+    //   Fácil:   -30 % de producción, ciencia, oro y crecimiento, piensa más despacio, tarda más en atacar y funda hasta 5 ciudades
+    //   Normal:  como hasta ahora
+    //   Difícil: +30 % de producción, ciencia, oro y crecimiento, piensa más deprisa, ataca antes y funda hasta 10 ciudades
+    float AiRateMultiplier { get { return difficulty == Difficulty.Easy ? 0.7f : difficulty == Difficulty.Hard ? 1.3f : 1f; } }
+    float AiThinkInterval { get { return difficulty == Difficulty.Easy ? 3f : difficulty == Difficulty.Hard ? 1f : 1.5f; } }
+    float AiGraceTime { get { return difficulty == Difficulty.Easy ? aiGraceSeconds * 2.7f : difficulty == Difficulty.Hard ? aiGraceSeconds * 0.35f : aiGraceSeconds; } }
+    int AiMaxCities { get { return difficulty == Difficulty.Easy ? 5 : difficulty == Difficulty.Hard ? 10 : 8; } }
+
     [Header("Planeta")]
     [Tooltip("Velocidad de giro de la Tierra durante la partida")]
     public float earthSpin = 0.4f;
@@ -108,8 +120,9 @@ public partial class CivGame : MonoBehaviour
     }
 
     /// <summary>El jugador elige cuántas civilizaciones enemigas habrá (0-5); todas las demás las maneja la IA. Empieza la partida.</summary>
-    public void StartMatch(int enemies)
+    public void StartMatch(int enemies, Difficulty level = Difficulty.Normal)
     {
+        difficulty = level;
         civCount = Mathf.Clamp(1 + enemies, 1, GameDefs.CivNames.Length);
         aiEnabled = true;
         startFailed = false;
@@ -259,7 +272,7 @@ public partial class CivGame : MonoBehaviour
                 civ.aiTimer -= dt;
                 if (civ.aiTimer <= 0f)
                 {
-                    civ.aiTimer = 1.5f;
+                    civ.aiTimer = AiThinkInterval;
                     AiThink(civ);
                 }
             }
@@ -448,11 +461,16 @@ public partial class CivGame : MonoBehaviour
         if (city.owner.Has(TechKind.Robotics)) city.prodRate *= 1.25f; // Robótica: +25 % de producción en todas las ciudades
         if (city.owner.Has(TechKind.FusionEnergy)) city.prodRate *= 1.5f; // Energía de fusión: +50 % de producción en todas las ciudades
         if (city.owner.Has(TechKind.Nanotech)) city.prodRate *= 1.2f; // Nanotecnología: +20 % de producción en todas las ciudades
+        if (OwnsBuilding(city.owner, BuildingKind.Pyramids)) city.prodRate *= 1.25f; // Pirámides: +25 % de producción en todas las ciudades
         if (OwnsBuilding(city.owner, BuildingKind.FordAssembly)) city.prodRate *= 1.25f; // Cadena de montaje de Ford: +25 % de producción en todas las ciudades
         if (OwnsBuilding(city.owner, BuildingKind.ManhattanProject)) city.prodRate *= 1.5f; // Proyecto Manhattan: +50 % de producción en todas las ciudades
         city.goldRate = total.z + roadTiles + (city.buildings.Contains(BuildingKind.Market) ? 2f : 0f);
         city.scienceRate = (0.4f + 0.3f * city.pop + roadTiles) * (city.buildings.Contains(BuildingKind.Library) ? 2f : 1f);
         if (city.buildings.Contains(BuildingKind.Bank)) city.goldRate *= 1.5f; // Banco: +50 % de oro en esta ciudad
+        if (city.buildings.Contains(BuildingKind.Mall)) city.goldRate *= 1.25f; // Centro comercial: +25 % de oro en esta ciudad
+        if (OwnsBuilding(city.owner, BuildingKind.MarcoPolo)) city.goldRate *= 1.3f; // Marco Polo: +30 % de oro en todas las ciudades
+        if (OwnsBuilding(city.owner, BuildingKind.EiffelTower)) city.goldRate *= 1.25f; // Torre Eiffel: +25 % de oro en todas las ciudades
+        if (city.buildings.Contains(BuildingKind.Cathedral)) city.scienceRate += 1f; // Catedral: +1 de ciencia
         if (city.owner.Has(TechKind.ArabicNumerals))
         {
             city.goldRate *= 1.25f; // Cifras arábigas: +25 % de oro y de ciencia en todas las ciudades
@@ -476,6 +494,7 @@ public partial class CivGame : MonoBehaviour
         if (OwnsBuilding(city.owner, BuildingKind.GutenbergPress)) city.scienceRate *= 1.5f; // Imprenta de Gutenberg: x1,5 en todas las ciudades
         if (OwnsBuilding(city.owner, BuildingKind.GalileoObservatory)) city.scienceRate *= 1.4f; // Observatorio de Galileo: +40 % en todas las ciudades
         if (OwnsBuilding(city.owner, BuildingKind.FibonacciLab)) city.scienceRate *= 1.25f; // Laboratorio de Fibonacci: +25 % en todas las ciudades
+        if (OwnsBuilding(city.owner, BuildingKind.ApolloProgram)) city.scienceRate *= 1.3f; // Programa Apolo: +30 % de ciencia en todas las ciudades
         if (OwnsBuilding(city.owner, BuildingKind.RadioTower)) city.scienceRate *= 1.3f; // Torre de radio de Marconi: +30 % en todas las ciudades
         if (OwnsBuilding(city.owner, BuildingKind.ManhattanProject)) city.scienceRate *= 1.25f; // Proyecto Manhattan: x1,25 en todas las ciudades
         if (OwnsBuilding(city.owner, BuildingKind.Internet)) city.scienceRate *= 1.5f; // Internet: x1,5 en todas las ciudades
@@ -495,6 +514,21 @@ public partial class CivGame : MonoBehaviour
         float trade = 1f + TradeBonusOf(city);
         city.goldRate *= trade;
         city.scienceRate *= trade;
+
+        // Felicidad: feliz +10 %, descontenta -25 %, disturbios 0 (ver CivGame.Happiness.cs)
+        float moodK = ApplyHappiness(city);
+        city.prodRate *= moodK;
+        city.scienceRate *= moodK;
+        city.goldRate *= moodK;
+
+        // Dificultad: la IA produce más o menos según el nivel elegido
+        if (!city.owner.isHuman)
+        {
+            float k = AiRateMultiplier;
+            city.prodRate *= k;
+            city.scienceRate *= k;
+            city.goldRate *= k;
+        }
 
         UpdateCivRates(city.owner);
     }
@@ -530,12 +564,17 @@ public partial class CivGame : MonoBehaviour
 
         // Comida y crecimiento
         float surplus = c.FoodSurplus;
+        if (surplus > 0f && !c.owner.isHuman) surplus *= AiRateMultiplier;   // dificultad: la IA crece más o menos deprisa
         if (surplus > 0f && c.owner.Has(TechKind.Thermometer)) surplus *= 1.2f; // Termómetro: +20 % de crecimiento en todas las ciudades
         if (surplus > 0f && c.owner.Has(TechKind.Penicillin)) surplus *= 1.3f; // Penicilina: +30 % de crecimiento en todas las ciudades
         if (surplus > 0f && OwnsBuilding(c.owner, BuildingKind.FlemingLab)) surplus *= 1.3f; // Laboratorio de Fleming: +30 % de crecimiento en todas las ciudades
         if (surplus > 0f && c.owner.Has(TechKind.GeneticEngineering)) surplus *= 1.5f; // Ingeniería genética: +50 % de crecimiento en todas las ciudades
         if (surplus > 0f && OwnsBuilding(c.owner, BuildingKind.GeneBank)) surplus *= 1.4f; // Banco genético: +40 % de crecimiento en todas las ciudades
+        if (surplus > 0f && OwnsBuilding(c.owner, BuildingKind.StatueOfLiberty)) surplus *= 1.15f; // Estatua de la Libertad: +15 % de crecimiento en todas las ciudades
+        if (surplus > 0f && OwnsBuilding(c.owner, BuildingKind.Biosphere)) surplus *= 1.3f; // Biosfera: +30 % de crecimiento en todas las ciudades
+        if (surplus > 0f && c.buildings.Contains(BuildingKind.Hospital)) surplus *= 1.1f; // Hospital: +10 % de crecimiento en esta ciudad
         if (surplus > 0f && OwnsBuilding(c.owner, BuildingKind.FahrenheitStudy)) surplus *= 1.3f; // Estudio de Fahrenheit: +30 % de crecimiento en todas las ciudades
+        if (surplus > 0f) surplus *= MoodGrowthFactor(c.mood);   // felicidad: feliz +10 %, descontenta la mitad, disturbios nada
         c.food += surplus * dt;
 
         // Sin Fuego la ciudad no pasa de PopWithoutFire habitantes
@@ -593,7 +632,7 @@ public partial class CivGame : MonoBehaviour
         {
             foreach (Unit u in allUnits.ToArray())
             {
-                if (!u.alive || u.owner == c.owner || !u.def.IsMilitary) continue;
+                if (!u.alive || u.owner == c.owner || !u.def.IsMilitary || !AtWar(c.owner, u.owner)) continue;
                 if (!grid.Adjacent(c.cell, u.cell)) continue;
 
                 u.hp -= 3f + (c.buildings.Contains(BuildingKind.Walls) ? 2f : 0f);
@@ -628,7 +667,11 @@ public partial class CivGame : MonoBehaviour
             if (built.kind == UnitKind.Caravan) built.homeCity = c;
             RecomputeCity(c);
             RebuildCityView(c);
-            if (c.owner.isHuman) AddLog(c.name + ": " + d.name + " listo", c.owner.color);
+            if (c.owner.isHuman)
+            {
+                AddLog(c.name + ": " + d.name + " listo", c.owner.color);
+                GameSfx.Play(Sfx.UnitReady);
+            }
         }
         else
         {
@@ -643,7 +686,11 @@ public partial class CivGame : MonoBehaviour
             RecomputeCity(c);
             RebuildCityView(c);
             if (c.itemBuilding == BuildingKind.GutenbergPrint) GrantNewspapers(c.owner);
-            if (c.owner.isHuman) AddLog(c.name + ": " + GameDefs.Buildings[c.itemBuilding].name + " construido", c.owner.color);
+            if (c.owner.isHuman)
+            {
+                AddLog(c.name + ": " + GameDefs.Buildings[c.itemBuilding].name + " construido", c.owner.color);
+                GameSfx.Play(IsWonder(c.itemBuilding) ? Sfx.Wonder : Sfx.Built);
+            }
         }
     }
 
@@ -706,7 +753,10 @@ public partial class CivGame : MonoBehaviour
     {
         return kind == BuildingKind.GreatLibrary || kind == BuildingKind.FibonacciLab || kind == BuildingKind.AlexandriaLibrary || kind == BuildingKind.GutenbergPress || kind == BuildingKind.HooverDam || kind == BuildingKind.GutenbergPrint || kind == BuildingKind.GalileoObservatory || kind == BuildingKind.FahrenheitStudy
             || kind == BuildingKind.RadioTower || kind == BuildingKind.FordAssembly || kind == BuildingKind.FlemingLab || kind == BuildingKind.ManhattanProject || kind == BuildingKind.Internet
-            || kind == BuildingKind.GeneBank || kind == BuildingKind.SpaceElevator;
+            || kind == BuildingKind.GeneBank || kind == BuildingKind.SpaceElevator
+            || kind == BuildingKind.Pyramids || kind == BuildingKind.LighthouseAlex || kind == BuildingKind.GreatWall || kind == BuildingKind.Colosseum
+            || kind == BuildingKind.SistineChapel || kind == BuildingKind.MarcoPolo || kind == BuildingKind.EiffelTower || kind == BuildingKind.StatueOfLiberty
+            || kind == BuildingKind.Hollywood || kind == BuildingKind.ApolloProgram || kind == BuildingKind.UnitedNations || kind == BuildingKind.Biosphere;
     }
 
     // La maravilla se levanta en una celdilla libre del territorio de la ciudad (la más cercana al centro);
@@ -803,6 +853,29 @@ public partial class CivGame : MonoBehaviour
         if (kind == BuildingKind.LunarBase && !city.owner.Has(TechKind.SpaceColonization)) return false;
         if (kind == BuildingKind.GeneBank && (!city.owner.Has(TechKind.GeneticEngineering) || WonderExists(kind))) return false;
         if (kind == BuildingKind.SpaceElevator && (!city.owner.Has(TechKind.SpaceColonization) || WonderExists(kind))) return false;
+        if (kind == BuildingKind.Pyramids && (!city.owner.Has(TechKind.Masonry) || WonderExists(kind))) return false;
+        if (kind == BuildingKind.LighthouseAlex && (!city.owner.Has(TechKind.Sailing) || WonderExists(kind))) return false;
+        if (kind == BuildingKind.GreatWall && (!city.owner.Has(TechKind.Construction) || WonderExists(kind))) return false;
+        if (kind == BuildingKind.Colosseum && (!city.owner.Has(TechKind.Construction) || WonderExists(kind))) return false;
+        if (kind == BuildingKind.SistineChapel && (!city.owner.Has(TechKind.Universities) || WonderExists(kind))) return false;
+        if (kind == BuildingKind.MarcoPolo && (!city.owner.Has(TechKind.Compass) || WonderExists(kind))) return false;
+        if (kind == BuildingKind.EiffelTower && (!city.owner.Has(TechKind.Electricity) || WonderExists(kind))) return false;
+        if (kind == BuildingKind.StatueOfLiberty && (!city.owner.Has(TechKind.Railway) || WonderExists(kind))) return false;
+        if (kind == BuildingKind.Hollywood && (!city.owner.Has(TechKind.Computers) || WonderExists(kind))) return false;
+        if (kind == BuildingKind.ApolloProgram && (!city.owner.Has(TechKind.Aviation) || WonderExists(kind))) return false;
+        if (kind == BuildingKind.UnitedNations && (!city.owner.Has(TechKind.Radio) || WonderExists(kind))) return false;
+        if (kind == BuildingKind.Biosphere && (!city.owner.Has(TechKind.GeneticEngineering) || WonderExists(kind))) return false;
+        if (kind == BuildingKind.Temple && !city.owner.Has(TechKind.Pottery)) return false;
+        if (kind == BuildingKind.Amphitheater && !city.owner.Has(TechKind.Construction)) return false;
+        if (kind == BuildingKind.Cathedral && !city.owner.Has(TechKind.Universities)) return false;
+        if (kind == BuildingKind.Theater && !city.owner.Has(TechKind.MovableType)) return false;
+        if (kind == BuildingKind.Hospital && !city.owner.Has(TechKind.Penicillin)) return false;
+        if (kind == BuildingKind.Stadium && !city.owner.Has(TechKind.Radio)) return false;
+        if (kind == BuildingKind.Park && !city.owner.Has(TechKind.CombustionEngine)) return false;
+        if (kind == BuildingKind.Mall && !city.owner.Has(TechKind.SteelConcrete)) return false;
+        if (kind == BuildingKind.Cinema && !city.owner.Has(TechKind.Computers)) return false;
+        if (kind == BuildingKind.VRPark && !city.owner.Has(TechKind.ArtificialIntelligence)) return false;
+        if (kind == BuildingKind.OrbitalGarden && !city.owner.Has(TechKind.SpaceColonization)) return false;
         if (kind == BuildingKind.Satellite && (!city.owner.Has(TechKind.SpaceFlight) || OwnsBuilding(city.owner, kind))) return false;
         if (kind == BuildingKind.ComputerLab && !city.owner.Has(TechKind.Computers)) return false;
         if (kind == BuildingKind.NuclearPlant && !city.owner.Has(TechKind.NuclearEnergy)) return false;
@@ -952,7 +1025,11 @@ public partial class CivGame : MonoBehaviour
         civ.researching = false;
         civ.researchProgress = 0f;
 
-        if (civ.isHuman) AddLog("Descubres " + def.name + " (" + def.unlocks + ")", civ.color);
+        if (civ.isHuman)
+        {
+            AddLog("Descubres " + def.name + " (" + def.unlocks + ")", civ.color);
+            GameSfx.Play(Sfx.Tech);
+        }
 
         // Victoria por tecnología: la primera civilización que descubre la Omnisciencia gana la partida
         if (civ.currentTech == TechKind.Omniscience && winner == null)
@@ -1527,26 +1604,40 @@ public partial class CivGame : MonoBehaviour
     }
 
     /// <summary>
-    /// Fortifica (o quita la fortificación de) una unidad militar parada: se queda donde está y gana +25 % de defensa.
+    /// Fortifica (o cancela/quita la fortificación de) una unidad militar parada: tarda 10 s en estar lista y entonces gana +25 % de defensa.
     /// Se pierde al darle una orden de movimiento o ataque.
     /// </summary>
     public bool ToggleFortify(Unit u)
     {
         if (u == null || !u.alive || !u.def.IsMilitary || u.carriedBy != null) return false;
 
-        if (u.fortified) { u.fortified = false; return true; }
+        // Ya fortificada o fortificándose: se cancela
+        if (u.fortified || u.fortifying)
+        {
+            u.fortified = false;
+            u.fortifying = false;
+            u.fortifyProgress = 0f;
+            CivViews.SyncFortifyMarker(u, grid);
+            return true;
+        }
+
         if (u.Moving) return false;
 
+        // Empieza a fortificarse: estará lista en Unit.FortifySeconds (10 s)
         u.path.Clear();
         u.targetUnit = null;
         u.targetCity = null;
-        u.fortified = true;
+        u.fortifying = true;
+        u.fortifyProgress = 0f;
+        CivViews.SyncFortifyMarker(u, grid);
         return true;
     }
 
     public void OrderMove(Unit u, int cell)
     {
         u.fortified = false;
+        u.fortifying = false;
+        u.fortifyProgress = 0f;
         CancelRoad(u);
         u.targetUnit = null;
         u.targetCity = null;
@@ -1785,7 +1876,14 @@ public partial class CivGame : MonoBehaviour
     public void OrderAttack(Unit u, Unit target)
     {
         if (!u.def.IsMilitary || target == null) return;
+        if (!AtWar(u.owner, target.owner))
+        {
+            if (u.owner.isHuman) AddLog("No estás en guerra con " + target.owner.name + " (D: diplomacia)", Color.red);
+            return;
+        }
         u.fortified = false;
+        u.fortifying = false;
+        u.fortifyProgress = 0f;
         CancelRoad(u);
         u.targetCity = null;
         u.targetUnit = target;
@@ -1797,7 +1895,14 @@ public partial class CivGame : MonoBehaviour
     public void OrderAttack(Unit u, City target)
     {
         if (!u.def.IsMilitary || target == null) return;
+        if (!AtWar(u.owner, target.owner))
+        {
+            if (u.owner.isHuman) AddLog("No estás en guerra con " + target.owner.name + " (D: diplomacia)", Color.red);
+            return;
+        }
         u.fortified = false;
+        u.fortifying = false;
+        u.fortifyProgress = 0f;
         CancelRoad(u);
         u.targetUnit = null;
         u.targetCity = target;
@@ -1813,6 +1918,7 @@ public partial class CivGame : MonoBehaviour
         City city = FoundCity(settler.owner, settler.cell);
         if (city == null) return false;
 
+        if (settler.owner.isHuman) GameSfx.Play(Sfx.Found);
         KillSilently(settler);
         return true;
     }
@@ -1856,7 +1962,25 @@ public partial class CivGame : MonoBehaviour
 
     void TickUnit(Unit u, float dt)
     {
-        if (u.fortified && (u.Moving || u.path.Count > 0)) u.fortified = false;   // al moverse pierde la fortificación
+        if ((u.fortified || u.fortifying) && (u.Moving || u.path.Count > 0))   // al moverse pierde la fortificación (y cancela una en curso)
+        {
+            u.fortified = false;
+            u.fortifying = false;
+            u.fortifyProgress = 0f;
+        }
+
+        // Fortificándose: tarda FortifySeconds (segundos con el juego a velocidad normal) en estar lista
+        if (u.fortifying)
+        {
+            u.fortifyProgress += dt / SimulationScale;
+            if (u.fortifyProgress >= Unit.FortifySeconds)
+            {
+                u.fortifying = false;
+                u.fortified = true;
+            }
+        }
+
+        CivViews.SyncFortifyMarker(u, grid);   // dibuja o quita la defensa de la fortificación
 
         if (u.kind == UnitKind.Worker && u.owner.Has(TechKind.Robotics)) dt *= 2f; // Robótica: los trabajadores trabajan (y se mueven) el doble de rápido
 
@@ -1919,8 +2043,8 @@ public partial class CivGame : MonoBehaviour
         }
 
         // Validar objetivos
-        if (u.targetUnit != null && (!u.targetUnit.alive || u.targetUnit.owner == u.owner || u.targetUnit.carriedBy != null)) u.targetUnit = null;
-        if (u.targetCity != null && (!u.targetCity.alive || u.targetCity.owner == u.owner)) u.targetCity = null;
+        if (u.targetUnit != null && (!u.targetUnit.alive || u.targetUnit.owner == u.owner || u.targetUnit.carriedBy != null || !AtWar(u.owner, u.targetUnit.owner))) u.targetUnit = null;
+        if (u.targetCity != null && (!u.targetCity.alive || u.targetCity.owner == u.owner || !AtWar(u.owner, u.targetCity.owner))) u.targetCity = null;
 
         if (u.def.IsMilitary && u.HasTarget)
         {
@@ -1991,7 +2115,7 @@ public partial class CivGame : MonoBehaviour
     {
         // Las carreteras y recorrer un río duplican la velocidad en ese tramo, sea cual sea el terreno
         float factor = u.def.air ? 1f // Los aviones vuelan a velocidad constante sobre cualquier terreno
-            : u.def.naval ? (u.owner.Has(TechKind.Compass) ? 1.5f : 1f) // Brújula magnética: +50 % de velocidad en el mar
+            : u.def.naval ? (u.owner.Has(TechKind.Compass) ? 1.5f : 1f) * (OwnsBuilding(u.owner, BuildingKind.LighthouseAlex) ? 1.5f : 1f) // Brújula magnética y Faro de Alejandría: +50 % de velocidad en el mar cada uno
             : grid.HasRail(u.cell, u.moveTo)
             ? WorldGrid.RailSpeedFactor // Ferrocarril: el doble de rápido que una carretera
             : grid.HasRoad(u.cell, u.moveTo)
@@ -2021,7 +2145,7 @@ public partial class CivGame : MonoBehaviour
 
         foreach (Unit e in allUnits)
         {
-            if (!e.alive || e.owner == u.owner || e.carriedBy != null) continue;
+            if (!e.alive || e.owner == u.owner || e.carriedBy != null || !AtWar(u.owner, e.owner)) continue;
 
             float a = grid.AngleBetween(u.cell, e.cell);
             if (a > range || a >= best) continue;
@@ -2035,7 +2159,7 @@ public partial class CivGame : MonoBehaviour
 
         foreach (City c in allCities)
         {
-            if (!c.alive || c.owner == u.owner) continue;
+            if (!c.alive || c.owner == u.owner || !AtWar(u.owner, c.owner)) continue;
 
             float a = grid.AngleBetween(u.cell, c.cell);
             if (a > range || a >= best) continue;
@@ -2048,6 +2172,7 @@ public partial class CivGame : MonoBehaviour
     void Attack(Unit u)
     {
         u.attackCooldown = 1f;
+        AttackSound(u);
 
         float mult = 0.5f + 0.5f * (u.hp / u.def.hp);
         float dmg = u.def.attack * Random.Range(0.85f, 1.15f) * mult;
@@ -2055,7 +2180,7 @@ public partial class CivGame : MonoBehaviour
         if (u.targetCity != null)
         {
             City c = u.targetCity;
-            float defense = 5f + (c.buildings.Contains(BuildingKind.Walls) ? 6f : 0f);
+            float defense = 5f + (c.buildings.Contains(BuildingKind.Walls) ? 6f : 0f) + (OwnsBuilding(c.owner, BuildingKind.GreatWall) ? 4f : 0f);   // Gran Muralla: +4 de defensa en todas las ciudades
             c.hp -= dmg * 6f / (6f + defense);
 
             if (c.hp <= 0f)
@@ -2082,6 +2207,7 @@ public partial class CivGame : MonoBehaviour
 
     void CaptureCity(City c, Civ newOwner)
     {
+        if (human != null && (c.owner == human || newOwner == human)) GameSfx.Play(Sfx.Capture);
         Civ old = c.owner;
         old.cities.Remove(c);
         old.territoryDirty = true;
@@ -2136,6 +2262,9 @@ public partial class CivGame : MonoBehaviour
         // Investigación: prefiere la economía, la ciencia y los cambios de era, y las más baratas
         if (!civ.researching) AiResearch(civ);
 
+        // Amenazas: refuerzos, defensa y compras en las ciudades con enemigos cerca (antes que cualquier otra decisión)
+        AiDefend(civ);
+
         // Colonos inactivos buscan dónde fundar
         foreach (Unit u in civ.units.ToArray())
         {
@@ -2167,7 +2296,9 @@ public partial class CivGame : MonoBehaviour
             }
         }
 
-        if (gameTime > aiGraceSeconds) AiMilitary(civ);
+        AiDiplomacy(civ);   // paz, alianzas y declaraciones de guerra
+        AiNaval(civ);   // colonizar otras islas por mar (los colonos sin sitio esperan un barco)
+        if (gameTime > AiGraceTime) AiMilitary(civ);
     }
 
     // Tecnologías que mejoran la economía, la ciencia o la población: la IA las prefiere para prosperar
@@ -2306,12 +2437,9 @@ public partial class CivGame : MonoBehaviour
             }
         }
 
-        // Sin sitio donde fundar: mejor construir carreteras entre sus ciudades
-        if (bestCell < 0)
-        {
-            AiRoad(u);
-            return;
-        }
+        // Sin sitio donde fundar en esta isla: el colono espera un barco que lo lleve a otra isla (ver AiNaval)
+        u.aiWaitBoat = bestCell < 0;
+        if (bestCell < 0) return;
 
         if (bestCell == u.cell)
         {
@@ -2356,6 +2484,32 @@ public partial class CivGame : MonoBehaviour
         {
             SetProduction(c, bestMilitary);
             return;
+        }
+
+        // 2b) Barco de transporte para colonizar o invadir por mar (hasta 2 en total, contando los que ya se están construyendo)
+        if (civ.aiWantsTransport && SeaCellNextTo(c) >= 0)
+        {
+            int transports = 0;
+            foreach (Unit u in civ.units) if (IsTransport(u)) transports++;
+            foreach (City o in civ.cities) if (o.hasItem && o.itemIsUnit && GameDefs.Units[o.itemUnit].naval && GameDefs.Units[o.itemUnit].capacity > 0) transports++;
+
+            UnitKind? ship = AiBestTransport(c);
+            if (transports < 2 && ship.HasValue)
+            {
+                SetProduction(c, ship.Value);
+                return;
+            }
+        }
+
+        // 2c) Felicidad: una ciudad descontenta o en disturbios construye el edificio que más felicidad da por coste
+        if (c.mood <= MoodUnhappy)
+        {
+            BuildingKind? joy = BestHappinessBuilding(c);
+            if (joy.HasValue)
+            {
+                SetProduction(c, joy.Value);
+                return;
+            }
         }
 
         // 3) Trabajadores para mejorar el terreno y construir carreteras
@@ -2403,22 +2557,49 @@ public partial class CivGame : MonoBehaviour
         SetProduction(c, bestMilitary);
     }
 
-    const int AiMaxCities = 8;
 
     void AiMilitary(Civ civ)
     {
         List<Unit> idle = new List<Unit>();
         foreach (Unit u in civ.units)
         {
-            if (u.def.IsMilitary && !u.def.naval && !u.Moving && u.path.Count == 0 && !u.HasTarget) idle.Add(u);
+            if (AiIdleSoldier(u)) idle.Add(u);
+        }
+
+        // Tropas desembarcadas en una isla donde no tenemos ciudades: atacan directamente la ciudad enemiga más cercana de ella
+        foreach (Unit u in idle.ToArray())
+        {
+            int comp = grid.component[u.cell];
+            if (comp < 0) continue;
+
+            bool ownCityHere = false;
+            foreach (City c in civ.cities) if (c.alive && grid.component[c.cell] == comp) { ownCityHere = true; break; }
+            if (ownCityHere) continue;
+
+            City near = null;
+            float nearAngle = float.MaxValue;
+            foreach (City e in allCities)
+            {
+                if (!e.alive || e.owner == civ || !AtWar(civ, e.owner) || grid.component[e.cell] != comp) continue;
+                float a = grid.AngleBetween(u.cell, e.cell);
+                if (a < nearAngle) { nearAngle = a; near = e; }
+            }
+
+            if (near == null) continue;
+
+            OrderAttack(u, near);
+            idle.Remove(u);
         }
 
         // Las que están paradas dentro de una ciudad propia se fortifican (+25 % de defensa)
         foreach (Unit u in idle)
         {
             City here = grid.cityAt[u.cell];
-            if (!u.fortified && here != null && here.owner == civ) ToggleFortify(u);
+            if (!u.fortified && !u.fortifying && here != null && here.owner == civ) ToggleFortify(u);
         }
+
+        // Con una ciudad amenazada no se lanzan ataques: el ejército se queda a defender
+        if (civ.aiThreatened) return;
 
         // Se dejan algunos de guarnición
         if (idle.Count < civ.cities.Count + 3) return;
@@ -2430,7 +2611,7 @@ public partial class CivGame : MonoBehaviour
 
         foreach (City c in allCities)
         {
-            if (!c.alive || c.owner == civ) continue;
+            if (!c.alive || c.owner == civ || !AtWar(civ, c.owner)) continue;
             if (grid.component[scout.cell] != grid.component[c.cell]) continue;
 
             float a = grid.AngleBetween(scout.cell, c.cell) / grid.angularSpacing;   // distancia en casillas

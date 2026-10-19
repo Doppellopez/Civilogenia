@@ -18,10 +18,16 @@ public class CivUI : MonoBehaviour
     City selCity;
     bool showHelp = true;
     bool showTech;
+    bool showDiplomacy;       // panel de diplomacia (tecla D)
+    string diploMessage = "";
     bool gameOverDismissed;   // el jugador cerró la pantalla de partida terminada para seguir jugando
     bool gameOverOpened;
     float gameOverSavedSpeed = 1f;
     GUIStyle headStyle, noteStyle;
+
+    // Minimapa (tecla N para mostrarlo u ocultarlo)
+    readonly CivMinimap minimap = new CivMinimap();
+    bool showMinimap = true;
 
     // Menú de pausa (Esc): reanudar, guardar y salir (con confirmación)
     bool pauseOpen;
@@ -73,6 +79,7 @@ public class CivUI : MonoBehaviour
         instance = this;
         if (game == null) game = CivGame.Instance;
         if (game == null || !game.ready) return;
+        minimap.Tick(game);   // prepara y refresca el minimapa
         if (IntroVideo.Active || MainMenu.Active) return;   // durante la introducción y el menú no se atiende el teclado ni el ratón del juego
         if (game.GameOver && !gameOverDismissed) return;      // con la pantalla de partida terminada abierta, el juego no atiende nada más
 
@@ -114,7 +121,20 @@ public class CivUI : MonoBehaviour
 
 
         if (Input.GetKeyDown(KeyCode.H)) showHelp = !showHelp;
-        if (Input.GetKeyDown(KeyCode.T)) showTech = !showTech;
+        if (Input.GetKeyDown(KeyCode.N)) showMinimap = !showMinimap;
+        if (Input.GetKeyDown(KeyCode.F2))
+        {
+            GameSfx.Muted = !GameSfx.Muted;
+            game.AddLog(GameSfx.Muted ? "Efectos de sonido desactivados (F2)" : "Efectos de sonido activados (F2)", Color.white);
+            if (!GameSfx.Muted) GameSfx.Play(Sfx.Built);
+        }
+        if (Input.GetKeyDown(KeyCode.T))
+        {
+            // Mayús+T (pruebas): desarrolla todas las tecnologías de la edad actual; T solo: panel de tecnologías
+            if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) game.AddLog(game.DevelopEraTechs(game.human), Color.white);
+            else showTech = !showTech;
+        }
+        if (Input.GetKeyDown(KeyCode.D)) showDiplomacy = !showDiplomacy;
 
         if (Input.GetKeyDown(KeyCode.B) && selUnit != null && selUnit.owner == game.human)
             game.TryFound(selUnit);
@@ -457,6 +477,9 @@ public class CivUI : MonoBehaviour
         if (selUnit != null) DrawUnitPanel();
         if (selCity != null) DrawCityPanel();
         if (showTech) DrawTechPanel();
+        if (showDiplomacy) DrawDiplomacyPanel();
+        DrawProposals();
+        DrawMinimap();
         DrawBanner();
         DrawGameOver();
         DrawPauseMenu();
@@ -548,7 +571,7 @@ public class CivUI : MonoBehaviour
 
     void DrawHelp()
     {
-        Rect r = Panel(new Rect(10, vh - 176, 330, 166));
+        Rect r = Panel(new Rect(10, vh - 248, 330, 238));
         GUILayout.BeginArea(new Rect(r.x + 8, r.y + 6, r.width - 16, r.height - 12));
         GUILayout.Label("<b>Controles</b>", label);
         GUILayout.Label("Clic izq.: seleccionar   Clic der.: mover / atacar", small);
@@ -558,6 +581,10 @@ public class CivUI : MonoBehaviour
         GUILayout.Label("Espacio: pausa   H: ocultar", small);
         GUILayout.Label("Cursores / , . + - : mover y girar la cámara", small);
         GUILayout.Label("F: fortificar unidad militar (+25%, +50% en ciudad con muro)", small);
+        GUILayout.Label("N: minimapa (clic para ir a un punto)", small);
+        GUILayout.Label("F2: activar o silenciar los efectos de sonido", small);
+        GUILayout.Label("D: diplomacia (paz, alianzas, guerra)", small);
+        GUILayout.Label("Mayús+T: desarrollar todas las tecnologías de la edad", small);
         GUILayout.Label("Esc: menú de pausa", small);
         GUILayout.EndArea();
     }
@@ -580,14 +607,17 @@ public class CivUI : MonoBehaviour
 
         GUILayout.Label("<b><color=#" + Hex(u.owner.color) + ">" + u.def.name + "</color></b> de " + u.owner.name, title);
         GUILayout.Label("Vida: " + Mathf.CeilToInt(u.hp) + "/" + u.def.hp
-                        + (u.def.IsMilitary ? "    Ataque: " + u.def.attack + "    Defensa: " + u.def.defense + (u.fortified ? " (+" + Mathf.RoundToInt(100f * game.FortifyBonusOf(u)) + "% fortificada)" : "") : ""), label);
+                        + (u.def.IsMilitary ? "    Ataque: " + u.def.attack + "    Defensa: " + u.def.defense + (u.fortified ? " (+" + Mathf.RoundToInt(100f * game.FortifyBonusOf(u)) + "% fortificada)" : u.fortifying ? " (fortificándose…)" : "") : ""), label);
 
         if (mine)
         {
             if (u.def.IsMilitary)
             {
-                GUI.enabled = u.fortified || !u.Moving;
-                if (GUILayout.Button(u.fortified ? "Quitar fortificación (F)" : "Fortificar: +25% de defensa, +50% con muro (F)")) game.ToggleFortify(u);
+                GUI.enabled = u.fortified || u.fortifying || !u.Moving;
+                string fortifyText = u.fortified ? "Quitar fortificación (F)"
+                    : u.fortifying ? "Fortificándose… " + Mathf.CeilToInt(Unit.FortifySeconds - u.fortifyProgress) + " s (F: cancelar)"
+                    : "Fortificar (10 s): +25% de defensa, +50% con muro (F)";
+                if (GUILayout.Button(fortifyText)) game.ToggleFortify(u);
                 GUI.enabled = true;
             }
 
@@ -741,7 +771,7 @@ public class CivUI : MonoBehaviour
         int unitRows = Mathf.Max(1, Mathf.CeilToInt(unitCount / (float)ButtonsPerRow));
         int buildingRows = Mathf.Max(1, Mathf.CeilToInt(buildingCount / (float)ButtonsPerRow));
 
-        float height = mine ? 270f + (unitRows - 1 + buildingRows - 1) * 28f : 96f;
+        float height = mine ? 292f + (c.mood <= CivGame.MoodUnhappy ? 18f : 0f) + (unitRows - 1 + buildingRows - 1) * 28f : 96f;
         Rect r = Panel(new Rect(vw / 2f - 270f, vh - height - 10f, 540f, height));
         GUILayout.BeginArea(new Rect(r.x + 10, r.y + 8, r.width - 20, r.height - 16));
 
@@ -750,6 +780,10 @@ public class CivUI : MonoBehaviour
 
         if (mine)
         {
+            GUILayout.Label("Felicidad: <b>" + CivGame.MoodName(c.mood) + "</b> (" + c.happiness.ToString("+0.0;-0.0;0") + ")", label);
+            if (c.mood <= CivGame.MoodUnhappy)
+                GUILayout.Label("Sube con Baños públicos, Biblioteca, Mercado, maravillas o soldados dentro de la ciudad.", small);
+
             float surplus = c.FoodSurplus;
             GUILayout.BeginHorizontal();
             IconLabel(ResourceIcons.Food, Signed(surplus) + "/s (" + Mathf.FloorToInt(c.food) + "/" + (12 + c.pop * 8) + ")", 150f, small);
@@ -844,6 +878,130 @@ public class CivUI : MonoBehaviour
         }
 
         GUILayout.EndArea();
+    }
+
+    // Panel de diplomacia (tecla D): estado con cada civilización y botones para proponer la paz o una alianza,
+    // declarar la guerra o romper una alianza
+    void DrawDiplomacyPanel()
+    {
+        Civ h = game.human;
+
+        List<Civ> others = new List<Civ>();
+        foreach (Civ c in game.civs) if (c != h) others.Add(c);
+
+        float height = 96f + Mathf.Max(1, others.Count) * 36f + (string.IsNullOrEmpty(diploMessage) ? 0f : 26f);
+        Rect r = Panel(new Rect(10f, 110f, 500f, height));
+
+        GUILayout.BeginArea(new Rect(r.x + 12, r.y + 8, r.width - 24, r.height - 16));
+        GUILayout.Label("<b>Diplomacia</b>  (D: cerrar)", title);
+
+        if (others.Count == 0) GUILayout.Label("No hay otras civilizaciones.", label);
+
+        foreach (Civ c in others)
+        {
+            GUILayout.BeginHorizontal();
+
+            GUILayout.Label("<b><color=#" + Hex(c.color) + ">" + c.name + "</color></b>", label, GUILayout.Width(90));
+
+            if (!c.alive)
+            {
+                GUILayout.Label("Eliminada", label);
+                GUILayout.EndHorizontal();
+                continue;
+            }
+
+            DiploState state = game.StateBetween(h, c);
+            string stateText = state == DiploState.War ? "<color=#ff6a5a>Guerra</color>"
+                             : state == DiploState.Alliance ? "<color=#7ad7ff>Alianza</color>" : "<color=#8fe08f>Paz</color>";
+
+            GUILayout.Label(stateText, label, GUILayout.Width(60));
+            GUILayout.Label(game.ScoreOf(c) + " pts", label, GUILayout.Width(70));
+
+            if (state == DiploState.War)
+            {
+                if (GUILayout.Button("Proponer paz", GUILayout.Width(110))) diploMessage = game.ProposePeace(c);
+            }
+            else if (state == DiploState.Peace)
+            {
+                if (GUILayout.Button("Proponer alianza", GUILayout.Width(120))) diploMessage = game.ProposeAlliance(c);
+                if (GUILayout.Button("Declarar guerra", GUILayout.Width(110))) diploMessage = game.DeclareWar(c);
+            }
+            else
+            {
+                if (GUILayout.Button("Romper alianza", GUILayout.Width(110))) diploMessage = game.DeclareWar(c);
+            }
+
+            GUILayout.EndHorizontal();
+        }
+
+        if (!string.IsNullOrEmpty(diploMessage)) GUILayout.Label(diploMessage, small);
+
+        GUILayout.EndArea();
+    }
+
+    // Propuestas de la IA al jugador: se muestran aunque el panel esté cerrado
+    void DrawProposals()
+    {
+        if (game.proposals.Count == 0) return;
+
+        List<DiploProposal> list = new List<DiploProposal>(game.proposals);
+        float y = 130f;
+
+        foreach (DiploProposal p in list)
+        {
+            Rect r = Panel(new Rect(vw / 2f - 250f, y, 500f, 50f));
+
+            GUILayout.BeginArea(new Rect(r.x + 10, r.y + 8, r.width - 20, r.height - 14));
+            GUILayout.BeginHorizontal();
+
+            string what = p.kind == DiploState.Peace ? "te propone la paz" : "te propone una alianza";
+            GUILayout.Label("<b><color=#" + Hex(p.from.color) + ">" + p.from.name + "</color></b> " + what, label, GUILayout.Width(290));
+
+            if (GUILayout.Button("Aceptar", GUILayout.Width(80))) game.RespondProposal(p, true);
+            if (GUILayout.Button("Rechazar", GUILayout.Width(80))) game.RespondProposal(p, false);
+
+            GUILayout.EndHorizontal();
+            GUILayout.EndArea();
+
+            y += 56f;
+        }
+    }
+
+    // Minimapa abajo a la derecha: clic o arrastre para llevar la cámara a ese punto; el recuadro blanco marca hacia dónde mira
+    void DrawMinimap()
+    {
+        if (!showMinimap || !minimap.Ready || minimap.Texture == null) return;
+
+        float pw = CivMinimap.W, ph = CivMinimap.H;
+        Rect r = Panel(new Rect(vw - pw - 24f, vh - ph - 24f, pw + 12f, ph + 12f));
+        Rect img = new Rect(r.x + 6f, r.y + 6f, pw, ph);
+        GUI.DrawTexture(img, minimap.Texture);
+
+        // Recuadro de la cámara
+        Vector2? cam = CivMinimap.CameraUv(game);
+        if (cam.HasValue)
+        {
+            float bw = 34f, bh = 22f;
+            float cx = Mathf.Clamp(img.x + cam.Value.x * pw, img.x + bw / 2f, img.xMax - bw / 2f);
+            float cy = Mathf.Clamp(img.y + cam.Value.y * ph, img.y + bh / 2f, img.yMax - bh / 2f);
+
+            GUI.color = new Color(1f, 1f, 1f, 0.9f);
+            GUI.DrawTexture(new Rect(cx - bw / 2f, cy - bh / 2f, bw, 1.5f), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(cx - bw / 2f, cy + bh / 2f - 1.5f, bw, 1.5f), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(cx - bw / 2f, cy - bh / 2f, 1.5f, bh), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(cx + bw / 2f - 1.5f, cy - bh / 2f, 1.5f, bh), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+        }
+
+        // Clic o arrastre: la cámara va a ese punto del planeta
+        Event e = Event.current;
+        if (e.button == 0 && (e.type == EventType.MouseDown || e.type == EventType.MouseDrag) && img.Contains(e.mousePosition))
+        {
+            float u = (e.mousePosition.x - img.x) / pw;
+            float v = (e.mousePosition.y - img.y) / ph;
+            game.FocusOn(game.grid.Nearest(CivMinimap.DirAt(u, v)));
+            e.Use();
+        }
     }
 
     // Menú de pausa: Reanudar, Guardar partida y Salir del juego (pide confirmación)
@@ -1151,7 +1309,8 @@ public class CivUI : MonoBehaviour
             float x = sp.x / s;
             float y = (Screen.height - sp.y) / s;
 
-            string text = "<color=#" + Hex(c.owner.color) + "><b>" + c.name + " " + c.pop + "</b></color>";
+            string moodMark = c.owner == game.human && c.mood <= CivGame.MoodUnhappy ? " <color=#ff6a5a>!</color>" : "";
+            string text = "<color=#" + Hex(c.owner.color) + "><b>" + c.name + " " + c.pop + "</b></color>" + moodMark;
             Rect r = new Rect(x - 70f, y - 10f, 140f, 20f);
 
             GUIStyle centered = new GUIStyle(small) { alignment = TextAnchor.MiddleCenter };
