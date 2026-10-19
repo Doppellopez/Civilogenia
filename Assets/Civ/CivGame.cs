@@ -1510,8 +1510,43 @@ public partial class CivGame : MonoBehaviour
         return true;
     }
 
+    /// <summary>Bonus de defensa por fortificación: 0, +25 %, o +50 % si está en una ciudad propia con muro.</summary>
+    public float FortifyBonusOf(Unit u)
+    {
+        if (!u.fortified) return 0f;
+
+        City c = grid != null ? grid.cityAt[u.cell] : null;
+        if (c != null && c.alive && c.owner == u.owner && c.buildings.Contains(BuildingKind.Walls)) return Unit.WalledFortifyBonus;
+
+        return Unit.FortifyBonus;
+    }
+
+    public float EffectiveDefense(Unit u)
+    {
+        return u.def.defense * (1f + FortifyBonusOf(u));
+    }
+
+    /// <summary>
+    /// Fortifica (o quita la fortificación de) una unidad militar parada: se queda donde está y gana +25 % de defensa.
+    /// Se pierde al darle una orden de movimiento o ataque.
+    /// </summary>
+    public bool ToggleFortify(Unit u)
+    {
+        if (u == null || !u.alive || !u.def.IsMilitary || u.carriedBy != null) return false;
+
+        if (u.fortified) { u.fortified = false; return true; }
+        if (u.Moving) return false;
+
+        u.path.Clear();
+        u.targetUnit = null;
+        u.targetCity = null;
+        u.fortified = true;
+        return true;
+    }
+
     public void OrderMove(Unit u, int cell)
     {
+        u.fortified = false;
         CancelRoad(u);
         u.targetUnit = null;
         u.targetCity = null;
@@ -1750,6 +1785,7 @@ public partial class CivGame : MonoBehaviour
     public void OrderAttack(Unit u, Unit target)
     {
         if (!u.def.IsMilitary || target == null) return;
+        u.fortified = false;
         CancelRoad(u);
         u.targetCity = null;
         u.targetUnit = target;
@@ -1761,6 +1797,7 @@ public partial class CivGame : MonoBehaviour
     public void OrderAttack(Unit u, City target)
     {
         if (!u.def.IsMilitary || target == null) return;
+        u.fortified = false;
         CancelRoad(u);
         u.targetUnit = null;
         u.targetCity = target;
@@ -1819,6 +1856,8 @@ public partial class CivGame : MonoBehaviour
 
     void TickUnit(Unit u, float dt)
     {
+        if (u.fortified && (u.Moving || u.path.Count > 0)) u.fortified = false;   // al moverse pierde la fortificación
+
         if (u.kind == UnitKind.Worker && u.owner.Has(TechKind.Robotics)) dt *= 2f; // Robótica: los trabajadores trabajan (y se mueven) el doble de rápido
 
         u.attackCooldown -= dt;
@@ -2028,7 +2067,7 @@ public partial class CivGame : MonoBehaviour
         else if (u.targetUnit != null)
         {
             Unit t = u.targetUnit;
-            t.hp -= dmg * 6f / (6f + t.def.defense);
+            t.hp -= dmg * 6f / (6f + EffectiveDefense(t));   // fortificada: +25 % de defensa (+50 % en una ciudad propia con muro)
 
             // El defensor contraataca
             if (t.def.IsMilitary && !t.HasTarget) t.targetUnit = u;
@@ -2372,6 +2411,13 @@ public partial class CivGame : MonoBehaviour
         foreach (Unit u in civ.units)
         {
             if (u.def.IsMilitary && !u.def.naval && !u.Moving && u.path.Count == 0 && !u.HasTarget) idle.Add(u);
+        }
+
+        // Las que están paradas dentro de una ciudad propia se fortifican (+25 % de defensa)
+        foreach (Unit u in idle)
+        {
+            City here = grid.cityAt[u.cell];
+            if (!u.fortified && here != null && here.owner == civ) ToggleFortify(u);
         }
 
         // Se dejan algunos de guarnición

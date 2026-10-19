@@ -134,6 +134,9 @@ public class CivUI : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.M) && selUnit != null && selUnit.owner == game.human && selUnit.kind == UnitKind.Worker && !selUnit.Moving)
             game.OrderMine(selUnit, selUnit.cell);
 
+        if (Input.GetKeyDown(KeyCode.F) && selUnit != null && selUnit.owner == game.human && selUnit.def.IsMilitary)
+            game.ToggleFortify(selUnit);   // F: fortificar la unidad militar (+25 % de defensa)
+
         if (Input.GetKeyDown(KeyCode.F) && selUnit != null && selUnit.owner == game.human && selUnit.kind == UnitKind.Worker && !selUnit.Moving)
             game.OrderFarm(selUnit, selUnit.cell);
 
@@ -554,6 +557,7 @@ public class CivUI : MonoBehaviour
         GUILayout.Label("T: tecnologías   C: centrar", small);
         GUILayout.Label("Espacio: pausa   H: ocultar", small);
         GUILayout.Label("Cursores / , . + - : mover y girar la cámara", small);
+        GUILayout.Label("F: fortificar unidad militar (+25%, +50% en ciudad con muro)", small);
         GUILayout.Label("Esc: menú de pausa", small);
         GUILayout.EndArea();
     }
@@ -570,15 +574,23 @@ public class CivUI : MonoBehaviour
         bool mine = u.owner == game.human;
 
         float panelHeight = mine && u.kind == UnitKind.Worker ? 370f : mine && u.kind == UnitKind.Settler ? 200f : mine && (u.def.capacity > 0 || u.IsTrader) ? (game.UpgradeTarget(u.owner, u.kind) != null ? 290f : 230f) : mine && game.UpgradeTarget(u.owner, u.kind) != null ? 225f : 162f;
+        if (mine && u.def.IsMilitary) panelHeight += 38f;   // botón de fortificar
         Rect r = Panel(new Rect(vw / 2f - 220f, vh - panelHeight - 10f, 440f, panelHeight));
         GUILayout.BeginArea(new Rect(r.x + 10, r.y + 8, r.width - 20, r.height - 16));
 
         GUILayout.Label("<b><color=#" + Hex(u.owner.color) + ">" + u.def.name + "</color></b> de " + u.owner.name, title);
         GUILayout.Label("Vida: " + Mathf.CeilToInt(u.hp) + "/" + u.def.hp
-                        + (u.def.IsMilitary ? "    Ataque: " + u.def.attack + "    Defensa: " + u.def.defense : ""), label);
+                        + (u.def.IsMilitary ? "    Ataque: " + u.def.attack + "    Defensa: " + u.def.defense + (u.fortified ? " (+" + Mathf.RoundToInt(100f * game.FortifyBonusOf(u)) + "% fortificada)" : "") : ""), label);
 
         if (mine)
         {
+            if (u.def.IsMilitary)
+            {
+                GUI.enabled = u.fortified || !u.Moving;
+                if (GUILayout.Button(u.fortified ? "Quitar fortificación (F)" : "Fortificar: +25% de defensa, +50% con muro (F)")) game.ToggleFortify(u);
+                GUI.enabled = true;
+            }
+
             if (u.kind == UnitKind.Settler)
             {
                 bool can = !u.Moving && game.CanFound(u.owner, u.cell);

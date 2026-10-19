@@ -34,6 +34,7 @@ public class MainMenu : MonoBehaviour
         "Clic derecho: mover o atacar  (Mayús: mover y fundar ciudad)",
         "B: fundar ciudad con el colono seleccionado",
         "R: construir carretera    V: mejorar a ferrocarril    F: granja",
+        "F (unidad militar): fortificar, +25% de defensa (+50% en ciudad con muro)",
         "T: tecnologías    H: ayuda    C: centrar la cámara",
         "Espacio: pausa",
         "Cursores o , . : mover la cámara    Rueda: zoom    Doble clic: seguir un punto",

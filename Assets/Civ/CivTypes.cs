@@ -383,6 +383,9 @@ public class Unit
     public List<int> path = new List<int>();
 
     public float hp;
+    public bool fortified;   // fortificada: no se mueve y gana +25 % de defensa (+50 % dentro de una ciudad propia con muro)
+    public const float FortifyBonus = 0.25f;
+    public const float WalledFortifyBonus = 0.5f;
     public float attackCooldown;
     public float scanTimer;
     public float repathTimer;
