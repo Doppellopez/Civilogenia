@@ -21,7 +21,7 @@ public class CivUI : MonoBehaviour
     bool gameOverDismissed;   // el jugador cerró la pantalla de partida terminada para seguir jugando
     bool gameOverOpened;
     float gameOverSavedSpeed = 1f;
-    GUIStyle headStyle;
+    GUIStyle headStyle, noteStyle;
 
     // Menú de pausa (Esc): reanudar, guardar y salir (con confirmación)
     bool pauseOpen;
@@ -923,7 +923,7 @@ public class CivUI : MonoBehaviour
 
         float rowH = 34f;
         float w = 620f;
-        float h = 170f + ranking.Count * rowH + 70f;
+        float h = 264f + ranking.Count * rowH;   // cabecera + filas + nota (2 líneas) + botón, sin recortar nada
         Rect r = Panel(new Rect((vw - w) / 2f, Mathf.Max(20f, (vh - h) / 2f), w, h));
 
         GUI.Label(new Rect(r.x, r.y + 14f, r.width, 50f), "PARTIDA TERMINADA", big);
@@ -960,8 +960,10 @@ public class CivUI : MonoBehaviour
             y += rowH;
         }
 
-        GUI.Label(new Rect(r.x + 20f, y + 4f, r.width - 40f, 22f),
-            "Puntos: ciudades 100, habitantes 20, tecnologías 40, edificios 15, maravillas 150 más, unidades 5, oro 1 por cada 20", small);
+        // Nota con ajuste de línea (sin él, el texto largo se corta por la derecha)
+        if (noteStyle == null) noteStyle = new GUIStyle(small) { wordWrap = true, alignment = TextAnchor.UpperCenter };
+        GUI.Label(new Rect(r.x + 24f, y + 8f, r.width - 48f, 40f),
+            "Puntos: ciudades 100, habitantes 20, tecnologías 40, edificios 15, maravillas 150 más, unidades 5, oro 1 por cada 20", noteStyle);
 
         if (GUI.Button(new Rect(r.x + w / 2f - 100f, r.yMax - 52f, 200f, 36f), "Salir del juego"))
         {
