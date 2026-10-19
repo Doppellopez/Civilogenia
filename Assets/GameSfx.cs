@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>Efectos de sonido del juego.</summary>
-public enum Sfx { Hit, CityHit, Capture, Built, UnitReady, Wonder, Tech, Found, War, Peace, Alert }
+public enum Sfx { Hit, CityHit, Capture, Built, UnitReady, Wonder, Tech, Found, War, Peace, Alert, Select, Order, Buy, Grow, Death, Work, Research }
 
 /// <summary>
 /// Efectos de sonido sintetizados por código (sin archivos de audio): golpes de combate, ciudad capturada, construcción
@@ -27,6 +27,10 @@ public static class GameSfx
         {
             case Sfx.Hit:     return 0.12f;
             case Sfx.CityHit: return 0.2f;
+            case Sfx.Select:  return 0.05f;
+            case Sfx.Order:   return 0.08f;
+            case Sfx.Work:    return 0.15f;
+            case Sfx.Death:   return 0.1f;
             default:          return 0.25f;
         }
     }
@@ -208,6 +212,53 @@ public static class GameSfx
                 b.Tone(0f, 0.6f, 659.25f, 0.45f, 5f, true);
                 b.Tone(0.22f, 0.6f, 523.25f, 0.45f, 5f, true);
                 return b.ToClip("sfx-paz");
+            }
+            case Sfx.Select:
+            {
+                Buf b = new Buf(0.08f);
+                b.Tone(0f, 0.06f, 1200f, 0.45f, 60f);
+                b.Tone(0f, 0.06f, 1800f, 0.25f, 70f);
+                return b.ToClip("sfx-seleccion");
+            }
+            case Sfx.Order:
+            {
+                Buf b = new Buf(0.14f);
+                b.Tone(0f, 0.12f, 660f, 0.45f, 22f, false, false, 0.002f, 880f);
+                return b.ToClip("sfx-orden");
+            }
+            case Sfx.Buy:
+            {
+                Buf b = new Buf(0.5f);
+                b.Tone(0f, 0.3f, 1318.5f, 0.45f, 9f, true);
+                b.Tone(0.07f, 0.4f, 1760f, 0.45f, 8f, true);
+                return b.ToClip("sfx-compra");
+            }
+            case Sfx.Grow:
+            {
+                Buf b = new Buf(0.5f);
+                b.Tone(0f, 0.3f, 440f, 0.35f, 7f, true);
+                b.Tone(0.12f, 0.35f, 554.37f, 0.35f, 6f, true);
+                return b.ToClip("sfx-crecimiento");
+            }
+            case Sfx.Death:
+            {
+                Buf b = new Buf(0.4f);
+                b.Noise(0f, 0.3f, 0.6f, 14f, 0.2f);
+                b.Tone(0f, 0.35f, 130f, 0.7f, 9f, false, false, 0.003f, 55f);
+                return b.ToClip("sfx-muerte");
+            }
+            case Sfx.Work:
+            {
+                Buf b = new Buf(0.14f);
+                b.Noise(0f, 0.05f, 0.6f, 60f, 0.7f);
+                b.Tone(0f, 0.1f, 320f, 0.6f, 45f, false, false, 0.001f, 200f);
+                return b.ToClip("sfx-obra");
+            }
+            case Sfx.Research:
+            {
+                Buf b = new Buf(0.35f);
+                b.Tone(0f, 0.3f, 440f, 0.35f, 8f, true, false, 0.01f, 660f);
+                return b.ToClip("sfx-investigar");
             }
             default:   // Alert
             {

@@ -10,7 +10,7 @@ using UnityEngine;
 ///   T                tecnologías      H  ayuda      C  centrar en la capital / selección
 ///   Espacio          pausa
 /// </summary>
-public class CivUI : MonoBehaviour
+public partial class CivUI : MonoBehaviour
 {
     CivGame game;
 
@@ -19,6 +19,8 @@ public class CivUI : MonoBehaviour
     bool showHelp = true;
     bool showTech;
     bool showDiplomacy;       // panel de diplomacia (tecla D)
+    Unit lastSelUnit;         // para el sonido al seleccionar
+    City lastSelCity;
     string diploMessage = "";
     bool gameOverDismissed;   // el jugador cerró la pantalla de partida terminada para seguir jugando
     bool gameOverOpened;
@@ -83,6 +85,14 @@ public class CivUI : MonoBehaviour
         if (IntroVideo.Active || MainMenu.Active) return;   // durante la introducción y el menú no se atiende el teclado ni el ratón del juego
         if (game.GameOver && !gameOverDismissed) return;      // con la pantalla de partida terminada abierta, el juego no atiende nada más
 
+        // F1 abre o cierra la guía del juego (Esc también la cierra); con ella abierta no se atiende nada más
+        if (!pauseOpen && Input.GetKeyDown(KeyCode.F1)) { ToggleGuide(); return; }
+        if (showGuide)
+        {
+            if (Input.GetKeyDown(KeyCode.Escape)) ToggleGuide();
+            return;
+        }
+
         // Esc abre o cierra el menú de pausa; con él abierto no se atiende nada más
         if (Input.GetKeyDown(KeyCode.Escape))
         {
@@ -93,6 +103,11 @@ public class CivUI : MonoBehaviour
 
         if (selUnit != null && !selUnit.alive) selUnit = null;
         if (selCity != null && !selCity.alive) selCity = null;
+
+        // Sonido al seleccionar una unidad o ciudad
+        if ((selUnit != null && selUnit != lastSelUnit) || (selCity != null && selCity != lastSelCity)) GameSfx.Play(Sfx.Select);
+        lastSelUnit = selUnit;
+        lastSelCity = selCity;
 
         // Al embarcar, la selección pasa al barco
         if (selUnit != null && selUnit.carriedBy != null) Select(selUnit.carriedBy, null);
@@ -125,7 +140,7 @@ public class CivUI : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.F2))
         {
             GameSfx.Muted = !GameSfx.Muted;
-            game.AddLog(GameSfx.Muted ? "Efectos de sonido desactivados (F2)" : "Efectos de sonido activados (F2)", Color.white);
+            game.AddLog(GameSfx.Muted ? "Sonido y música desactivados (F2)" : "Sonido y música activados (F2)", Color.white);
             if (!GameSfx.Muted) GameSfx.Play(Sfx.Built);
         }
         if (Input.GetKeyDown(KeyCode.T))
@@ -480,6 +495,7 @@ public class CivUI : MonoBehaviour
         if (showDiplomacy) DrawDiplomacyPanel();
         DrawProposals();
         DrawMinimap();
+        DrawGuide();
         DrawBanner();
         DrawGameOver();
         DrawPauseMenu();
@@ -571,7 +587,7 @@ public class CivUI : MonoBehaviour
 
     void DrawHelp()
     {
-        Rect r = Panel(new Rect(10, vh - 248, 330, 238));
+        Rect r = Panel(new Rect(10, vh - 266, 330, 256));
         GUILayout.BeginArea(new Rect(r.x + 8, r.y + 6, r.width - 16, r.height - 12));
         GUILayout.Label("<b>Controles</b>", label);
         GUILayout.Label("Clic izq.: seleccionar   Clic der.: mover / atacar", small);
@@ -582,7 +598,8 @@ public class CivUI : MonoBehaviour
         GUILayout.Label("Cursores / , . + - : mover y girar la cámara", small);
         GUILayout.Label("F: fortificar unidad militar (+25%, +50% en ciudad con muro)", small);
         GUILayout.Label("N: minimapa (clic para ir a un punto)", small);
-        GUILayout.Label("F2: activar o silenciar los efectos de sonido", small);
+        GUILayout.Label("F1: guía del juego (controles, tecnologías, unidades)", small);
+        GUILayout.Label("F2: activar o silenciar el sonido y la música", small);
         GUILayout.Label("D: diplomacia (paz, alianzas, guerra)", small);
         GUILayout.Label("Mayús+T: desarrollar todas las tecnologías de la edad", small);
         GUILayout.Label("Esc: menú de pausa", small);

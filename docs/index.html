@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Guía de Civilogenia</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Concepto: manual de campo. Índice fijo a la izquierda con las cinco edades, texto en una columna cómoda y tablas densas
+   donde cada edad tiene su propio color de señal (ocre, piedra, óxido, acero, violeta). */
+:root {
+  --bg: #f2f4f6; --surface: #ffffff; --fg: #14202b; --muted: #546575; --line: #d5dce3; --soft: #e8edf1;
+  --accent: #0e6a89; --accent-ink: #ffffff;
+  --e0: #9c6226; --e1: #55688a; --e2: #96482a; --e3: #2a69ad; --e4: #7440c4;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d141b; --surface: #151f29; --fg: #e5ecf2; --muted: #9aabba; --line: #2a3745; --soft: #1d2a36;
+    --accent: #52b8d8; --accent-ink: #06222c;
+    --e0: #dca058; --e1: #8fa4c4; --e2: #de8860; --e3: #6ea9e8; --e4: #b790f2; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d141b; --surface: #151f29; --fg: #e5ecf2; --muted: #9aabba; --line: #2a3745; --soft: #1d2a36;
+  --accent: #52b8d8; --accent-ink: #06222c;
+  --e0: #dca058; --e1: #8fa4c4; --e2: #de8860; --e3: #6ea9e8; --e4: #b790f2; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 1rem; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 var(--font-body); }
+a { color: var(--accent); }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+.layout { display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.5rem; max-width: 76rem; margin: 0 auto;
+  padding-block: 1.5rem 4rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+nav.toc { position: sticky; top: env(safe-area-inset-top, 0px); align-self: start; max-height: 100vh; overflow-y: auto; padding: 1rem 0; font-size: .92rem; }
+nav.toc .brand { font-family: var(--font-display); font-weight: 800; font-size: 1.35rem; margin-bottom: .75rem; display: block; color: var(--fg); text-decoration: none; }
+nav.toc ul { list-style: none; margin: 0 0 1rem; padding: 0; display: grid; gap: .1rem; }
+nav.toc li a { display: block; padding: .28rem .6rem; border-radius: .35rem; color: var(--muted); text-decoration: none; }
+nav.toc li a:hover { background: var(--soft); color: var(--fg); }
+nav.toc .sub { margin-top: 1rem; font: 500 .72rem/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding-left: .6rem; }
+main { min-width: 0; }
+section.block { margin-bottom: 3.5rem; }
+section.block > h2 { font-size: clamp(1.6rem, 3vw, 2.1rem); margin-bottom: .9rem; }
+h3 { font-size: 1.2rem; margin: 1.6rem 0 .5rem; }
+p { max-width: 68ch; margin: 0 0 1rem; }
+ul.list { max-width: 68ch; padding-left: 1.2rem; margin: 0 0 1rem; }
+ul.list li { margin-bottom: .35rem; }
+.hero { padding: 1rem 0 2.5rem; border-bottom: 1px solid var(--line); margin-bottom: 2.5rem; }
+.hero h1 { font-size: clamp(2.4rem, 6vw, 4rem); font-weight: 800; }
+.hero p.lead { font-size: 1.15rem; color: var(--muted); max-width: 60ch; margin-top: .9rem; }
+.stats { display: flex; flex-wrap: wrap; gap: 1.5rem 2.5rem; margin-top: 1.5rem; }
+.stats div { display: grid; }
+.stats b { font: 500 2rem/1 var(--font-mono); }
+.stats span { color: var(--muted); font-size: .88rem; }
+.eras { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 1rem; margin: 1rem 0 0; }
+.era-card { background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--c); border-radius: .5rem; padding: .9rem 1rem 1rem; min-width: 0; }
+.era-card h3 { margin: 0 0 .4rem; color: var(--c); font-size: 1.05rem; }
+.era-card p { font-size: .92rem; margin-bottom: .7rem; }
+.era-card dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: .15rem .7rem; font-size: .85rem; }
+.era-card dt { color: var(--muted); } .era-card dd { margin: 0; font-weight: 500; }
+[data-era="0"] { --c: var(--e0); } [data-era="1"] { --c: var(--e1); } [data-era="2"] { --c: var(--e2); } [data-era="3"] { --c: var(--e3); } [data-era="4"] { --c: var(--e4); }
+.tools { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin: .5rem 0 1rem; }
+.tools input[type=search] { font: inherit; padding: .5rem .75rem; border: 1px solid var(--line); border-radius: .4rem; background: var(--surface); color: var(--fg); min-width: 0; flex: 1 1 14rem; max-width: 22rem; }
+.chip { font: 500 .85rem var(--font-body); padding: .38rem .8rem; border-radius: 99px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: .5rem; background: var(--surface); margin-bottom: 1rem; }
+table.tbl { border-collapse: collapse; width: 100%; font-size: .9rem; }
+table.tbl th, table.tbl td { text-align: left; padding: .5rem .75rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.tbl thead th { position: sticky; top: 0; background: var(--soft); font: 600 .74rem var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+table.tbl tbody tr:last-child th, table.tbl tbody tr:last-child td { border-bottom: 0; }
+table.tbl tbody th[scope=row] { font-weight: 600; white-space: nowrap; border-left: 4px solid var(--c, var(--line)); }
+table.tbl td.n { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+table.tbl td.sm { font-size: .8rem; color: var(--muted); }
+table.tbl tr.closer { background: var(--soft); }
+.tag { font: 500 .68rem var(--font-mono); text-transform: uppercase; letter-spacing: .05em; color: var(--c); border: 1px solid var(--c); border-radius: .25rem; padding: .05rem .35rem; margin-left: .4rem; white-space: nowrap; }
+.none { color: var(--muted); } .all { font-style: italic; }
+.kind { font: 500 .72rem var(--font-mono); padding: .1rem .4rem; border-radius: .25rem; background: var(--soft); }
+.k-Mar { color: var(--e3); } .k-Aire { color: var(--e4); } .k-Tierra { color: var(--e0); } .k-Civil { color: var(--muted); }
+.era-block h3 { display: flex; align-items: baseline; gap: .6rem; color: var(--c); }
+.era-block h3 .dot { width: .7rem; height: .7rem; border-radius: 50%; background: var(--c); align-self: center; }
+.era-block h3 small { font: 400 .85rem var(--font-body); color: var(--muted); }
+kbd { font: 500 .8rem var(--font-mono); background: var(--soft); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: .3rem; padding: .08rem .4rem; white-space: nowrap; }
+.callout { border-left: 4px solid var(--accent); background: var(--surface); padding: .8rem 1rem; max-width: 68ch; margin: 0 0 1rem; border-radius: 0 .4rem .4rem 0; }
+.callout p:last-child { margin: 0; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; }
+.cols > div { background: var(--surface); border: 1px solid var(--line); border-radius: .5rem; padding: .9rem 1rem; min-width: 0; }
+.cols h3 { margin: 0 0 .4rem; font-size: 1.05rem; } .cols p { font-size: .93rem; margin-bottom: .5rem; }
+footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+@media (max-width: 52rem) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  nav.toc { position: static; max-height: none; padding: 0 0 1rem; }
+  nav.toc ul { display: flex; flex-wrap: wrap; gap: .25rem; }
+  nav.toc .sub { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+
+<div class="layout">
+<nav class="toc" aria-label="Índice">
+  <a class="brand" href="#inicio">Civilogenia</a>
+  <ul>
+    <li><a href="#empezar">Empezar</a></li>
+    <li><a href="#controles">Controles</a></li>
+    <li><a href="#ciudades">Ciudades y recursos</a></li>
+    <li><a href="#edades">Las cinco edades</a></li>
+    <li><a href="#tecnologias">Tecnologías</a></li>
+    <li><a href="#unidades">Unidades</a></li>
+    <li><a href="#edificios">Edificios</a></li>
+    <li><a href="#maravillas">Maravillas</a></li>
+    <li><a href="#guerra">Combate y defensa</a></li>
+    <li><a href="#mar">Mar e islas</a></li>
+    <li><a href="#diplomacia">Diplomacia</a></li>
+    <li><a href="#ia">Rivales y dificultad</a></li>
+    <li><a href="#victoria">Victoria y puntos</a></li>
+    <li><a href="#consejos">Consejos</a></li>
+  </ul>
+</nav>
+<main id="inicio">
+<header class="hero">
+  <h1>Civilogenia</h1>
+  <p class="lead">De la Edad de Piedra a las estrellas. Funda ciudades en un planeta redondo, investiga cinco edades de tecnología y compite con civilizaciones controladas por la IA. Esta guía reúne lo que necesitas saber, con los datos tomados directamente del juego.</p>
+  <div class="stats"><div><b>63</b><span>tecnologías</span></div><div><b>25</b><span>unidades</span></div><div><b>25</b><span>edificios</span></div><div><b>27</b><span>maravillas</span></div><div><b>5</b><span>edades</span></div></div>
+</header>
+
+<section class="block" id="empezar">
+  <h2>Empezar una partida</h2>
+  <ol class="list">
+    <li>Tras la introducción aparece el menú. Pulsa <b>Jugar</b> (o <kbd>Enter</kbd>).</li>
+    <li>Elige cuántas <b>civilizaciones enemigas</b> habrá, de 0 a 5. Las manejará siempre la IA.</li>
+    <li>Elige la <b>dificultad</b>: Fácil, Normal o Difícil (ver <a href="#ia">Rivales y dificultad</a>).</li>
+    <li>Pulsa <b>Comenzar</b>. Empiezas con una capital y un guerrero, en paz con todas las demás civilizaciones.</li>
+  </ol>
+  <div class="callout"><p><b>Ritmo.</b> Todo avanza despacio a propósito: la producción, la investigación, el movimiento y el combate tardan tres veces más que en una versión rápida. Con <kbd>Espacio</kbd> pausas el juego. Con <kbd>F5</kbd> guardas y con <kbd>F9</kbd> cargas.</p></div>
+  <p>El primer paso suele ser fundar más ciudades: construye un <b>Colono</b> en la capital (cuesta un habitante) y llévalo a tierra libre, al menos a cuatro casillas de otra ciudad.</p>
+</section>
+
+<section class="block" id="controles">
+  <h2>Controles</h2>
+  <div class="scroll"><table class="tbl"><thead><tr><th>Tecla</th><th>Qué hace</th></tr></thead><tbody><tr><th scope='row'><kbd>Clic izquierdo</kbd></th><td>Seleccionar una unidad o ciudad</td></tr><tr><th scope='row'><kbd>Clic derecho</kbd></th><td>Mover la unidad seleccionada o atacar a un enemigo</td></tr><tr><th scope='row'><kbd>Mayús + clic derecho</kbd></th><td>Colono: ir a un sitio y fundar una ciudad al llegar. Trabajador: minar o irrigar la casilla</td></tr><tr><th scope='row'><kbd>Alt + clic derecho</kbd></th><td>Trabajador: construir una granja en la casilla</td></tr><tr><th scope='row'><kbd>B</kbd></th><td>Colono: fundar una ciudad donde está</td></tr><tr><th scope='row'><kbd>J</kbd></th><td>Colono: unirse a la ciudad en la que está (+1 habitante)</td></tr><tr><th scope='row'><kbd>R  o  Ctrl + clic derecho</kbd></th><td>Trabajador: construir una carretera hasta una casilla</td></tr><tr><th scope='row'><kbd>V</kbd></th><td>Trabajador: mejorar una carretera a ferrocarril</td></tr><tr><th scope='row'><kbd>I  /  M  /  F</kbd></th><td>Trabajador: irrigar / minar / hacer una granja en su casilla. Con una unidad militar, F la fortifica</td></tr><tr><th scope='row'><kbd>U</kbd></th><td>Mejorar una unidad parada en una ciudad con Academia</td></tr><tr><th scope='row'><kbd>K</kbd></th><td>Caravana o Mercader: crear una ruta comercial</td></tr><tr><th scope='row'><kbd>T</kbd></th><td>Abrir el panel de tecnologías</td></tr><tr><th scope='row'><kbd>Mayús + T</kbd></th><td>Atajo de pruebas: desarrolla todas las tecnologías de tu edad (otra vez: el cambio de era)</td></tr><tr><th scope='row'><kbd>D</kbd></th><td>Panel de diplomacia</td></tr><tr><th scope='row'><kbd>N</kbd></th><td>Mostrar u ocultar el minimapa</td></tr><tr><th scope='row'><kbd>C</kbd></th><td>Centrar la cámara en tu capital o en lo seleccionado</td></tr><tr><th scope='row'><kbd>Cursores, coma y punto, rueda</kbd></th><td>Mover y girar la cámara, y hacer zoom</td></tr><tr><th scope='row'><kbd>Espacio</kbd></th><td>Pausa</td></tr><tr><th scope='row'><kbd>F2</kbd></th><td>Activar o silenciar sonido y música</td></tr><tr><th scope='row'><kbd>F5  /  F9</kbd></th><td>Guardar / cargar partida</td></tr><tr><th scope='row'><kbd>H</kbd></th><td>Mostrar u ocultar la ayuda en pantalla</td></tr><tr><th scope='row'><kbd>Esc</kbd></th><td>Menú de pausa: reanudar, guardar y salir</td></tr></tbody></table></div>
+</section>
+
+<section class="block" id="ciudades">
+  <h2>Ciudades y recursos</h2>
+  <div class="cols">
+    <div><h3>Comida y población</h3><p>Una ciudad crece cuando acumula <b>12 + 8 × habitantes</b> de comida. Sin la tecnología <b>Fuego</b> no pasa de 3 habitantes. Cada casilla que trabaja aporta comida, producción y oro según su terreno.</p></div>
+    <div><h3>Producción</h3><p>Construye una unidad, un edificio o una maravilla por vez. Puedes <b>comprar</b> lo que falta pagando el doble en oro.</p></div>
+    <div><h3>Oro</h3><p>Sale de las casillas de mar, de los mercados y bancos, de las carreteras y del comercio. Sirve para comprar construcciones y mejorar unidades.</p></div>
+    <div><h3>Ciencia</h3><p>Investiga la tecnología elegida en el panel (<kbd>T</kbd>). Bibliotecas, universidades, observatorios y varias maravillas la multiplican.</p></div>
+  </div>
+  <h3>Territorio</h3>
+  <p>Cada ciudad domina las casillas de su alrededor, y su radio crece con la población: 3 casillas desde 4 habitantes y 4 desde 8. Cada 10 habitantes añaden un barrio nuevo a la ciudad.</p>
+  <h3>Carreteras y ferrocarril</h3>
+  <ul class="list">
+    <li>Se desbloquean con la <b>Rueda</b> y las construyen los <b>Trabajadores</b>.</li>
+    <li>Las unidades terrestres van el <b>doble de rápido</b> por una carretera (y por los ríos).</li>
+    <li>Cada casilla de una ciudad con carretera da <b>+1 de oro y +1 de ciencia</b> a esa ciudad.</li>
+    <li>Para cruzar un río hace falta <b>Construcción de puentes</b>.</li>
+    <li>El <b>ferrocarril</b> (tecnología Ferrocarril) cuadruplica la velocidad base y da <b>+1 de producción</b> por casilla de ciudad.</li>
+  </ul>
+  <h3>Felicidad</h3>
+  <p>Crecer tiene un coste. Cada ciudad suma y resta puntos de felicidad:</p>
+  <ul class="list">
+    <li><b>+6</b> de base, <b>−0,5</b> por habitante, <b>−0,4</b> por cada ciudad que tengas por encima de 4 y <b>−1</b> por cada guerra en curso (hasta 3).</li>
+    <li><b>Suman:</b> Baños públicos (+3), Biblioteca, Universidad, Mercado, Banco y Periódico (+1 cada uno), las maravillas (+3 en su ciudad), los edificios de felicidad de la tabla de edificios, algunas tecnologías (Filosofía, Termómetro, Penicilina, Radio y Ordenadores, +1 cada una) y los soldados dentro de la ciudad (+0,5 cada uno, hasta 3).</li>
+  </ul>
+  <div class="scroll"><table class="tbl"><thead><tr><th>Estado</th><th>Puntos</th><th>Efecto</th></tr></thead><tbody>
+    <tr><th scope="row">Feliz</th><td class="n">4 o más</td><td>+10 % de producción, ciencia, oro y crecimiento</td></tr>
+    <tr><th scope="row">Contenta</th><td class="n">0 a 4</td><td>Sin cambios</td></tr>
+    <tr><th scope="row">Descontenta</th><td class="n">−3 a 0</td><td>−25 % de producción, ciencia y oro; crece a la mitad</td></tr>
+    <tr><th scope="row">Disturbios</th><td class="n">menos de −3</td><td>No produce ni crece</td></tr>
+  </tbody></table></div>
+  <p>Una ciudad descontenta lleva una marca roja junto a su nombre y su panel muestra qué puede ayudarla.</p>
+  <h3>Niebla de guerra y minimapa</h3>
+  <p>Solo ves en torno a tus unidades (2 casillas; 3 los barcos y aviones) y tus ciudades (4). Lo ya explorado se ve atenuado y lo desconocido, casi negro. Las unidades enemigas fuera de tu visión no se dibujan. Un <b>Satélite</b>, el <b>Programa Apolo</b> y la <b>Omnisciencia</b> cambian esto. El minimapa (<kbd>N</kbd>) muestra todo lo que sabes del planeta y sirve para mover la cámara con un clic.</p>
+</section>
+
+<section class="block" id="edades">
+  <h2>Las cinco edades</h2>
+  <p>Cada edad se cierra con una tecnología especial, el <b>Cambio de era</b>, que exige tener todas las demás tecnologías de esa edad. Al descubrirla suena un vídeo y cambia el aspecto de tus unidades, carreteras y ciudades.</p>
+  <div class="eras"><article class='era-card' data-era='0'><h3>Edad Antigua</h3><p>Del fuego a la filosofía: colonos, guerreros, carreteras de tierra y las primeras bibliotecas.</p><dl><dt>Tecnologías</dt><dd>21</dd><dt>Para salir</dt><dd>Cambio de era (1.500)</dd></dl></article><article class='era-card' data-era='1'><h3>Edad Media</h3><p>Piedra, acero y pólvora: universidades, molinos, galeones y mosqueteros.</p><dl><dt>Tecnologías</dt><dd>11</dd><dt>Para salir</dt><dd>Cambio de era (2.000)</dd></dl></article><article class='era-card' data-era='2'><h3>Edad Moderna</h3><p>Vapor, electricidad y telescopios: fábricas, ferrocarriles y fusileros.</p><dl><dt>Tecnologías</dt><dd>10</dd><dt>Para salir</dt><dd>Cambio de era (2.600)</dd></dl></article><article class='era-card' data-era='3'><h3>Edad Contemporánea</h3><p>Motores, radio y aviones: rascacielos, tanques y bombas atómicas.</p><dl><dt>Tecnologías</dt><dd>9</dd><dt>Para salir</dt><dd>Cambio de era (5.000)</dd></dl></article><article class='era-card' data-era='4'><h3>Edad Futura</h3><p>Robots, fusión y espacio: ciudades de neón, carreteras de cristal y vuelo espacial.</p><dl><dt>Tecnologías</dt><dd>12</dd><dt>Para salir</dt><dd>Omnisciencia (12.000)</dd></dl></article></div>
+</section>
+
+<section class="block" id="tecnologias">
+  <h2>Tecnologías</h2>
+  <p>Una tecnología se investiga con ciencia cuando ya tienes las que necesita. El panel (<kbd>T</kbd>) solo muestra las que puedes investigar ahora. Las dos últimas edades añaden ramas independientes: puedes elegir en qué orden las recorres.</p>
+  <div class="tools">
+    <input type="search" id="q-tec" placeholder="Buscar tecnología o efecto" aria-label="Buscar tecnología">
+    <button class="chip" type="button" data-filter-era="all" aria-pressed="true">Todas</button>
+    <button class='chip' type='button' data-filter-era='0' aria-pressed='false'>Edad Antigua</button><button class='chip' type='button' data-filter-era='1' aria-pressed='false'>Edad Media</button><button class='chip' type='button' data-filter-era='2' aria-pressed='false'>Edad Moderna</button><button class='chip' type='button' data-filter-era='3' aria-pressed='false'>Edad Contemporánea</button><button class='chip' type='button' data-filter-era='4' aria-pressed='false'>Edad Futura</button>
+  </div>
+  <section class='era-block' data-era='0' id='tec-0'><h3><span class='dot'></span>Edad Antigua <small>21 tecnologías</small></h3><div class='scroll'><table class='tbl'><thead><tr><th>Tecnología</th><th>Coste</th><th>Requiere</th><th>Qué da</th></tr></thead><tbody><tr data-era='0'><th scope='row'>Fuego</th><td class='n'>45</td><td><span class='none'>Ninguna</span></td><td>Las ciudades crecen a más de 3</td></tr><tr data-era='0'><th scope='row'>Agricultura</th><td class='n'>75</td><td>Fuego</td><td>Irrigaciones y Granero</td></tr><tr data-era='0'><th scope='row'>Ganadería</th><td class='n'>75</td><td>Fuego</td><td>+1 comida en llanuras</td></tr><tr data-era='0'><th scope='row'>Minería</th><td class='n'>75</td><td>Fuego</td><td>Minas (producción x2) y Lancero</td></tr><tr data-era='0'><th scope='row'>Vela</th><td class='n'>75</td><td>Fuego</td><td>Barco de Vela en ciudades costeras</td></tr><tr data-era='0'><th scope='row'>Tiro con arco</th><td class='n'>75</td><td>Fuego</td><td>Arquero</td></tr><tr data-era='0'><th scope='row'>Bronce</th><td class='n'>105</td><td>Minería</td><td>Falange</td></tr><tr data-era='0'><th scope='row'>Mampostería</th><td class='n'>105</td><td>Minería</td><td>Muro de la Ciudad</td></tr><tr data-era='0'><th scope='row'>Rueda</th><td class='n'>105</td><td>Ganadería</td><td>Caminos y Carro</td></tr><tr data-era='0'><th scope='row'>Equitación</th><td class='n'>105</td><td>Ganadería</td><td>Jinete</td></tr><tr data-era='0'><th scope='row'>Cerámica</th><td class='n'>105</td><td>Agricultura</td><td>Crecimiento de población x1,5 en todas las ciudades</td></tr><tr data-era='0'><th scope='row'>Ballesta</th><td class='n'>120</td><td>Tiro con arco</td><td>Ballestero y Ballesta de asedio</td></tr><tr data-era='0'><th scope='row'>Moneda</th><td class='n'>120</td><td>Bronce y Escritura</td><td>Caravana de comercio</td></tr><tr data-era='0'><th scope='row'>Matemáticas</th><td class='n'>120</td><td>Escritura y Rueda</td><td>Catapulta</td></tr><tr data-era='0'><th scope='row'>Construcción de puentes</th><td class='n'>120</td><td>Mampostería</td><td>Carreteras que atraviesan ríos</td></tr><tr data-era='0'><th scope='row'>Hierro</th><td class='n'>135</td><td>Bronce</td><td>Legión</td></tr><tr data-era='0'><th scope='row'>Escritura</th><td class='n'>135</td><td>Cerámica</td><td>Biblioteca y Gran Biblioteca</td></tr><tr data-era='0'><th scope='row'>Construcción</th><td class='n'>150</td><td>Rueda y Mampostería</td><td>Edificios al 90% de su coste</td></tr><tr data-era='0'><th scope='row'>Astronomía</th><td class='n'>165</td><td>Escritura</td><td>Observatorio</td></tr><tr data-era='0'><th scope='row'>Filosofía</th><td class='n'>210</td><td>Astronomía y Matemáticas</td><td>+50% de investigación y Cambio de era</td></tr><tr class='closer' data-era='0'><th scope='row'>Cambio de era <span class='tag'>cierra la edad</span></th><td class='n'>1.500</td><td>Filosofía</td><td>Una nueva era</td></tr></tbody></table></div></section><section class='era-block' data-era='1' id='tec-1'><h3><span class='dot'></span>Edad Media <small>11 tecnologías</small></h3><div class='scroll'><table class='tbl'><thead><tr><th>Tecnología</th><th>Coste</th><th>Requiere</th><th>Qué da</th></tr></thead><tbody><tr data-era='1'><th scope='row'>Arado y collera</th><td class='n'>800</td><td>Cambio de era</td><td>Granja (alimento x2)</td></tr><tr data-era='1'><th scope='row'>Molino hidráulico</th><td class='n'>850</td><td>Cambio de era</td><td>+1 comida en casillas junto al mar o a un río</td></tr><tr data-era='1'><th scope='row'>Cifras arábigas</th><td class='n'>900</td><td>Cambio de era</td><td>+25% de ciencia y de oro en todas las ciudades, Banco, Mercader y Laboratorio de Fibonacci</td></tr><tr data-era='1'><th scope='row'>Brújula magnética</th><td class='n'>900</td><td>Cambio de era y Vela</td><td>Galeón y los barcos navegan un 50% más rápido</td></tr><tr data-era='1'><th scope='row'>Árbol de levas</th><td class='n'>950</td><td>Molino hidráulico</td><td>+1 producción en casillas junto al mar o a un río y Batán</td></tr><tr data-era='1'><th scope='row'>Ciudades</th><td class='n'>1.000</td><td>Arado y collera</td><td>+25% de crecimiento en todas las ciudades y Academia</td></tr><tr data-era='1'><th scope='row'>Reloj mecánico</th><td class='n'>1.100</td><td>Árbol de levas</td><td>+25% de producción en todas las ciudades</td></tr><tr data-era='1'><th scope='row'>Imprenta</th><td class='n'>1.200</td><td>Universidades</td><td>Prensa</td></tr><tr data-era='1'><th scope='row'>Universidades</th><td class='n'>1.300</td><td>Cifras arábigas</td><td>+25% de ciencia en todas las ciudades, Universidad y Gran Biblioteca de Alejandría</td></tr><tr data-era='1'><th scope='row'>Pólvora</th><td class='n'>1.500</td><td>Cambio de era</td><td>Mosquetero</td></tr><tr class='closer' data-era='1'><th scope='row'>Cambio de era <span class='tag'>cierra la edad</span></th><td class='n'>2.000</td><td><span class='all'>Las 10 tecnologías de la Edad Media</span></td><td>Una nueva era</td></tr></tbody></table></div></section><section class='era-block' data-era='2' id='tec-2'><h3><span class='dot'></span>Edad Moderna <small>10 tecnologías</small></h3><div class='scroll'><table class='tbl'><thead><tr><th>Tecnología</th><th>Coste</th><th>Requiere</th><th>Qué da</th></tr></thead><tbody><tr data-era='2'><th scope='row'>Máquina de vapor</th><td class='n'>1.600</td><td>Cambio de era</td><td>+50% de producción en todas las ciudades, Fábrica y Barco de vapor</td></tr><tr data-era='2'><th scope='row'>Telescopio</th><td class='n'>1.700</td><td>Cambio de era y Astronomía</td><td>El Observatorio da +100% de ciencia en su ciudad (en vez de +50%) y la maravilla Observatorio de Galileo Galilei</td></tr><tr data-era='2'><th scope='row'>Fusil</th><td class='n'>1.760</td><td>Cambio de era</td><td>Fusilero</td></tr><tr data-era='2'><th scope='row'>Termómetro</th><td class='n'>1.900</td><td>Telescopio</td><td>+20% de crecimiento en todas las ciudades (medicina e higiene) y la maravilla Estudio de Daniel Gabriel Fahrenheit</td></tr><tr data-era='2'><th scope='row'>Granada de mano</th><td class='n'>1.900</td><td>Fusil</td><td>Granadero</td></tr><tr data-era='2'><th scope='row'>Electricidad</th><td class='n'>2.000</td><td>Máquina de vapor</td><td>+25% de ciencia en todas las ciudades Presa hidroeléctrica y la maravilla Presa Hoover</td></tr><tr data-era='2'><th scope='row'>Artillería</th><td class='n'>2.080</td><td>Cambio de era</td><td>Cañón</td></tr><tr data-era='2'><th scope='row'>Imprenta de tipos móviles</th><td class='n'>2.200</td><td>Electricidad</td><td>Periódico y la maravilla Prensa de Gutenberg</td></tr><tr data-era='2'><th scope='row'>Ferrocarril</th><td class='n'>2.400</td><td>Máquina de vapor</td><td>Los trabajadores mejoran las carreteras a ferrocarril (el doble de rápidas y +1 de producción por casilla)</td></tr><tr class='closer' data-era='2'><th scope='row'>Cambio de era <span class='tag'>cierra la edad</span></th><td class='n'>2.600</td><td><span class='all'>Las 9 tecnologías de la Edad Moderna</span></td><td>La Edad Contemporánea</td></tr></tbody></table></div></section><section class='era-block' data-era='3' id='tec-3'><h3><span class='dot'></span>Edad Contemporánea <small>9 tecnologías</small></h3><div class='scroll'><table class='tbl'><thead><tr><th>Tecnología</th><th>Coste</th><th>Requiere</th><th>Qué da</th></tr></thead><tbody><tr data-era='3'><th scope='row'>Motor de combustión</th><td class='n'>2.800</td><td>Cambio de era</td><td>+50% de producción en todas las ciudades y las unidades terrestres se mueven un 33% más rápido</td></tr><tr data-era='3'><th scope='row'>Radio</th><td class='n'>2.900</td><td>Cambio de era</td><td>+25% de ciencia en todas las ciudades</td></tr><tr data-era='3'><th scope='row'>Acero y hormigón</th><td class='n'>3.000</td><td>Cambio de era</td><td>Los edificios cuestan un 15% menos (rascacielos)</td></tr><tr data-era='3'><th scope='row'>Penicilina</th><td class='n'>3.100</td><td>Cambio de era</td><td>+30% de crecimiento en todas las ciudades</td></tr><tr data-era='3'><th scope='row'>Aviación</th><td class='n'>3.200</td><td>Motor de combustión</td><td>Caza y Bombardero (vuelan sobre tierra y mar)</td></tr><tr data-era='3'><th scope='row'>Carro de combate</th><td class='n'>3.300</td><td>Motor de combustión</td><td>Tanque (mejora del Cañón)</td></tr><tr data-era='3'><th scope='row'>Ordenadores</th><td class='n'>3.600</td><td>Radio</td><td>Laboratorio informático (+100% de ciencia en su ciudad)</td></tr><tr data-era='3'><th scope='row'>Energía nuclear</th><td class='n'>4.200</td><td>Ordenadores y Aviación</td><td>Central nuclear (+10 de producción en su ciudad)</td></tr><tr class='closer' data-era='3'><th scope='row'>Cambio de era <span class='tag'>cierra la edad</span></th><td class='n'>5.000</td><td><span class='all'>Las 8 tecnologías de la Edad Contemporánea</span></td><td>La Edad Futura</td></tr></tbody></table></div></section><section class='era-block' data-era='4' id='tec-4'><h3><span class='dot'></span>Edad Futura <small>12 tecnologías</small></h3><div class='scroll'><table class='tbl'><thead><tr><th>Tecnología</th><th>Coste</th><th>Requiere</th><th>Qué da</th></tr></thead><tbody><tr data-era='4'><th scope='row'>Inteligencia artificial</th><td class='n'>5.500</td><td>Cambio de era</td><td>+30% de producción y +30% de ciencia en todas las ciudades</td></tr><tr data-era='4'><th scope='row'>Vuelo espacial</th><td class='n'>6.000</td><td>Cambio de era</td><td>+50% de ciencia en todas las ciudades y Satélite (descubre todo el mapa)</td></tr><tr data-era='4'><th scope='row'>Robótica</th><td class='n'>6.200</td><td>Inteligencia artificial</td><td>+25% de producción en todas las ciudades y los trabajadores trabajan el doble de rápido</td></tr><tr data-era='4'><th scope='row'>Antigravedad</th><td class='n'>6.500</td><td>Vuelo espacial</td><td>Las unidades terrestres se mueven un 50% más rápido</td></tr><tr data-era='4'><th scope='row'>Ingeniería genética</th><td class='n'>6.600</td><td>Inteligencia artificial y Penicilina</td><td>+50% de crecimiento en todas las ciudades y la maravilla Banco genético</td></tr><tr data-era='4'><th scope='row'>Computación cuántica</th><td class='n'>6.800</td><td>Inteligencia artificial</td><td>+40% de ciencia en todas las ciudades y Computadora cuántica</td></tr><tr data-era='4'><th scope='row'>Energía de fusión</th><td class='n'>7.000</td><td>Energía nuclear y Inteligencia artificial</td><td>+50% de producción en todas las ciudades y Reactor de fusión</td></tr><tr data-era='4'><th scope='row'>Nanotecnología</th><td class='n'>7.200</td><td>Robótica</td><td>Los edificios cuestan un 25% menos y +20% de producción en todas las ciudades</td></tr><tr data-era='4'><th scope='row'>Escudos de energía</th><td class='n'>7.500</td><td>Energía de fusión</td><td>+100 de vida en todas las ciudades</td></tr><tr data-era='4'><th scope='row'>Colonización espacial</th><td class='n'>7.800</td><td>Vuelo espacial y Robótica</td><td>Base lunar y la maravilla Ascensor espacial</td></tr><tr data-era='4'><th scope='row'>Armas de plasma</th><td class='n'>8.000</td><td>Energía de fusión y Robótica</td><td>Mecha de combate (mejora del Tanque)</td></tr><tr class='closer' data-era='4'><th scope='row'>Omnisciencia <span class='tag'>cierra la edad</span></th><td class='n'>12.000</td><td><span class='all'>Todas las demás tecnologías (62)</span></td><td>VICTORIA POR TECNOLOGÍA y visión total (todo el mapa y todas las unidades, sin niebla de guerra)</td></tr></tbody></table></div></section>
+</section>
+
+<section class="block" id="unidades">
+  <h2>Unidades</h2>
+  <p>El <b>ataque</b> y la <b>defensa</b> se combinan así: el daño de un golpe se multiplica por 6 y se divide por (6 + defensa del objetivo). El <b>alcance</b> es la distancia, en casillas, desde la que ataca (1 es cuerpo a cuerpo). La <b>velocidad</b> se mide en casillas por segundo sobre terreno llano.</p>
+  <div class="tools">
+    <input type="search" id="q-uni" placeholder="Buscar unidad" aria-label="Buscar unidad">
+    <button class="chip" type="button" data-filter-type="all" aria-pressed="true">Todas</button>
+    <button class="chip" type="button" data-filter-type="Civil" aria-pressed="false">Civiles</button>
+    <button class="chip" type="button" data-filter-type="Tierra" aria-pressed="false">Tierra</button>
+    <button class="chip" type="button" data-filter-type="Mar" aria-pressed="false">Mar</button>
+    <button class="chip" type="button" data-filter-type="Aire" aria-pressed="false">Aire</button>
+  </div>
+  <div class="scroll"><table class="tbl" id="t-uni"><thead><tr><th>Unidad</th><th>Tipo</th><th>Coste</th><th>Vida</th><th>Ataque</th><th>Defensa</th><th>Velocidad</th><th>Alcance</th><th>Requiere</th><th>Notas</th></tr></thead><tbody><tr data-type='Civil'><th scope='row'>Trabajador</th><td><span class='kind k-Civil'>Civil</span></td><td class='n'>30</td><td class='n'>10</td><td class='n'>–</td><td class='n'>–</td><td class='n'>0.6</td><td class='n'>–</td><td><span class='none'>Desde el inicio</span></td><td class='sm'></td></tr><tr data-type='Civil'><th scope='row'>Caravana de comercio</th><td><span class='kind k-Civil'>Civil</span></td><td class='n'>50</td><td class='n'>10</td><td class='n'>–</td><td class='n'>–</td><td class='n'>0.5</td><td class='n'>–</td><td>Moneda</td><td class='sm'></td></tr><tr data-type='Civil'><th scope='row'>Colono</th><td><span class='kind k-Civil'>Civil</span></td><td class='n'>70</td><td class='n'>10</td><td class='n'>–</td><td class='n'>–</td><td class='n'>0.6</td><td class='n'>–</td><td><span class='none'>Desde el inicio</span></td><td class='sm'>cuesta 1 habitante</td></tr><tr data-type='Civil'><th scope='row'>Mercader</th><td><span class='kind k-Civil'>Civil</span></td><td class='n'>90</td><td class='n'>15</td><td class='n'>–</td><td class='n'>–</td><td class='n'>0.7</td><td class='n'>–</td><td><span class='none'>Solo mejorando una Caravana en una Academia</span></td><td class='sm'></td></tr><tr data-type='Tierra'><th scope='row'>Guerrero</th><td><span class='kind k-Tierra'>Tierra</span></td><td class='n'>40</td><td class='n'>20</td><td class='n'>6</td><td class='n'>3</td><td class='n'>0.7</td><td class='n'>1</td><td><span class='none'>Desde el inicio</span></td><td class='sm'></td></tr><tr data-type='Tierra'><th scope='row'>Arquero</th><td><span class='kind k-Tierra'>Tierra</span></td><td class='n'>50</td><td class='n'>15</td><td class='n'>7</td><td class='n'>2</td><td class='n'>0.7</td><td class='n'>2</td><td>Tiro con arco</td><td class='sm'></td></tr><tr data-type='Tierra'><th scope='row'>Lancero</th><td><span class='kind k-Tierra'>Tierra</span></td><td class='n'>60</td><td class='n'>30</td><td class='n'>9</td><td class='n'>5</td><td class='n'>0.65</td><td class='n'>1</td><td>Minería</td><td class='sm'></td></tr><tr data-type='Tierra'><th scope='row'>Ballestero</th><td><span class='kind k-Tierra'>Tierra</span></td><td class='n'>65</td><td class='n'>18</td><td class='n'>10</td><td class='n'>3</td><td class='n'>0.65</td><td class='n'>2</td><td>Ballesta</td><td class='sm'></td></tr><tr data-type='Tierra'><th scope='row'>Jinete</th><td><span class='kind k-Tierra'>Tierra</span></td><td class='n'>70</td><td class='n'>22</td><td class='n'>8</td><td class='n'>3</td><td class='n'>1.1</td><td class='n'>1</td><td>Equitación</td><td class='sm'></td></tr><tr data-type='Tierra'><th scope='row'>Falange</th><td><span class='kind k-Tierra'>Tierra</span></td><td class='n'>80</td><td class='n'>35</td><td class='n'>7</td><td class='n'>8</td><td class='n'>0.55</td><td class='n'>1</td><td>Bronce</td><td class='sm'></td></tr><tr data-type='Tierra'><th scope='row'>Mosquetero</th><td><span class='kind k-Tierra'>Tierra</span></td><td class='n'>90</td><td class='n'>28</td><td class='n'>16</td><td class='n'>8</td><td class='n'>0.6</td><td class='n'>2</td><td>Pólvora</td><td class='sm'></td></tr><tr data-type='Tierra'><th scope='row'>Carro</th><td><span class='kind k-Tierra'>Tierra</span></td><td class='n'>90</td><td class='n'>28</td><td class='n'>10</td><td class='n'>4</td><td class='n'>0.9</td><td class='n'>1</td><td>Rueda</td><td class='sm'></td></tr><tr data-type='Tierra'><th scope='row'>Catapulta</th><td><span class='kind k-Tierra'>Tierra</span></td><td class='n'>100</td><td class='n'>18</td><td class='n'>14</td><td class='n'>1</td><td class='n'>0.4</td><td class='n'>3</td><td>Matemáticas</td><td class='sm'></td></tr><tr data-type='Tierra'><th scope='row'>Ballesta de asedio</th><td><span class='kind k-Tierra'>Tierra</span></td><td class='n'>110</td><td class='n'>20</td><td class='n'>18</td><td class='n'>1</td><td class='n'>0.4</td><td class='n'>3</td><td>Ballesta</td><td class='sm'></td></tr><tr data-type='Tierra'><th scope='row'>Granadero</th><td><span class='kind k-Tierra'>Tierra</span></td><td class='n'>110</td><td class='n'>32</td><td class='n'>28</td><td class='n'>9</td><td class='n'>0.6</td><td class='n'>1</td><td>Granada de mano</td><td class='sm'></td></tr><tr data-type='Tierra'><th scope='row'>Legión</th><td><span class='kind k-Tierra'>Tierra</span></td><td class='n'>110</td><td class='n'>45</td><td class='n'>12</td><td class='n'>9</td><td class='n'>0.6</td><td class='n'>1</td><td>Hierro</td><td class='sm'></td></tr><tr data-type='Tierra'><th scope='row'>Fusilero</th><td><span class='kind k-Tierra'>Tierra</span></td><td class='n'>120</td><td class='n'>35</td><td class='n'>22</td><td class='n'>11</td><td class='n'>0.6</td><td class='n'>2</td><td>Fusil</td><td class='sm'></td></tr><tr data-type='Tierra'><th scope='row'>Cañón</th><td><span class='kind k-Tierra'>Tierra</span></td><td class='n'>150</td><td class='n'>25</td><td class='n'>30</td><td class='n'>2</td><td class='n'>0.35</td><td class='n'>4</td><td>Artillería</td><td class='sm'></td></tr><tr data-type='Tierra'><th scope='row'>Tanque</th><td><span class='kind k-Tierra'>Tierra</span></td><td class='n'>200</td><td class='n'>80</td><td class='n'>38</td><td class='n'>14</td><td class='n'>0.5</td><td class='n'>3</td><td>Carro de combate</td><td class='sm'></td></tr><tr data-type='Tierra'><th scope='row'>Mecha de combate</th><td><span class='kind k-Tierra'>Tierra</span></td><td class='n'>320</td><td class='n'>120</td><td class='n'>55</td><td class='n'>20</td><td class='n'>0.55</td><td class='n'>3</td><td>Armas de plasma</td><td class='sm'></td></tr><tr data-type='Mar'><th scope='row'>Barco de Vela</th><td><span class='kind k-Mar'>Mar</span></td><td class='n'>80</td><td class='n'>25</td><td class='n'>–</td><td class='n'>–</td><td class='n'>0.3</td><td class='n'>–</td><td>Vela</td><td class='sm'>transporta 1</td></tr><tr data-type='Mar'><th scope='row'>Galeón</th><td><span class='kind k-Mar'>Mar</span></td><td class='n'>120</td><td class='n'>45</td><td class='n'>20</td><td class='n'>4</td><td class='n'>0.35</td><td class='n'>2</td><td>Brújula magnética</td><td class='sm'>transporta 3</td></tr><tr data-type='Mar'><th scope='row'>Barco de vapor</th><td><span class='kind k-Mar'>Mar</span></td><td class='n'>170</td><td class='n'>70</td><td class='n'>25</td><td class='n'>6</td><td class='n'>0.45</td><td class='n'>2</td><td>Máquina de vapor</td><td class='sm'>transporta 4</td></tr><tr data-type='Aire'><th scope='row'>Caza</th><td><span class='kind k-Aire'>Aire</span></td><td class='n'>190</td><td class='n'>40</td><td class='n'>30</td><td class='n'>6</td><td class='n'>1</td><td class='n'>2</td><td>Aviación</td><td class='sm'></td></tr><tr data-type='Aire'><th scope='row'>Bombardero</th><td><span class='kind k-Aire'>Aire</span></td><td class='n'>260</td><td class='n'>60</td><td class='n'>45</td><td class='n'>4</td><td class='n'>0.7</td><td class='n'>2</td><td>Aviación</td><td class='sm'></td></tr></tbody></table></div>
+  <p>Las unidades antiguas se vuelven obsoletas: cuando puedes construir una versión mejor, la anterior deja de ofrecerse. Una unidad parada en una ciudad con <b>Academia</b> se mejora con <kbd>U</kbd> pagando la diferencia de coste. Tras el tercer cambio de era el <b>Cañón</b> se dibuja como obús y el <b>Tanque</b> toma su lugar como carro de combate.</p>
+</section>
+
+<section class="block" id="edificios">
+  <h2>Edificios</h2>
+  <p>Cada ciudad puede tener uno de cada. Algunos abaratan al descubrir <b>Construcción</b> (−10 %), <b>Acero y hormigón</b> (−15 %) y <b>Nanotecnología</b> (−25 %).</p>
+  <div class="scroll"><table class="tbl"><thead><tr><th>Edificio</th><th>Coste</th><th>Efecto</th><th>Requiere</th></tr></thead><tbody><tr data-era='0'><th scope='row'>Baños públicos</th><td class='n'>70</td><td>+50% velocidad de crecimiento y +3 de felicidad</td><td><span class='none'>Desde el inicio</span></td></tr><tr data-era='0'><th scope='row'>Templo</th><td class='n'>60</td><td>+2 de felicidad</td><td>Cerámica</td></tr><tr data-era='0'><th scope='row'>Biblioteca</th><td class='n'>80</td><td>Dobla la ciencia de la ciudad</td><td>Escritura</td></tr><tr data-era='0'><th scope='row'>Observatorio</th><td class='n'>90</td><td>+50% de ciencia de la ciudad</td><td>Astronomía</td></tr><tr data-era='0'><th scope='row'>Anfiteatro</th><td class='n'>100</td><td>+3 de felicidad</td><td>Construcción</td></tr><tr data-era='1'><th scope='row'>Universidad</th><td class='n'>150</td><td>+75% de ciencia de la ciudad</td><td>Universidades</td></tr><tr data-era='1'><th scope='row'>Prensa</th><td class='n'>150</td><td>Duplica la ciencia de la ciudad</td><td>Imprenta</td></tr><tr data-era='1'><th scope='row'>Catedral</th><td class='n'>220</td><td>+4 de felicidad y +1 de ciencia</td><td>Universidades</td></tr><tr data-era='2'><th scope='row'>Periódico</th><td class='n'>180</td><td>+50% de descubrimiento (ciencia) de la ciudad</td><td>Imprenta de tipos móviles</td></tr><tr data-era='2'><th scope='row'>Teatro</th><td class='n'>180</td><td>+3 de felicidad</td><td>Imprenta de tipos móviles</td></tr><tr data-era='2'><th scope='row'>Fábrica</th><td class='n'>200</td><td>+50% de producción de la ciudad</td><td>Máquina de vapor</td></tr><tr data-era='2'><th scope='row'>Presa hidroeléctrica</th><td class='n'>250</td><td>+6 producción (solo en ciudades con río)</td><td>Electricidad</td></tr><tr data-era='3'><th scope='row'>Parque</th><td class='n'>150</td><td>+2 de felicidad</td><td>Motor de combustión</td></tr><tr data-era='3'><th scope='row'>Hospital</th><td class='n'>250</td><td>+3 de felicidad y +10% de crecimiento</td><td>Penicilina</td></tr><tr data-era='3'><th scope='row'>Centro comercial</th><td class='n'>280</td><td>+3 de felicidad y +25% de oro</td><td>Acero y hormigón</td></tr><tr data-era='3'><th scope='row'>Laboratorio informático</th><td class='n'>300</td><td>+100% de ciencia de la ciudad</td><td>Ordenadores</td></tr><tr data-era='3'><th scope='row'>Estadio</th><td class='n'>300</td><td>+5 de felicidad</td><td>Radio</td></tr><tr data-era='3'><th scope='row'>Cine</th><td class='n'>350</td><td>+5 de felicidad</td><td>Ordenadores</td></tr><tr data-era='3'><th scope='row'>Central nuclear</th><td class='n'>500</td><td>+10 producción</td><td>Energía nuclear</td></tr><tr data-era='4'><th scope='row'>Parque de realidad virtual</th><td class='n'>450</td><td>+6 de felicidad</td><td>Inteligencia artificial</td></tr><tr data-era='4'><th scope='row'>Computadora cuántica</th><td class='n'>600</td><td>+150% de ciencia de la ciudad</td><td>Computación cuántica</td></tr><tr data-era='4'><th scope='row'>Jardín orbital</th><td class='n'>600</td><td>+8 de felicidad</td><td>Colonización espacial</td></tr><tr data-era='4'><th scope='row'>Reactor de fusión</th><td class='n'>700</td><td>+20 producción</td><td>Energía de fusión</td></tr><tr data-era='4'><th scope='row'>Base lunar</th><td class='n'>900</td><td>+15 ciencia y +10 oro</td><td>Colonización espacial</td></tr><tr data-era='4'><th scope='row'>Satélite</th><td class='n'>1.500</td><td>Descubre todo el mapa (solo hace falta uno por civilización)</td><td>Vuelo espacial</td></tr></tbody></table></div>
+</section>
+
+<section class="block" id="maravillas">
+  <h2>Maravillas</h2>
+  <p>Solo puede existir <b>una de cada</b> en todo el mundo: la primera civilización que la termina se la queda. Su efecto vale para todas las ciudades de su dueña (salvo que se indique otra cosa) y se dibuja en una casilla libre del territorio de la ciudad.</p>
+  <div class="scroll"><table class="tbl"><thead><tr><th>Maravilla</th><th>Coste</th><th>Efecto</th><th>Requiere</th></tr></thead><tbody><tr data-era='0'><th scope='row'>Gran Biblioteca</th><td class='n'>200</td><td>+50% de ciencia en todas tus ciudades</td><td>Escritura</td></tr><tr data-era='0'><th scope='row'>Faro de Alejandría</th><td class='n'>200</td><td>Tus barcos van un 50% más rápido</td><td>Vela</td></tr><tr data-era='0'><th scope='row'>Pirámides</th><td class='n'>250</td><td>+25% de producción en todas tus ciudades</td><td>Mampostería</td></tr><tr data-era='0'><th scope='row'>Gran Muralla</th><td class='n'>300</td><td>+4 de defensa en todas tus ciudades</td><td>Construcción</td></tr><tr data-era='0'><th scope='row'>Coliseo</th><td class='n'>300</td><td>+2 de felicidad en todas tus ciudades</td><td>Construcción</td></tr><tr data-era='1'><th scope='row'>Laboratorio de Fibonacci</th><td class='n'>250</td><td>+25% de ciencia en todas tus ciudades</td><td>Cifras arábigas</td></tr><tr data-era='1'><th scope='row'>Gran Biblioteca de Alejandría</th><td class='n'>300</td><td>+40% de ciencia en todas tus ciudades</td><td>Universidades</td></tr><tr data-era='1'><th scope='row'>Imprenta de Gutenberg</th><td class='n'>300</td><td>X1,5 de ciencia en todas tus ciudades</td><td>Imprenta</td></tr><tr data-era='1'><th scope='row'>Ruta de la seda de Marco Polo</th><td class='n'>400</td><td>+30% de oro en todas tus ciudades</td><td>Brújula magnética</td></tr><tr data-era='1'><th scope='row'>Capilla Sixtina</th><td class='n'>450</td><td>+3 de felicidad en todas tus ciudades</td><td>Universidades</td></tr><tr data-era='2'><th scope='row'>Estudio de Daniel Gabriel Fahrenheit</th><td class='n'>450</td><td>+30% de crecimiento en todas tus ciudades</td><td>Termómetro</td></tr><tr data-era='2'><th scope='row'>Observatorio de Galileo Galilei</th><td class='n'>500</td><td>X1,4 de ciencia en todas tus ciudades</td><td>Telescopio</td></tr><tr data-era='2'><th scope='row'>Presa Hoover</th><td class='n'>500</td><td>+25% de producción en todas tus ciudades (solo en ciudades con río)</td><td>Electricidad</td></tr><tr data-era='2'><th scope='row'>Prensa de Gutenberg</th><td class='n'>600</td><td>Construye un Periódico en cada ciudad que controles y que fundes</td><td>Imprenta de tipos móviles</td></tr><tr data-era='2'><th scope='row'>Torre Eiffel</th><td class='n'>600</td><td>+25% de oro y +1 de felicidad en todas tus ciudades</td><td>Electricidad</td></tr><tr data-era='2'><th scope='row'>Estatua de la Libertad</th><td class='n'>650</td><td>+15% de crecimiento y +1 de felicidad en todas tus ciudades</td><td>Ferrocarril</td></tr><tr data-era='3'><th scope='row'>Torre de radio de Marconi</th><td class='n'>700</td><td>+30% de ciencia en todas tus ciudades</td><td>Radio</td></tr><tr data-era='3'><th scope='row'>Laboratorio de Fleming</th><td class='n'>700</td><td>+30% de crecimiento en todas tus ciudades</td><td>Penicilina</td></tr><tr data-era='3'><th scope='row'>Cadena de montaje de Ford</th><td class='n'>750</td><td>+25% de producción en todas tus ciudades</td><td>Motor de combustión</td></tr><tr data-era='3'><th scope='row'>Hollywood</th><td class='n'>800</td><td>+3 de felicidad en todas tus ciudades</td><td>Ordenadores</td></tr><tr data-era='3'><th scope='row'>Internet</th><td class='n'>900</td><td>X1,5 de ciencia en todas tus ciudades</td><td>Ordenadores</td></tr><tr data-era='3'><th scope='row'>Naciones Unidas</th><td class='n'>900</td><td>Mientras exista, todas las civilizaciones aceptan la paz y no hay cansancio de guerra</td><td>Radio</td></tr><tr data-era='3'><th scope='row'>Proyecto Manhattan</th><td class='n'>1.000</td><td>+50% de producción y x1,25 de ciencia en todas tus ciudades</td><td>Energía nuclear</td></tr><tr data-era='3'><th scope='row'>Programa Apolo</th><td class='n'>1.100</td><td>+30% de ciencia en todas tus ciudades y descubre todo el mapa</td><td>Aviación</td></tr><tr data-era='4'><th scope='row'>Banco genético</th><td class='n'>1.000</td><td>+40% de crecimiento en todas tus ciudades</td><td>Ingeniería genética</td></tr><tr data-era='4'><th scope='row'>Biosfera</th><td class='n'>1.200</td><td>+30% de crecimiento y +2 de felicidad en todas tus ciudades</td><td>Ingeniería genética</td></tr><tr data-era='4'><th scope='row'>Ascensor espacial</th><td class='n'>1.400</td><td>+40% de oro en todas tus ciudades</td><td>Colonización espacial</td></tr></tbody></table></div>
+</section>
+
+<section class="block" id="guerra">
+  <h2>Combate y defensa</h2>
+  <div class="cols">
+    <div><h3>Atacar</h3><p>Selecciona una unidad militar y haz clic derecho sobre un enemigo (o su ciudad). Solo puedes atacar a quien esté en <b>guerra</b> contigo. Las unidades paradas responden solas a los enemigos que tienen cerca y el defensor contraataca.</p></div>
+    <div><h3>Fortificar</h3><p>Con una unidad militar parada, pulsa <kbd>F</kbd>: tarda <b>10 segundos</b> y da <b>+25 % de defensa</b>, o <b>+50 %</b> dentro de una ciudad propia con Muro. Al mover o atacar se pierde. Se dibuja una defensa a su alrededor y una bandera de tu color.</p></div>
+    <div><h3>Murallas y vida</h3><p>El <b>Muro</b> da +25 de vida a la ciudad y más defensa contra los asedios. Los <b>Escudos de energía</b> suman +100 de vida y la <b>Gran Muralla</b> +4 de defensa a todas tus ciudades. Las ciudades también disparan a los enemigos que se acercan.</p></div>
+    <div><h3>Capturar</h3><p>Una ciudad cae cuando su vida llega a cero: pasa a manos del atacante con sus edificios.</p></div>
+  </div>
+</section>
+
+<section class="block" id="mar">
+  <h2>Mar e islas</h2>
+  <ul class="list">
+    <li>Los <b>barcos</b> solo navegan por el mar y se construyen en ciudades costeras. El <b>Barco de Vela</b>, el <b>Galeón</b> y el <b>Barco de vapor</b> transportan 1, 3 y 4 unidades de tierra.</li>
+    <li>Para <b>embarcar</b>, haz clic derecho con una unidad de tierra sobre un barco propio con sitio. Para <b>desembarcar</b>, haz clic derecho con el barco cargado sobre una costa.</li>
+    <li>Los <b>aviones</b> (Caza y Bombardero) vuelan sobre tierra y mar y no tienen restricciones de terreno.</li>
+    <li>La IA también cruza el mar: construye transportes, <b>coloniza otras islas</b> y <b>desembarca tropas</b> junto a las ciudades enemigas costeras.</li>
+  </ul>
+</section>
+
+<section class="block" id="diplomacia">
+  <h2>Diplomacia</h2>
+  <p>Cada pareja de civilizaciones está en <b>Guerra</b>, <b>Paz</b> o <b>Alianza</b>. Empiezas en paz con todas. Abre el panel con <kbd>D</kbd>.</p>
+  <div class="scroll"><table class="tbl"><thead><tr><th>Estado</th><th>Qué significa</th></tr></thead><tbody>
+    <tr><th scope="row">Guerra</th><td>Las unidades y ciudades se atacan. Puedes proponer la paz, pero una guerra recién declarada no la admite hasta pasado un minuto.</td></tr>
+    <tr><th scope="row">Paz</th><td>Nadie ataca a nadie. Tras la paz hay una <b>tregua de 120 segundos</b> en la que no se puede declarar la guerra. Desde la paz puedes proponer una alianza o declarar la guerra.</td></tr>
+    <tr><th scope="row">Alianza</th><td>Como la paz, y además compartís la visión del mapa. Para proponerla hace falta llevar tiempo en paz. Romperla vuelve a la paz.</td></tr>
+  </tbody></table></div>
+  <ul class="list">
+    <li>La IA <b>acepta la paz</b> si va perdiendo, está en guerra con varias civilizaciones o, a veces, aunque sea más fuerte. Acepta una <b>alianza</b> con facilidad si tenéis un enemigo común.</li>
+    <li>La IA te <b>propone</b> paz o alianza cuando le conviene: aparece un aviso con los botones Aceptar y Rechazar.</li>
+    <li>Una IA fuerte y sin guerras puede <b>declarar la guerra</b> a un vecino más débil, también a ti.</li>
+    <li>Con la maravilla <b>Naciones Unidas</b> en el mundo, todas las civilizaciones aceptan la paz y desaparece el cansancio de guerra.</li>
+  </ul>
+</section>
+
+<section class="block" id="ia">
+  <h2>Rivales y dificultad</h2>
+  <p>Las civilizaciones enemigas las maneja la IA: investigan priorizando la economía y los cambios de era, fundan hasta 8 ciudades, mejoran el terreno con trabajadores, construyen edificios y maravillas, forman ejércitos y fortifican sus ciudades. Reaccionan a las amenazas: refuerzan, compran defensas, refugian a sus civiles y dejan de atacar mientras una ciudad está en peligro.</p>
+  <div class="scroll"><table class="tbl"><thead><tr><th>Nivel</th><th>Producción, ciencia, oro y crecimiento</th><th>Ritmo de decisión</th><th>Ataques</th><th>Ciudades</th></tr></thead><tbody>
+    <tr><th scope="row">Fácil</th><td>−30 %</td><td>La mitad de rápido</td><td>Tarda casi el triple en atacar y no compra en emergencias</td><td>Hasta 5</td></tr>
+    <tr><th scope="row">Normal</th><td>Igual que tú</td><td>Normal</td><td>Tras el periodo de gracia</td><td>Hasta 8</td></tr>
+    <tr><th scope="row">Difícil</th><td>+30 %</td><td>Más rápido</td><td>Ataca mucho antes y vigila un radio mayor</td><td>Hasta 10</td></tr>
+  </tbody></table></div>
+</section>
+
+<section class="block" id="victoria">
+  <h2>Victoria y puntos</h2>
+  <ul class="list">
+    <li><b>Dominación:</b> gana la última civilización que queda viva.</li>
+    <li><b>Tecnología:</b> la primera civilización que descubre la <b>Omnisciencia</b>, que exige las otras 62 tecnologías, gana la partida. La IA la persigue con prioridad máxima en cuanto puede, así que puede ganarte.</li>
+  </ul>
+  <p>Al terminar, o si te eliminan o abandonas, aparece la pantalla de <b>partida terminada</b>: una lista de civilizaciones encabezada por la ganadora, con su puntuación:</p>
+  <div class="scroll"><table class="tbl"><thead><tr><th>Concepto</th><th>Puntos</th></tr></thead><tbody>
+    <tr><th scope="row">Cada ciudad</th><td class="n">100</td></tr>
+    <tr><th scope="row">Cada habitante</th><td class="n">20</td></tr>
+    <tr><th scope="row">Cada tecnología</th><td class="n">40</td></tr>
+    <tr><th scope="row">Cada edificio</th><td class="n">15</td></tr>
+    <tr><th scope="row">Cada maravilla</th><td class="n">165</td></tr>
+    <tr><th scope="row">Cada unidad</th><td class="n">5</td></tr>
+    <tr><th scope="row">Cada 20 de oro</th><td class="n">1</td></tr>
+  </tbody></table></div>
+</section>
+
+<section class="block" id="consejos">
+  <h2>Consejos</h2>
+  <ul class="list">
+    <li>Funda ciudades pronto y reparte los colonos: más ciudades son más ciencia, pero también menos felicidad en cada una.</li>
+    <li>Conecta tus ciudades con carreteras: dan oro y ciencia y mueven a tus tropas el doble de rápido.</li>
+    <li>Vigila el <b>Descontento</b>: construye Baños públicos y los edificios de felicidad de cada edad antes de que haya disturbios.</li>
+    <li>Con la niebla de guerra no ves a quien se acerca: deja soldados fortificados en las ciudades y usa el minimapa.</li>
+    <li>Si una guerra te va mal, abre <kbd>D</kbd> y propón la paz. Si tienes un enemigo común con otra civilización, propón una alianza.</li>
+    <li>Las maravillas son carreras: la IA también las quiere. Construye primero las que más te ayudan.</li>
+    <li>En una isla pequeña, investiga pronto <b>Vela</b> para colonizar otras tierras por mar.</li>
+    <li>Para ver las edades finales sin esperar horas, usa <kbd>Mayús</kbd> + <kbd>T</kbd>.</li>
+  </ul>
+</section>
+
+<footer>Los datos de las tablas se han generado a partir del código del juego, así que reflejan la versión actual.</footer>
+</main>
+</div>
+<script>
+(function () {
+  function norm(s) { return (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); }
+
+  // Tecnologías: búsqueda y filtro por edad
+  var qTec = document.getElementById("q-tec");
+  var eraFilter = "all";
+  function filterTechs() {
+    var q = norm(qTec.value);
+    document.querySelectorAll(".era-block").forEach(function (sec) {
+      var showEra = eraFilter === "all" || sec.getAttribute("data-era") === eraFilter;
+      var visible = 0;
+      sec.querySelectorAll("tbody tr").forEach(function (tr) {
+        var ok = !q || norm(tr.textContent).indexOf(q) !== -1;
+        tr.hidden = !ok;
+        if (ok) visible++;
+      });
+      sec.hidden = !showEra || visible === 0;
+    });
+  }
+  document.querySelectorAll("[data-filter-era]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      eraFilter = b.getAttribute("data-filter-era");
+      document.querySelectorAll("[data-filter-era]").forEach(function (o) { o.setAttribute("aria-pressed", o === b ? "true" : "false"); });
+      filterTechs();
+    });
+  });
+  qTec.addEventListener("input", filterTechs);
+
+  // Unidades: búsqueda y filtro por tipo
+  var qUni = document.getElementById("q-uni");
+  var typeFilter = "all";
+  function filterUnits() {
+    var q = norm(qUni.value);
+    document.querySelectorAll("#t-uni tbody tr").forEach(function (tr) {
+      var okType = typeFilter === "all" || tr.getAttribute("data-type") === typeFilter;
+      var okText = !q || norm(tr.textContent).indexOf(q) !== -1;
+      tr.hidden = !(okType && okText);
+    });
+  }
+  document.querySelectorAll("[data-filter-type]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      typeFilter = b.getAttribute("data-filter-type");
+      document.querySelectorAll("[data-filter-type]").forEach(function (o) { o.setAttribute("aria-pressed", o === b ? "true" : "false"); });
+      filterUnits();
+    });
+  });
+  qUni.addEventListener("input", filterUnits);
+})();
+</script>
+
+</body>
+</html>

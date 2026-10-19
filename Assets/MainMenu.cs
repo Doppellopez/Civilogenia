@@ -48,7 +48,8 @@ public class MainMenu : MonoBehaviour
         "Cursores o , . : mover la cámara    Rueda: zoom    Doble clic: seguir un punto",
         "N: minimapa (clic para ir a un punto del planeta)",
         "D: diplomacia (proponer paz o alianzas, declarar guerra)",
-        "F2: activar o silenciar los efectos de sonido",
+        "F1: guía del juego (durante la partida)",
+        "F2: activar o silenciar el sonido y la música",
         "Mayús+T: desarrollar todas las tecnologías de la edad actual",
         "F5: guardar partida    F9: cargar partida",
         "Esc: menú de pausa (guardar y salir)"

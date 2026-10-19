@@ -584,6 +584,7 @@ public partial class CivGame : MonoBehaviour
         {
             c.food = 0f;
             c.pop++;
+            if (c.owner.isHuman) GameSfx.Play(Sfx.Grow, 0.6f);
 
             // El territorio se amplía poco a poco hacia el nuevo radio (ver TickTerritory)
             if (c.pop == 4) c.claimDepth = Mathf.Max(c.claimDepth, 3);
@@ -915,6 +916,7 @@ public partial class CivGame : MonoBehaviour
         if (city.owner.gold < price) return false;
 
         city.owner.gold -= price;
+        if (city.owner.isHuman) GameSfx.Play(Sfx.Buy);
         city.prodStock = city.ItemCost;
         CompleteItem(city);
         return true;
@@ -1009,6 +1011,7 @@ public partial class CivGame : MonoBehaviour
         civ.researching = true;
         civ.currentTech = t;
         civ.researchProgress = 0f;
+        if (civ.isHuman) GameSfx.Play(Sfx.Research);
         return true;
     }
 
@@ -1107,6 +1110,7 @@ public partial class CivGame : MonoBehaviour
 
     public void KillUnit(Unit u)
     {
+        if (human != null && (u.owner == human || IsVisible(u.cell))) GameSfx.Play(Sfx.Death, u.owner == human ? 1f : 0.5f);
         if (!u.alive) return;
         u.alive = false;
 
@@ -1531,6 +1535,7 @@ public partial class CivGame : MonoBehaviour
 
             grid.AddRoad(u.cell, next);
             CivViews.BuildRoad(u.cell, next, grid, earth, EarthT, u.owner);
+            if (u.owner.isHuman) GameSfx.Play(Sfx.Work, 0.6f);
             u.roadProgress = 0f;
         }
 
@@ -1635,6 +1640,7 @@ public partial class CivGame : MonoBehaviour
 
     public void OrderMove(Unit u, int cell)
     {
+        if (u.owner.isHuman) GameSfx.Play(Sfx.Order);
         u.fortified = false;
         u.fortifying = false;
         u.fortifyProgress = 0f;
@@ -1887,6 +1893,7 @@ public partial class CivGame : MonoBehaviour
         CancelRoad(u);
         u.targetCity = null;
         u.targetUnit = target;
+        if (u.owner.isHuman) GameSfx.Play(Sfx.Order);
         u.foundAt = -1;
         u.path.Clear();
         u.lastTargetCell = -1;
@@ -1906,6 +1913,7 @@ public partial class CivGame : MonoBehaviour
         CancelRoad(u);
         u.targetUnit = null;
         u.targetCity = target;
+        if (u.owner.isHuman) GameSfx.Play(Sfx.Order);
         u.foundAt = -1;
         u.path.Clear();
         u.lastTargetCell = -1;
