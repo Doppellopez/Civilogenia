@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// Esc cierra el programa (en el editor detiene el modo Play).
+/// Esc cierra el programa (en el editor detiene el modo Play), salvo durante la partida, donde abre el menú de pausa.
 /// Se crea sola al pulsar Play.
 /// </summary>
 public class QuitOnEscape : MonoBehaviour
@@ -19,6 +19,7 @@ public class QuitOnEscape : MonoBehaviour
     void Update()
     {
         if (!Input.GetKeyDown(KeyCode.Escape)) return;
+        if (CivUI.HandlesEscape) return;   // durante la partida, Esc abre el menú de pausa
 
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;

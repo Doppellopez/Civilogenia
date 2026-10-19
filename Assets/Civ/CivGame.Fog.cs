@@ -71,6 +71,10 @@ public partial class CivGame
 
         System.Array.Clear(fogNew, 0, n);
 
+        // Omnisciencia: visión total, sin niebla
+        if (human.Has(TechKind.Omniscience))
+            for (int i = 0; i < n; i++) fogNew[i] = true;
+
         foreach (City c in human.cities)
             if (c.alive) MarkVision(c.cell, CityVision);
 
@@ -83,8 +87,8 @@ public partial class CivGame
             if (u.Moving) MarkVision(u.moveTo, depth);
         }
 
-        // Vuelo espacial: los satélites cartografían todo el planeta (queda explorado, aunque no visible)
-        bool satellites = human.Has(TechKind.SpaceFlight);
+        // Satélite (se construye con el Vuelo espacial): cartografía todo el planeta (queda explorado, aunque no visible)
+        bool satellites = OwnsBuilding(human, BuildingKind.Satellite);
 
         bool changed = false;
         for (int i = 0; i < n; i++)

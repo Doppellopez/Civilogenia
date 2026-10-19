@@ -38,7 +38,7 @@ public class MainMenu : MonoBehaviour
         "Espacio: pausa",
         "Cursores o , . : mover la cámara    Rueda: zoom    Doble clic: seguir un punto",
         "F5: guardar partida    F9: cargar partida",
-        "Esc: salir del juego"
+        "Esc: menú de pausa (guardar y salir)"
     };
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]

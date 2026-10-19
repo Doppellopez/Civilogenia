@@ -18,6 +18,42 @@ public class CivUI : MonoBehaviour
     City selCity;
     bool showHelp = true;
     bool showTech;
+    bool gameOverDismissed;   // el jugador cerró la pantalla de partida terminada para seguir jugando
+    bool gameOverOpened;
+    float gameOverSavedSpeed = 1f;
+    GUIStyle headStyle;
+
+    // Menú de pausa (Esc): reanudar, guardar y salir (con confirmación)
+    bool pauseOpen;
+    bool pauseConfirmQuit;
+    float pauseSavedSpeed = 1f;
+    string pauseMessage = "";
+    static CivUI instance;
+
+    /// <summary>Esc abre el menú de pausa durante la partida (QuitOnEscape no debe cerrar el juego en ese caso).</summary>
+    public static bool HandlesEscape
+    {
+        get
+        {
+            return instance != null && instance.game != null && instance.game.ready
+                && !IntroVideo.Active && !MainMenu.Active && !instance.game.GameOver;
+        }
+    }
+
+    void OpenPause()
+    {
+        pauseOpen = true;
+        pauseConfirmQuit = false;
+        pauseMessage = "";
+        pauseSavedSpeed = game.gameSpeed;   // se restaura tal cual (si el jugador ya había pausado con Espacio, sigue pausado)
+        game.gameSpeed = 0f;
+    }
+
+    void ClosePause()
+    {
+        pauseOpen = false;
+        game.gameSpeed = pauseSavedSpeed;
+    }
     float lastSpeed = 1f;
 
     // Modo carretera: 0 = no, 1 = esperando que señales la casilla de destino
@@ -34,9 +70,19 @@ public class CivUI : MonoBehaviour
 
     void Update()
     {
+        instance = this;
         if (game == null) game = CivGame.Instance;
         if (game == null || !game.ready) return;
         if (IntroVideo.Active || MainMenu.Active) return;   // durante la introducción y el menú no se atiende el teclado ni el ratón del juego
+        if (game.GameOver && !gameOverDismissed) return;      // con la pantalla de partida terminada abierta, el juego no atiende nada más
+
+        // Esc abre o cierra el menú de pausa; con él abierto no se atiende nada más
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            if (pauseOpen) ClosePause(); else OpenPause();
+            return;
+        }
+        if (pauseOpen) return;
 
         if (selUnit != null && !selUnit.alive) selUnit = null;
         if (selCity != null && !selCity.alive) selCity = null;
@@ -409,6 +455,8 @@ public class CivUI : MonoBehaviour
         if (selCity != null) DrawCityPanel();
         if (showTech) DrawTechPanel();
         DrawBanner();
+        DrawGameOver();
+        DrawPauseMenu();
 
         lastRects = new List<Rect>(rects);
     }
@@ -506,7 +554,7 @@ public class CivUI : MonoBehaviour
         GUILayout.Label("T: tecnologías   C: centrar", small);
         GUILayout.Label("Espacio: pausa   H: ocultar", small);
         GUILayout.Label("Cursores / , . + - : mover y girar la cámara", small);
-        GUILayout.Label("Esc: salir", small);
+        GUILayout.Label("Esc: menú de pausa", small);
         GUILayout.EndArea();
     }
 
@@ -786,12 +834,153 @@ public class CivUI : MonoBehaviour
         GUILayout.EndArea();
     }
 
+    // Menú de pausa: Reanudar, Guardar partida y Salir del juego (pide confirmación)
+    void DrawPauseMenu()
+    {
+        if (!pauseOpen) return;
+
+        Rect all = new Rect(0, 0, vw, vh);
+        rects.Add(all);
+        GUI.color = new Color(0f, 0f, 0f, 0.6f);
+        GUI.DrawTexture(all, Texture2D.whiteTexture);
+        GUI.color = Color.white;
+
+        float w = 380f, h = pauseConfirmQuit ? 230f : 290f;
+        Rect r = Panel(new Rect((vw - w) / 2f, (vh - h) / 2f, w, h));
+
+        GUI.Label(new Rect(r.x, r.y + 14f, r.width, 48f), "PAUSA", big);
+
+        if (!pauseConfirmQuit)
+        {
+            float bx = r.x + 50f, bw = r.width - 100f, y = r.y + 76f;
+
+            if (GUI.Button(new Rect(bx, y, bw, 38f), "Reanudar  (Esc)")) ClosePause();
+            y += 50f;
+
+            if (GUI.Button(new Rect(bx, y, bw, 38f), "Guardar partida  (F5)"))
+                pauseMessage = game.SaveGame() ? "Partida guardada" : "No se pudo guardar";
+            y += 50f;
+
+            if (GUI.Button(new Rect(bx, y, bw, 38f), "Salir del juego")) pauseConfirmQuit = true;
+
+            if (!string.IsNullOrEmpty(pauseMessage))
+            {
+                if (headStyle == null) headStyle = new GUIStyle(title) { alignment = TextAnchor.MiddleCenter };
+                GUI.Label(new Rect(r.x, r.yMax - 40f, r.width, 28f), pauseMessage, headStyle);
+            }
+        }
+        else
+        {
+            if (headStyle == null) headStyle = new GUIStyle(title) { alignment = TextAnchor.MiddleCenter };
+            GUI.Label(new Rect(r.x + 20f, r.y + 70f, r.width - 40f, 54f), "¿Salir del juego?\nSe perderá lo que no hayas guardado.", headStyle);
+
+            if (GUI.Button(new Rect(r.x + 30f, r.yMax - 62f, 150f, 38f), "Sí, salir"))
+            {
+                // Antes de cerrar se muestra la pantalla de fin de partida con las puntuaciones
+                pauseOpen = false;
+                pauseConfirmQuit = false;
+                game.abandoned = true;
+            }
+
+            if (GUI.Button(new Rect(r.xMax - 180f, r.yMax - 62f, 150f, 38f), "Cancelar")) pauseConfirmQuit = false;
+        }
+    }
+
+    // Pantalla de partida terminada: lista de civilizaciones con su puntuación, encabezada por la que ha ganado
+    void DrawGameOver()
+    {
+        if (!game.GameOver)
+        {
+            gameOverDismissed = false;
+            gameOverOpened = false;
+            return;
+        }
+
+        if (gameOverDismissed) return;
+
+        // La partida se congela mientras se ve la clasificación
+        if (!gameOverOpened)
+        {
+            gameOverOpened = true;
+            gameOverSavedSpeed = game.gameSpeed > 0f ? game.gameSpeed : 1f;
+            game.gameSpeed = 0f;
+        }
+
+        // Velo oscuro sobre todo (también bloquea los clics en el resto de la interfaz)
+        Rect all = new Rect(0, 0, vw, vh);
+        rects.Add(all);
+        GUI.color = new Color(0f, 0f, 0f, 0.72f);
+        GUI.DrawTexture(all, Texture2D.whiteTexture);
+        GUI.color = Color.white;
+
+        List<Civ> ranking = game.Ranking();
+
+        string headline;
+        if (game.winner == null && game.human.alive) headline = "Has abandonado la partida";
+        else if (game.winner == null) headline = "Has sido eliminado";
+        else if (game.winnerByTech) headline = game.winner == game.human ? "¡VICTORIA POR TECNOLOGÍA!" : game.winner.name + " gana por tecnología";
+        else headline = game.winner == game.human ? "¡VICTORIA!" : game.winner.name + " gobierna el mundo";
+
+        float rowH = 34f;
+        float w = 620f;
+        float h = 170f + ranking.Count * rowH + 70f;
+        Rect r = Panel(new Rect((vw - w) / 2f, Mathf.Max(20f, (vh - h) / 2f), w, h));
+
+        GUI.Label(new Rect(r.x, r.y + 14f, r.width, 50f), "PARTIDA TERMINADA", big);
+        if (headStyle == null) headStyle = new GUIStyle(title) { alignment = TextAnchor.MiddleCenter };
+        GUI.Label(new Rect(r.x, r.y + 62f, r.width, 28f), headline, headStyle);
+
+        // Cabecera de la tabla
+        float y = r.y + 104f;
+        GUI.Label(new Rect(r.x + 24f, y, 40f, 26f), "<b>#</b>", label);
+        GUI.Label(new Rect(r.x + 64f, y, 220f, 26f), "<b>Civilización</b>", label);
+        GUI.Label(new Rect(r.x + 300f, y, 110f, 26f), "<b>Puntos</b>", label);
+        GUI.Label(new Rect(r.x + 420f, y, 180f, 26f), "<b>Estado</b>", label);
+        y += 30f;
+
+        for (int i = 0; i < ranking.Count; i++)
+        {
+            Civ c = ranking[i];
+            bool isWinner = c == game.winner;
+
+            if (isWinner)
+            {
+                GUI.color = new Color(1f, 0.85f, 0.25f, 0.28f);
+                GUI.DrawTexture(new Rect(r.x + 12f, y - 2f, r.width - 24f, rowH - 2f), Texture2D.whiteTexture);
+                GUI.color = Color.white;
+            }
+
+            string status = isWinner ? "<b>GANADORA</b>" : c.alive ? "En juego" : "Eliminada";
+            string you = c == game.human ? "  (tú)" : "";
+
+            GUI.Label(new Rect(r.x + 24f, y, 40f, 26f), (i + 1).ToString(), label);
+            GUI.Label(new Rect(r.x + 64f, y, 230f, 26f), "<b><color=#" + Hex(c.color) + ">" + c.name + "</color></b>" + you, label);
+            GUI.Label(new Rect(r.x + 300f, y, 110f, 26f), game.ScoreOf(c).ToString(), label);
+            GUI.Label(new Rect(r.x + 420f, y, 180f, 26f), status, label);
+            y += rowH;
+        }
+
+        GUI.Label(new Rect(r.x + 20f, y + 4f, r.width - 40f, 22f),
+            "Puntos: ciudades 100, habitantes 20, tecnologías 40, edificios 15, maravillas 150 más, unidades 5, oro 1 por cada 20", small);
+
+        if (GUI.Button(new Rect(r.x + w / 2f - 100f, r.yMax - 52f, 200f, 36f), "Salir del juego"))
+        {
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
+        }
+    }
+
     void DrawBanner()
     {
         string text = null;
 
         if (game.winner != null)
-            text = game.winner == game.human ? "¡VICTORIA!" : game.winner.name + " gobierna el mundo";
+            text = game.winnerByTech
+                ? (game.winner == game.human ? "¡VICTORIA POR TECNOLOGÍA!" : game.winner.name + " gana por tecnología")
+                : (game.winner == game.human ? "¡VICTORIA!" : game.winner.name + " gobierna el mundo");
         else if (!game.human.alive)
             text = "Has sido eliminado";
 

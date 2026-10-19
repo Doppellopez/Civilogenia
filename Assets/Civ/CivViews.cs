@@ -853,6 +853,204 @@ public static class CivViews
             dish.transform.localRotation = Quaternion.Euler(0f, 0f, -50f);
         }
 
+        if (city.buildings.Contains(BuildingKind.FusionReactor))
+        {
+            // Reactor de fusión: anillo toroidal de esferas de plasma brillantes (tokamak) alrededor de un núcleo, sobre una
+            // base de hormigón con cuatro pilares
+            Material frBase = LitMaterial(new Color(0.55f, 0.56f, 0.6f));
+            Material frDark = LitMaterial(FutGraphite);
+            Material frPlasma = FutGlow(new Color(1f, 0.45f, 0.9f), 2.2f);
+            Material frCore = FutGlow(new Color(1f, 0.95f, 0.6f), 2.5f);
+            Material frCiv = LitMaterial(civColor);
+            Vector3 at = new Vector3(size * 2.1f, 0f, -size * 0.9f);
+
+            Piece(root.transform, Cylinder, frBase, at + new Vector3(0f, size * 0.03f, 0f), new Vector3(size * 0.6f, size * 0.03f, size * 0.6f));
+            Piece(root.transform, Cylinder, frCiv, at + new Vector3(0f, size * 0.065f, 0f), new Vector3(size * 0.62f, size * 0.01f, size * 0.62f));
+            for (int i = 0; i < 4; i++)
+            {
+                float a = i * Mathf.PI * 0.5f + Mathf.PI * 0.25f;
+                Piece(root.transform, Cylinder, frDark, at + new Vector3(Mathf.Cos(a) * size * 0.2f, size * 0.12f, Mathf.Sin(a) * size * 0.2f), new Vector3(size * 0.04f, size * 0.07f, size * 0.04f));
+            }
+
+            Vector3 center = at + new Vector3(0f, size * 0.3f, 0f);
+            Piece(root.transform, Sphere, frCore, center, Vector3.one * size * 0.14f);
+            for (int i = 0; i < 20; i++)
+            {
+                float a = i / 20f * Mathf.PI * 2f;
+                Vector3 p = center + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * size * 0.24f;
+                Piece(root.transform, Sphere, i % 2 == 0 ? frPlasma : frDark, p, Vector3.one * size * (i % 2 == 0 ? 0.075f : 0.06f));
+            }
+        }
+
+        if (city.buildings.Contains(BuildingKind.QuantumComputer))
+        {
+            // Computadora cuántica: cubo oscuro de cristal sobre un pedestal con tres anillos luminosos que flotan en órbita
+            Material qcCase = LitMaterial(new Color(0.08f, 0.1f, 0.18f));
+            qcCase.SetFloat("_Glossiness", 0.9f);
+            Material qcBase = LitMaterial(new Color(0.75f, 0.76f, 0.8f));
+            Material qcGlow = FutGlow(new Color(0.6f, 0.3f, 1f), 2.2f);
+            Material qcCyan = FutGlow(FutCyan, 2.2f);
+            Material qcCiv = LitMaterial(civColor);
+            Vector3 at = new Vector3(-size * 2.1f, 0f, size * 1.5f);
+
+            Piece(root.transform, Cube, qcBase, at + new Vector3(0f, size * 0.04f, 0f), new Vector3(size * 0.5f, size * 0.08f, size * 0.5f));
+            Piece(root.transform, Cube, qcCiv, at + new Vector3(0f, size * 0.085f, 0f), new Vector3(size * 0.52f, size * 0.01f, size * 0.52f));
+            Piece(root.transform, Cube, qcCase, at + new Vector3(0f, size * 0.24f, 0f), new Vector3(size * 0.3f, size * 0.3f, size * 0.3f));
+            Piece(root.transform, Cube, qcGlow, at + new Vector3(0f, size * 0.24f, size * 0.155f), new Vector3(size * 0.18f, size * 0.18f, size * 0.01f));
+
+            // Anillos de partículas inclinados en distintos planos
+            for (int ring = 0; ring < 3; ring++)
+            {
+                Quaternion rot = Quaternion.Euler(ring * 60f, ring * 50f, ring * 25f);
+                for (int i = 0; i < 14; i++)
+                {
+                    float a = i / 14f * Mathf.PI * 2f;
+                    Vector3 p = at + new Vector3(0f, size * 0.52f, 0f) + rot * new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * size * 0.26f;
+                    Piece(root.transform, Sphere, i % 3 == 0 ? qcCyan : qcGlow, p, Vector3.one * size * (i % 3 == 0 ? 0.05f : 0.028f));
+                }
+            }
+        }
+
+        if (city.buildings.Contains(BuildingKind.LunarBase))
+        {
+            // Base lunar: tres cúpulas blancas de distinto tamaño unidas por túneles, con ventanas luminosas, una antena y
+            // un cráter de polvo gris a su alrededor
+            Material lbDust = LitMaterial(new Color(0.62f, 0.62f, 0.64f));
+            Material lbWhite = LitMaterial(FutWhite);
+            Material lbGlass = LitMaterial(new Color(0.3f, 0.45f, 0.6f));
+            Material lbGlow = FutGlow(new Color(1f, 0.9f, 0.6f), 1.8f);
+            Material lbDark = LitMaterial(FutGraphite);
+            Material lbCiv = LitMaterial(civColor);
+            Vector3 at = new Vector3(size * 0.4f, 0f, size * 2.1f);
+
+            Piece(root.transform, Cylinder, lbDust, at + new Vector3(0f, size * 0.015f, 0f), new Vector3(size * 0.85f, size * 0.015f, size * 0.85f));
+            Vector3[] domes = { new Vector3(0f, 0f, 0f), new Vector3(size * 0.28f, 0f, size * 0.12f), new Vector3(-size * 0.22f, 0f, -size * 0.2f) };
+            float[] radius = { 0.2f, 0.13f, 0.1f };
+            for (int i = 0; i < domes.Length; i++)
+            {
+                Vector3 c = at + domes[i];
+                float r2 = size * radius[i];
+                Piece(root.transform, Sphere, lbWhite, c + new Vector3(0f, r2 * 0.05f, 0f), new Vector3(r2 * 2f, r2 * 1.3f, r2 * 2f));
+                Piece(root.transform, Cylinder, lbCiv, c + new Vector3(0f, r2 * 0.12f, 0f), new Vector3(r2 * 2.02f, r2 * 0.05f, r2 * 2.02f));
+                Piece(root.transform, Cube, lbGlow, c + new Vector3(0f, r2 * 0.45f, r2 * 0.95f), new Vector3(r2 * 0.5f, r2 * 0.22f, r2 * 0.05f)); // ventana luminosa
+            }
+
+            // Túneles entre las cúpulas y antena
+            ModTube(root.transform, lbGlass, at + new Vector3(size * 0.06f, size * 0.04f, size * 0.02f), at + new Vector3(size * 0.28f, size * 0.04f, size * 0.12f), size * 0.045f);
+            ModTube(root.transform, lbGlass, at + new Vector3(-size * 0.06f, size * 0.04f, -size * 0.04f), at + new Vector3(-size * 0.22f, size * 0.04f, -size * 0.2f), size * 0.045f);
+            Piece(root.transform, Cylinder, lbDark, at + new Vector3(size * 0.05f, size * 0.32f, -size * 0.05f), new Vector3(size * 0.012f, size * 0.12f, size * 0.012f));
+            Piece(root.transform, Sphere, lbGlow, at + new Vector3(size * 0.05f, size * 0.45f, -size * 0.05f), Vector3.one * size * 0.035f);
+        }
+
+        if (city.buildings.Contains(BuildingKind.GeneBank))
+        {
+            // Banco genético: cúpula de cristal sobre una base de la civilización con una doble hélice de ADN giratoria en su
+            // interior (dos hileras de esferas luminosas unidas por travesaños)
+            Material gbBase = LitMaterial(new Color(0.8f, 0.82f, 0.85f));
+            Material gbGlass = LitMaterial(new Color(0.55f, 0.8f, 0.85f));
+            Material gbA = FutGlow(new Color(0.2f, 1f, 0.5f), 2f);
+            Material gbB = FutGlow(new Color(0.2f, 0.7f, 1f), 2f);
+            Material gbRung = LitMaterial(new Color(0.95f, 0.95f, 0.98f));
+            Material gbCiv = LitMaterial(civColor);
+            Vector3 at = new Vector3(-size * 1.9f, 0f, size * 0.2f); // si no hay celdilla libre, fuera del disco de la ciudad
+            Transform site = WonderSite(city, BuildingKind.GeneBank, root.transform, grid, earth, ref at);
+
+            Piece(site, Cylinder, gbBase, at + new Vector3(0f, size * 0.03f, 0f), new Vector3(size * 0.62f, size * 0.03f, size * 0.62f));
+            Piece(site, Cylinder, gbCiv, at + new Vector3(0f, size * 0.065f, 0f), new Vector3(size * 0.64f, size * 0.01f, size * 0.64f));
+            Piece(site, Sphere, gbGlass, at + new Vector3(0f, size * 0.07f, 0f), new Vector3(size * 0.56f, size * 0.7f, size * 0.56f));
+
+            int steps = 16;
+            for (int i = 0; i < steps; i++)
+            {
+                float k = i / (float)(steps - 1);
+                float a = k * Mathf.PI * 4f;
+                float y = size * (0.1f + k * 0.5f);
+                Vector3 p1 = at + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * size * 0.14f + new Vector3(0f, y, 0f);
+                Vector3 p2 = at + new Vector3(-Mathf.Cos(a), 0f, -Mathf.Sin(a)) * size * 0.14f + new Vector3(0f, y, 0f);
+                Piece(site, Sphere, gbA, p1, Vector3.one * size * 0.05f);
+                Piece(site, Sphere, gbB, p2, Vector3.one * size * 0.05f);
+                if (i % 2 == 0) ModTube(site, gbRung, p1, p2, size * 0.012f);
+            }
+        }
+
+        if (city.buildings.Contains(BuildingKind.SpaceElevator))
+        {
+            // Ascensor espacial: base de anclaje, un cable luminoso casi vertical hasta una estación orbital en lo alto
+            // (disco con paneles solares) y una cabina que sube por el cable
+            Material seBase = LitMaterial(new Color(0.6f, 0.62f, 0.66f));
+            Material seCable = FutGlow(new Color(0.5f, 0.9f, 1f), 1.8f);
+            Material seStation = LitMaterial(FutWhite);
+            Material sePanel = LitMaterial(new Color(0.1f, 0.2f, 0.5f));
+            Material seDark = LitMaterial(FutGraphite);
+            Material seCiv = LitMaterial(civColor);
+            Vector3 at = new Vector3(size * 1.9f, 0f, -size * 1.9f); // si no hay celdilla libre, fuera del disco de la ciudad
+            Transform site = WonderSite(city, BuildingKind.SpaceElevator, root.transform, grid, earth, ref at);
+
+            Piece(site, Cylinder, seBase, at + new Vector3(0f, size * 0.03f, 0f), new Vector3(size * 0.5f, size * 0.03f, size * 0.5f));
+            Piece(site, Cylinder, seCiv, at + new Vector3(0f, size * 0.065f, 0f), new Vector3(size * 0.52f, size * 0.01f, size * 0.52f));
+            Piece(site, Cylinder, seDark, at + new Vector3(0f, size * 0.15f, 0f), new Vector3(size * 0.14f, size * 0.09f, size * 0.14f));
+
+            float top = size * 3.2f;
+            Piece(site, Cylinder, seCable, at + new Vector3(0f, top * 0.5f, 0f), new Vector3(size * 0.02f, top * 0.5f, size * 0.02f));
+
+            // Cabina subiendo por el cable
+            Piece(site, Cube, seStation, at + new Vector3(0f, top * 0.35f, 0f), new Vector3(size * 0.1f, size * 0.12f, size * 0.1f));
+            Piece(site, Cube, seCiv, at + new Vector3(0f, top * 0.35f, size * 0.052f), new Vector3(size * 0.06f, size * 0.04f, size * 0.01f));
+
+            // Estación orbital: disco con anillo luminoso y paneles solares
+            Vector3 st = at + new Vector3(0f, top, 0f);
+            Piece(site, Cylinder, seStation, st, new Vector3(size * 0.34f, size * 0.03f, size * 0.34f));
+            Piece(site, Cylinder, seCable, st + new Vector3(0f, size * 0.03f, 0f), new Vector3(size * 0.2f, size * 0.01f, size * 0.2f));
+            Piece(site, Sphere, seStation, st + new Vector3(0f, size * 0.06f, 0f), new Vector3(size * 0.14f, size * 0.1f, size * 0.14f));
+            for (int side = -1; side <= 1; side += 2)
+            {
+                Piece(site, Cube, sePanel, st + new Vector3(side * size * 0.4f, 0f, 0f), new Vector3(size * 0.4f, size * 0.01f, size * 0.16f));
+                Piece(site, Cube, seDark, st + new Vector3(side * size * 0.2f, 0f, 0f), new Vector3(size * 0.06f, size * 0.02f, size * 0.02f));
+            }
+        }
+
+        if (city.buildings.Contains(BuildingKind.Satellite))
+        {
+            // Satélite: plataforma de lanzamiento con un cohete blanco junto a una torre de servicio, y el satélite
+            // (cuerpo dorado, paneles solares azules y antena) sobre un pedestal luminoso
+            Material stPad = LitMaterial(new Color(0.55f, 0.56f, 0.6f));
+            Material stRocket = LitMaterial(FutWhite);
+            Material stDark = LitMaterial(FutGraphite);
+            Material stGold = LitMaterial(new Color(0.95f, 0.78f, 0.3f));
+            Material stPanel = LitMaterial(new Color(0.1f, 0.2f, 0.5f));
+            Material stCiv = LitMaterial(civColor);
+            Material stGlow = FutGlow(FutCyan);
+            Vector3 at = new Vector3(-size * 1.9f, 0f, -size * 1.2f);
+
+            // Plataforma, cohete (cuerpo, cono, aletas y franja de la civilización) y torre de servicio
+            Piece(root.transform, Cylinder, stPad, at + new Vector3(0f, size * 0.02f, 0f), new Vector3(size * 0.5f, size * 0.02f, size * 0.5f));
+            Piece(root.transform, Cylinder, stRocket, at + new Vector3(-size * 0.1f, size * 0.3f, 0f), new Vector3(size * 0.1f, size * 0.26f, size * 0.1f));
+            Piece(root.transform, Sphere, stRocket, at + new Vector3(-size * 0.1f, size * 0.58f, 0f), new Vector3(size * 0.1f, size * 0.14f, size * 0.1f));
+            Piece(root.transform, Cylinder, stCiv, at + new Vector3(-size * 0.1f, size * 0.4f, 0f), new Vector3(size * 0.102f, size * 0.03f, size * 0.102f));
+            for (int i = 0; i < 4; i++)
+            {
+                float a = i * Mathf.PI * 0.5f;
+                GameObject fin = Piece(root.transform, Cube, stDark, at + new Vector3(-size * 0.1f + Mathf.Cos(a) * size * 0.08f, size * 0.07f, Mathf.Sin(a) * size * 0.08f), new Vector3(size * 0.02f, size * 0.12f, size * 0.07f));
+                fin.transform.localRotation = Quaternion.Euler(0f, -a * Mathf.Rad2Deg, 0f);
+            }
+            for (int sz = -1; sz <= 1; sz += 2)
+                Piece(root.transform, Cube, stDark, at + new Vector3(size * 0.06f, size * 0.3f, sz * size * 0.06f), new Vector3(size * 0.02f, size * 0.6f, size * 0.02f));
+            Piece(root.transform, Cube, stDark, at + new Vector3(size * 0.06f, size * 0.45f, 0f), new Vector3(size * 0.02f, size * 0.02f, size * 0.12f));
+
+            // Satélite sobre su pedestal
+            Vector3 sat = at + new Vector3(size * 0.28f, 0f, size * 0.05f);
+            Piece(root.transform, Cylinder, stGlow, sat + new Vector3(0f, size * 0.03f, 0f), new Vector3(size * 0.14f, size * 0.02f, size * 0.14f));
+            Piece(root.transform, Cube, stGold, sat + new Vector3(0f, size * 0.15f, 0f), new Vector3(size * 0.12f, size * 0.12f, size * 0.12f));
+            for (int side = -1; side <= 1; side += 2)
+            {
+                Piece(root.transform, Cube, stPanel, sat + new Vector3(side * size * 0.17f, size * 0.15f, 0f), new Vector3(size * 0.2f, size * 0.01f, size * 0.12f));
+                Piece(root.transform, Cube, stGlow, sat + new Vector3(side * size * 0.17f, size * 0.156f, 0f), new Vector3(size * 0.2f, size * 0.003f, size * 0.01f));
+            }
+            Piece(root.transform, Cylinder, stDark, sat + new Vector3(0f, size * 0.26f, 0f), new Vector3(size * 0.012f, size * 0.05f, size * 0.012f));
+            GameObject dish = Piece(root.transform, Sphere, stRocket, sat + new Vector3(0f, size * 0.33f, 0f), new Vector3(size * 0.12f, size * 0.025f, size * 0.12f));
+            dish.transform.localRotation = Quaternion.Euler(30f, 0f, 0f);
+        }
+
         if (city.buildings.Contains(BuildingKind.NuclearPlant))
         {
             // Central nuclear: dos torres de refrigeración con vapor, cúpula del reactor y una chimenea con franjas
@@ -3351,6 +3549,46 @@ public static class CivViews
             Piece(root, Cylinder, glow, new Vector3(0f, s * 0.46f, -s * (0.55f + i * 0.14f)), new Vector3(s * (0.34f - i * 0.05f), s * 0.01f, s * (0.34f - i * 0.05f)));
     }
 
+    // Mecha de combate: robot bípedo con piernas articuladas, torso blindado con cabina luminosa, cañones de plasma en los
+    // hombros y franjas del color de la civilización
+    static void BuildFuturisticMecha(Transform root, float s, Color civ)
+    {
+        Material armor = LitMaterial(FutWhite);
+        Material dark = LitMaterial(FutGraphite);
+        Material accent = LitMaterial(civ);
+        Material glow = FutGlow(FutCyan);
+
+        // Piernas: pie, espinilla, rodilla luminosa y muslo
+        for (int side = -1; side <= 1; side += 2)
+        {
+            float x = side * s * 0.2f;
+            Piece(root, Cube, dark, new Vector3(x, s * 0.04f, s * 0.05f), new Vector3(s * 0.2f, s * 0.08f, s * 0.34f));
+            Piece(root, Cube, armor, new Vector3(x, s * 0.25f, 0f), new Vector3(s * 0.14f, s * 0.36f, s * 0.14f));
+            Piece(root, Sphere, glow, new Vector3(x, s * 0.45f, s * 0.07f), Vector3.one * s * 0.08f);
+            Piece(root, Cube, armor, new Vector3(x, s * 0.58f, 0f), new Vector3(s * 0.18f, s * 0.26f, s * 0.18f));
+        }
+
+        // Cintura, torso y cabina con visor luminoso
+        Piece(root, Cube, dark, new Vector3(0f, s * 0.74f, 0f), new Vector3(s * 0.5f, s * 0.1f, s * 0.3f));
+        Piece(root, Cube, armor, new Vector3(0f, s * 1.0f, 0f), new Vector3(s * 0.56f, s * 0.46f, s * 0.38f));
+        Piece(root, Cube, accent, new Vector3(0f, s * 1.0f, s * 0.2f), new Vector3(s * 0.4f, s * 0.12f, s * 0.02f));
+        Piece(root, Cube, dark, new Vector3(0f, s * 1.3f, s * 0.04f), new Vector3(s * 0.26f, s * 0.2f, s * 0.24f));
+        Piece(root, Cube, glow, new Vector3(0f, s * 1.31f, s * 0.17f), new Vector3(s * 0.2f, s * 0.07f, s * 0.02f));
+        Piece(root, Cube, dark, new Vector3(0f, s * 1.0f, -s * 0.24f), new Vector3(s * 0.36f, s * 0.36f, s * 0.12f)); // reactor dorsal
+        Piece(root, Cube, glow, new Vector3(0f, s * 1.0f, -s * 0.31f), new Vector3(s * 0.14f, s * 0.24f, s * 0.02f));
+
+        // Hombros con cañón de plasma a cada lado (el derecho apunta hacia delante)
+        for (int side = -1; side <= 1; side += 2)
+        {
+            float x = side * s * 0.42f;
+            Piece(root, Sphere, armor, new Vector3(x, s * 1.1f, 0f), new Vector3(s * 0.22f, s * 0.2f, s * 0.22f));
+            Piece(root, Cube, armor, new Vector3(x * 1.1f, s * 0.88f, s * 0.06f), new Vector3(s * 0.12f, s * 0.3f, s * 0.12f));
+            GameObject barrel = Piece(root, Cylinder, dark, new Vector3(x * 1.1f, s * 0.78f, s * 0.34f), new Vector3(s * 0.07f, s * 0.26f, s * 0.07f));
+            barrel.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            Piece(root, Sphere, glow, new Vector3(x * 1.1f, s * 0.78f, s * 0.62f), Vector3.one * s * 0.07f);
+        }
+    }
+
     // Dibuja la versión futurista de la unidad (todas las unidades tienen una)
     static void BuildFuturisticUnit(Transform root, float size, Unit unit)
     {
@@ -3378,6 +3616,7 @@ public static class CivViews
             case UnitKind.Ballista:
             case UnitKind.Cannon:      BuildFuturisticHoverTank(root, s, civ, 1); break;
             case UnitKind.Tank:        BuildFuturisticHoverTank(root, s, civ, 0); break;
+            case UnitKind.Mecha:       BuildFuturisticMecha(root, s, civ); break;
             case UnitKind.Fighter:     BuildFuturisticAircraft(root, s, civ, false); break;
             case UnitKind.Bomber:      BuildFuturisticAircraft(root, s, civ, true); break;
             case UnitKind.Sailboat:    BuildFuturisticBoat(root, s, civ); break;

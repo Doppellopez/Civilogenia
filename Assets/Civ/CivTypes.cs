@@ -3,9 +3,9 @@ using UnityEngine;
 
 // Tipos y datos del juego de civilizaciones en tiempo real.
 
-public enum UnitKind { Settler, Worker, Warrior, Spearman, Sailboat, Caravan, Archer, Horseman, Chariot, Phalanx, Legion, Catapult, Merchant, Galleon, Musketeer, Crossbowman, Ballista, Rifleman, Cannon, Steamship, Grenadier, Tank, Fighter, Bomber }
-public enum TechKind { Fire, Agriculture, Husbandry, Mining, Sailing, Archery, Pottery, Riding, Wheel, Masonry, Bronze, Writing, Construction, Iron, Astronomy, Mathematics, Currency, Philosophy, EraChange, HeavyPlow, WaterMill, Camshaft, ArabicNumerals, Universities, Cities, EraChange2, Bridges, Compass, Clock, Gunpowder, PrintingPress, Crossbow, SteamEngine, Electricity, Railway, Rifle, Artillery, MovableType, Grenade, Telescope, Thermometer, EraChange3, CombustionEngine, Aviation, Radio, SteelConcrete, Penicillin, Tanks, Computers, NuclearEnergy, EraChange4, SpaceFlight }
-public enum BuildingKind{ Granary, Workshop, Market, Library, Walls, PublicBaths, GreatLibrary, Observatory, FibonacciLab, Bank, Academy, FullingMill, University, AlexandriaLibrary, PrintingHouse, GutenbergPress, Factory, HydroDam, HooverDam, Newspaper, GutenbergPrint, GalileoObservatory, FahrenheitStudy, ComputerLab, NuclearPlant, RadioTower, FordAssembly, FlemingLab, ManhattanProject, Internet }
+public enum UnitKind { Settler, Worker, Warrior, Spearman, Sailboat, Caravan, Archer, Horseman, Chariot, Phalanx, Legion, Catapult, Merchant, Galleon, Musketeer, Crossbowman, Ballista, Rifleman, Cannon, Steamship, Grenadier, Tank, Fighter, Bomber, Mecha }
+public enum TechKind { Fire, Agriculture, Husbandry, Mining, Sailing, Archery, Pottery, Riding, Wheel, Masonry, Bronze, Writing, Construction, Iron, Astronomy, Mathematics, Currency, Philosophy, EraChange, HeavyPlow, WaterMill, Camshaft, ArabicNumerals, Universities, Cities, EraChange2, Bridges, Compass, Clock, Gunpowder, PrintingPress, Crossbow, SteamEngine, Electricity, Railway, Rifle, Artillery, MovableType, Grenade, Telescope, Thermometer, EraChange3, CombustionEngine, Aviation, Radio, SteelConcrete, Penicillin, Tanks, Computers, NuclearEnergy, EraChange4, SpaceFlight, ArtificialIntelligence, Robotics, FusionEnergy, QuantumComputing, GeneticEngineering, Nanotech, Antigravity, PlasmaWeapons, EnergyShields, SpaceColonization, Omniscience }
+public enum BuildingKind{ Granary, Workshop, Market, Library, Walls, PublicBaths, GreatLibrary, Observatory, FibonacciLab, Bank, Academy, FullingMill, University, AlexandriaLibrary, PrintingHouse, GutenbergPress, Factory, HydroDam, HooverDam, Newspaper, GutenbergPrint, GalileoObservatory, FahrenheitStudy, ComputerLab, NuclearPlant, RadioTower, FordAssembly, FlemingLab, ManhattanProject, Internet, Satellite, FusionReactor, QuantumComputer, LunarBase, GeneBank, SpaceElevator }
 
 public class UnitDef
 {
@@ -39,6 +39,14 @@ public static class GameDefs
 {
     // Población máxima de una ciudad que aún no ha descubierto el Fuego
     public const int PopWithoutFire = 3;
+
+    // Todas las tecnologías salvo la indicada (para las que dependen de absolutamente todas)
+    static TechKind[] AllTechsExcept(TechKind skip)
+    {
+        List<TechKind> list = new List<TechKind>();
+        foreach (TechKind t in System.Enum.GetValues(typeof(TechKind))) if (t != skip) list.Add(t);
+        return list.ToArray();
+    }
 
     // Tecnologías: se investigan con ciencia; "requires" es la tecnología previa necesaria
     public static readonly Dictionary<TechKind, TechDef> Techs = new Dictionary<TechKind, TechDef>
@@ -88,7 +96,18 @@ public static class GameDefs
         { TechKind.EraChange4, new TechDef { name = "Cambio de era", cost = 5000, unlocks = "la Edad Futura",
             requiresAll = new[] { TechKind.CombustionEngine, TechKind.Aviation, TechKind.Radio, TechKind.SteelConcrete, TechKind.Penicillin, TechKind.Tanks, TechKind.Computers, TechKind.NuclearEnergy } } },
         // Tecnologías de la Edad Futura: solo se pueden investigar tras el cuarto Cambio de era
-        { TechKind.SpaceFlight, new TechDef { name = "Vuelo espacial", cost = 6000, unlocks = "+50% de ciencia en todas las ciudades y los satélites muestran todo el mapa explorado", requires = TechKind.EraChange4 } },
+        { TechKind.SpaceFlight, new TechDef { name = "Vuelo espacial", cost = 6000, unlocks = "+50% de ciencia en todas las ciudades y Satélite (descubre todo el mapa)", requires = TechKind.EraChange4 } },
+        { TechKind.ArtificialIntelligence, new TechDef { name = "Inteligencia artificial", cost = 5500, unlocks = "+30% de producción y +30% de ciencia en todas las ciudades", requires = TechKind.EraChange4 } },
+        { TechKind.Robotics, new TechDef { name = "Robótica", cost = 6200, unlocks = "+25% de producción en todas las ciudades y los trabajadores trabajan el doble de rápido", requires = TechKind.ArtificialIntelligence } },
+        { TechKind.FusionEnergy, new TechDef { name = "Energía de fusión", cost = 7000, unlocks = "+50% de producción en todas las ciudades y Reactor de fusión", requires = TechKind.NuclearEnergy, alsoRequires = TechKind.ArtificialIntelligence } },
+        { TechKind.QuantumComputing, new TechDef { name = "Computación cuántica", cost = 6800, unlocks = "+40% de ciencia en todas las ciudades y Computadora cuántica", requires = TechKind.ArtificialIntelligence } },
+        { TechKind.GeneticEngineering, new TechDef { name = "Ingeniería genética", cost = 6600, unlocks = "+50% de crecimiento en todas las ciudades y la maravilla Banco genético", requires = TechKind.ArtificialIntelligence, alsoRequires = TechKind.Penicillin } },
+        { TechKind.Nanotech, new TechDef { name = "Nanotecnología", cost = 7200, unlocks = "los edificios cuestan un 25% menos y +20% de producción en todas las ciudades", requires = TechKind.Robotics } },
+        { TechKind.Antigravity, new TechDef { name = "Antigravedad", cost = 6500, unlocks = "las unidades terrestres se mueven un 50% más rápido", requires = TechKind.SpaceFlight } },
+        { TechKind.PlasmaWeapons, new TechDef { name = "Armas de plasma", cost = 8000, unlocks = "Mecha de combate (mejora del Tanque)", requires = TechKind.FusionEnergy, alsoRequires = TechKind.Robotics } },
+        { TechKind.EnergyShields, new TechDef { name = "Escudos de energía", cost = 7500, unlocks = "+100 de vida en todas las ciudades", requires = TechKind.FusionEnergy } },
+        { TechKind.SpaceColonization, new TechDef { name = "Colonización espacial", cost = 7800, unlocks = "Base lunar y la maravilla Ascensor espacial", requires = TechKind.SpaceFlight, alsoRequires = TechKind.Robotics } },
+        { TechKind.Omniscience, new TechDef { name = "Omnisciencia", cost = 12000, unlocks = "VICTORIA POR TECNOLOGÍA y visión total (todo el mapa y todas las unidades, sin niebla de guerra)", requiresAll = AllTechsExcept(TechKind.Omniscience) } },
         { TechKind.Currency, new TechDef { name = "Moneda",      cost = 120, unlocks = "Caravana de comercio", requires = TechKind.Bronze, alsoRequires = TechKind.Writing } },
         { TechKind.Mathematics,new TechDef { name = "Matemáticas", cost = 120, unlocks = "Catapulta", requires = TechKind.Writing, alsoRequires = TechKind.Wheel } },
         { TechKind.Astronomy,  new TechDef { name = "Astronomía",  cost = 165, unlocks = "Observatorio", requires = TechKind.Writing } },
@@ -123,6 +142,7 @@ public static class GameDefs
         { UnitKind.Tank,     new UnitDef { name = "Tanque", cost = 200, hp = 80, attack = 38, defense = 14, speed = 0.5f, range = 3 } },
         { UnitKind.Fighter,  new UnitDef { name = "Caza", cost = 190, hp = 40, attack = 30, defense = 6, speed = 1.0f, range = 2, air = true } },
         { UnitKind.Bomber,   new UnitDef { name = "Bombardero", cost = 260, hp = 60, attack = 45, defense = 4, speed = 0.7f, range = 2, air = true } },
+        { UnitKind.Mecha,    new UnitDef { name = "Mecha de combate", cost = 320, hp = 120, attack = 55, defense = 20, speed = 0.55f, range = 3 } },
         { UnitKind.Musketeer, new UnitDef { name = "Mosquetero", cost = 90, hp = 28, attack = 16, defense = 8, speed = 0.6f, range = 2 } },
         { UnitKind.Galleon,  new UnitDef { name = "Galeón", cost = 120, hp = 45, attack = 20, defense = 4, speed = 0.35f, range = 2, naval = true, capacity = 3 } },
         { UnitKind.Caravan,  new UnitDef { name = "Caravana de comercio", cost = 50, hp = 10, attack = 0, defense = 0, speed = 0.5f } },
@@ -164,6 +184,12 @@ public static class GameDefs
         { BuildingKind.FlemingLab, new BuildingDef { name = "Laboratorio de Fleming", cost = 700, effect = "maravilla única: +30% de crecimiento en todas tus ciudades" } },
         { BuildingKind.ManhattanProject, new BuildingDef { name = "Proyecto Manhattan", cost = 1000, effect = "maravilla única: +50% de producción y x1,25 de ciencia en todas tus ciudades" } },
         { BuildingKind.Internet, new BuildingDef { name = "Internet", cost = 900, effect = "maravilla única: x1,5 de ciencia en todas tus ciudades" } },
+        { BuildingKind.Satellite, new BuildingDef { name = "Satélite", cost = 1500, effect = "descubre todo el mapa (solo hace falta uno por civilización)" } },
+        { BuildingKind.FusionReactor, new BuildingDef { name = "Reactor de fusión", cost = 700, effect = "+20 producción" } },
+        { BuildingKind.QuantumComputer, new BuildingDef { name = "Computadora cuántica", cost = 600, effect = "+150% de ciencia de la ciudad" } },
+        { BuildingKind.LunarBase, new BuildingDef { name = "Base lunar", cost = 900, effect = "+15 ciencia y +10 oro" } },
+        { BuildingKind.GeneBank, new BuildingDef { name = "Banco genético", cost = 1000, effect = "maravilla única: +40% de crecimiento en todas tus ciudades" } },
+        { BuildingKind.SpaceElevator, new BuildingDef { name = "Ascensor espacial", cost = 1400, effect = "maravilla única: +40% de oro en todas tus ciudades" } },
         { BuildingKind.NuclearPlant, new BuildingDef { name = "Central nuclear", cost = 500, effect = "+10 producción" } },
         { BuildingKind.PublicBaths, new BuildingDef { name = "Baños públicos", cost = 70, effect = "+50% velocidad de crecimiento" } },
     };
@@ -275,6 +301,7 @@ public class City
     public float food, prodStock;
     public float foodRate, prodRate, goldRate, scienceRate;
     public float hp, maxHp;
+    public bool shieldApplied;   // el bonus de vida de los Escudos de energía ya se sumó a maxHp
     public float shotCooldown;
 
     // Producción actual
@@ -330,6 +357,7 @@ public class City
         float cost = GameDefs.Buildings[kind].cost;
         if (owner.Has(TechKind.Construction)) cost = Mathf.Round(cost * 0.9f);
         if (owner.Has(TechKind.SteelConcrete)) cost = Mathf.Round(cost * 0.85f); // Acero y hormigón: edificios un 15 % más baratos
+        if (owner.Has(TechKind.Nanotech)) cost = Mathf.Round(cost * 0.75f); // Nanotecnología: edificios un 25 % más baratos
         return cost;
     }
 

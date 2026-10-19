@@ -216,6 +216,8 @@ public partial class CivGame
         log.Clear();
         human = null;
         winner = null;
+        winnerByTech = false;
+        abandoned = false;
     }
 
     /// <summary>Carga la partida guardada: regenera el planeta con su semilla y reconstruye la partida. Hay que lanzarla como corrutina.</summary>
@@ -305,7 +307,8 @@ public partial class CivGame
                 owner = owner, name = s.name, cell = s.cell, pop = s.pop, claimDepth = s.claimDepth,
                 food = s.food, prodStock = s.prodStock, hp = s.hp, maxHp = s.maxHp, claimTimer = s.claimTimer,
                 hasItem = s.hasItem, itemIsUnit = s.itemIsUnit, itemUnit = (UnitKind)s.itemUnit, itemBuilding = (BuildingKind)s.itemBuilding,
-                recalcTimer = 3f
+                recalcTimer = 3f,
+                shieldApplied = owner.Has(TechKind.EnergyShields)   // el maxHp guardado ya incluye el bonus de los Escudos de energía
             };
             city.cells.AddRange(s.cells);
             city.tiles.AddRange(s.tiles);
