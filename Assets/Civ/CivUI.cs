@@ -140,7 +140,7 @@ public partial class CivUI : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.F2))
         {
             GameSfx.Muted = !GameSfx.Muted;
-            game.AddLog(GameSfx.Muted ? "Sonido y música desactivados (F2)" : "Sonido y música activados (F2)", Color.white);
+            game.AddLog(GameSfx.Muted ? "Efectos de sonido desactivados (F2)" : "Efectos de sonido activados (F2)", Color.white);
             if (!GameSfx.Muted) GameSfx.Play(Sfx.Built);
         }
         if (Input.GetKeyDown(KeyCode.T))
@@ -599,7 +599,7 @@ public partial class CivUI : MonoBehaviour
         GUILayout.Label("F: fortificar unidad militar (+25%, +50% en ciudad con muro)", small);
         GUILayout.Label("N: minimapa (clic para ir a un punto)", small);
         GUILayout.Label("F1: guía del juego (controles, tecnologías, unidades)", small);
-        GUILayout.Label("F2: activar o silenciar el sonido y la música", small);
+        GUILayout.Label("F2: activar o silenciar los efectos de sonido", small);
         GUILayout.Label("D: diplomacia (paz, alianzas, guerra)", small);
         GUILayout.Label("Mayús+T: desarrollar todas las tecnologías de la edad", small);
         GUILayout.Label("Esc: menú de pausa", small);

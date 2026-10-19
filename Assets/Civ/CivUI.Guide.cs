@@ -36,7 +36,7 @@ public partial class CivUI
         new[] { "Cursores, coma y punto, rueda", "Mover y girar la cámara, y zoom" },
         new[] { "Espacio", "Pausa" },
         new[] { "F1", "Esta guía" },
-        new[] { "F2", "Activar o silenciar sonido y música" },
+        new[] { "F2", "Activar o silenciar los efectos de sonido" },
         new[] { "F5  /  F9", "Guardar / cargar partida" },
         new[] { "H", "Mostrar u ocultar la ayuda en pantalla" },
         new[] { "Esc", "Menú de pausa: reanudar, guardar y salir" }
