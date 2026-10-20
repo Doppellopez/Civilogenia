@@ -11,7 +11,7 @@ public partial class CivGame : MonoBehaviour
 {
     [Header("Partida")]
     [Tooltip("Civilizaciones en la partida (1 = solo la tuya)")]
-    [Range(1, 6)] public int civCount = 1;
+    [Range(1, 10)] public int civCount = 1;
     [Tooltip("Número de casillas del planeta (más = mapa más detallado, arranque más lento)")]
     public int gridCells = 6000;
     public float gameSpeed = 1f;
@@ -110,6 +110,21 @@ public partial class CivGame : MonoBehaviour
         while (MainMenu.Enabled && !matchRequested && !startCancelled) yield return null;
         if (startCancelled) yield break;
 
+        // Tamaño del mapa elegido en el menú: si no es el que ya está construido, se rehace la cuadrícula del planeta
+        if (requestedCells > 0 && requestedCells != grid.count)
+        {
+            ResetWorld();
+            yield return null;
+
+            gridCells = requestedCells;
+            grid = new WorldGrid();
+            grid.Build(earth, gridCells);
+            CivViews.BuildRivers(grid, earth, EarthT);
+            CivViews.BuildSpecials(grid, EarthT);
+            yield return null;
+            if (startCancelled) yield break;
+        }
+
         if (!SetupCivs())
         {
             Debug.LogError("[Civilogenia] No hay tierra suficiente para empezar la partida.");
@@ -121,10 +136,12 @@ public partial class CivGame : MonoBehaviour
     }
 
     /// <summary>El jugador elige cuántas civilizaciones enemigas habrá (0-5); todas las demás las maneja la IA. Empieza la partida.</summary>
-    public void StartMatch(int enemies, Difficulty level = Difficulty.Normal)
+    public void StartMatch(int enemies, Difficulty level = Difficulty.Normal, int playerCiv = 0, int mapSize = 0)
     {
         difficulty = level;
-        civCount = Mathf.Clamp(1 + enemies, 1, GameDefs.CivNames.Length);
+        requestedCells = GameDefs.MapSizes[Mathf.Clamp(mapSize, 0, GameDefs.MapSizes.Length - 1)].cells;
+        playerChoice = Mathf.Clamp(playerCiv, 0, GameDefs.PlayableCivs.Length - 1);
+        civCount = Mathf.Clamp(1 + enemies, 1, GameDefs.PlayableCivs.Length);
         aiEnabled = true;
         startFailed = false;
         matchRequested = true;
@@ -132,8 +149,47 @@ public partial class CivGame : MonoBehaviour
 
     // ---------------------------------------------------------------- Preparación
 
+    int playerChoice;
+    int requestedCells;   // casillas del mapa elegidas en el menú (0 = las del inspector)
+
+    /// <summary>Aplica a una civilización la elección del jugador: nombre, color, nombres de ciudades y bonus.</summary>
+    void ApplyCivChoice(Civ civ, int choice)
+    {
+        GameDefs.CivChoice c = GameDefs.PlayableCivs[Mathf.Clamp(choice, 0, GameDefs.PlayableCivs.Length - 1)];
+        civ.choice = choice;
+        civ.name = c.name;
+        civ.color = c.color;
+        civ.cityNames = c.cityNames;
+        civ.scienceBonus = c.scienceBonus;
+        civ.growthBonus = c.growthBonus;
+        civ.productionBonus = c.productionBonus;
+        civ.goldBonus = c.goldBonus;
+    }
+
+    // Las civilizaciones enemigas se reparten al azar entre las que no ha elegido el jugador (sin repetir)
+    List<int> enemyPool;
+
+    void ShuffleEnemyPool()
+    {
+        enemyPool = new List<int>();
+        for (int i = 0; i < GameDefs.PlayableCivs.Length; i++)
+            if (i != playerChoice) enemyPool.Add(i);
+
+        for (int i = enemyPool.Count - 1; i > 0; i--)
+        {
+            int j = Random.Range(0, i + 1);
+            int tmp = enemyPool[i]; enemyPool[i] = enemyPool[j]; enemyPool[j] = tmp;
+        }
+    }
+
+    int EnemyChoice(int index)
+    {
+        return enemyPool[(index - 1) % enemyPool.Count];
+    }
+
     bool SetupCivs()
     {
+        ShuffleEnemyPool();
         List<int> starts = ChooseStarts(civCount);
         if (starts.Count == 0) return false;
 
@@ -148,6 +204,7 @@ public partial class CivGame : MonoBehaviour
                 aiTimer = Random.Range(0f, 2f)
             };
 
+            ApplyCivChoice(civ, civ.isHuman ? playerChoice : EnemyChoice(i));
             civs.Add(civ);
             if (civ.isHuman) human = civ;
 
@@ -302,6 +359,15 @@ public partial class CivGame : MonoBehaviour
         return true;
     }
 
+    // Nombre de la siguiente ciudad: los de su civilización si los tiene, o los genéricos (repartidos por id)
+    string CityNameFor(Civ civ)
+    {
+        string[] names = civ.cityNames ?? GameDefs.CityNames;
+        int offset = civ.cityNames != null ? 0 : civ.id * 5;
+        string name = names[(offset + civ.nameCounter++) % names.Length];
+        return civ.nameCounter > names.Length ? name + " " + civ.nameCounter : name;
+    }
+
     public City FoundCity(Civ civ, int cell)
     {
         if (!CanFound(civ, cell)) return null;
@@ -309,8 +375,7 @@ public partial class CivGame : MonoBehaviour
         City city = new City
         {
             owner = civ,
-            name = GameDefs.CityNames[(civ.id * 5 + civ.nameCounter++) % GameDefs.CityNames.Length]
-                   + (civ.nameCounter > GameDefs.CityNames.Length ? " " + civ.nameCounter : ""),
+            name = CityNameFor(civ),
             cell = cell,
             maxHp = 40f,
             recalcTimer = 3f
@@ -515,6 +580,9 @@ public partial class CivGame : MonoBehaviour
         float trade = 1f + TradeBonusOf(city);
         city.goldRate *= trade;
         city.scienceRate *= trade;
+        city.scienceRate *= 1f + city.owner.scienceBonus;   // bonus de la civilización elegida
+        city.prodRate *= 1f + city.owner.productionBonus;
+        city.goldRate *= 1f + city.owner.goldBonus;
 
         // Felicidad: feliz +10 %, descontenta -25 %, disturbios 0 (ver CivGame.Happiness.cs)
         float moodK = ApplyHappiness(city);
@@ -575,6 +643,7 @@ public partial class CivGame : MonoBehaviour
         if (surplus > 0f && OwnsBuilding(c.owner, BuildingKind.Biosphere)) surplus *= 1.3f; // Biosfera: +30 % de crecimiento en todas las ciudades
         if (surplus > 0f && c.buildings.Contains(BuildingKind.Hospital)) surplus *= 1.1f; // Hospital: +10 % de crecimiento en esta ciudad
         if (surplus > 0f && OwnsBuilding(c.owner, BuildingKind.FahrenheitStudy)) surplus *= 1.3f; // Estudio de Fahrenheit: +30 % de crecimiento en todas las ciudades
+        if (surplus > 0f) surplus *= 1f + c.owner.growthBonus;   // bonus de la civilización elegida
         if (surplus > 0f) surplus *= MoodGrowthFactor(c.mood);   // felicidad: feliz +10 %, descontenta la mitad, disturbios nada
         c.food += surplus * dt;
 

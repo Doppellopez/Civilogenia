@@ -253,6 +253,102 @@ public static class GameDefs
         "Iris", "Jade", "Kairos", "Luna", "Mirador", "Nube", "Oasis", "Puerto"
     };
 
+    /// <summary>Civilización que el jugador puede elegir al empezar: nombre, color, nombres de ciudades y bonus.</summary>
+    public class CivChoice
+    {
+        public string name, description;
+        public Color color;
+        public string[] cityNames;      // null = nombres genéricos de CityNames
+        public float scienceBonus;      // se suma al multiplicador de ciencia de todas sus ciudades
+        public float growthBonus;       // se suma al multiplicador de crecimiento de todas sus ciudades
+        public float productionBonus;   // se suma al multiplicador de producción de todas sus ciudades
+        public float goldBonus;         // se suma al multiplicador de oro de todas sus ciudades
+    }
+
+    public static readonly CivChoice[] PlayableCivs =
+    {
+        new CivChoice
+        {
+            name = "Mesopotamia", color = new Color(0.78f, 0.45f, 0.2f),
+            description = "Cuna de la escritura cuneiforme y de las primeras ciudades-estado entre el Tigris y el Éufrates. Bonus: +15% de ciencia y +25% de crecimiento.",
+            scienceBonus = 0.15f, growthBonus = 0.25f,
+            cityNames = new[] { "Uruk", "Eridu", "Ur", "Lagash", "Babilonia", "Kish", "Nippur", "Larsa", "Isin", "Umma", "Sippar", "Akkad", "Assur", "Nínive", "Mari", "Ebla" }
+        },
+        new CivChoice
+        {
+            name = "Egipto", color = new Color(0.15f, 0.7f, 0.7f),
+            description = "La civilización del Nilo: pirámides, jeroglíficos y una administración centralizada. Bonus: +20% de producción y +10% de ciencia.",
+            scienceBonus = 0.1f, productionBonus = 0.2f,
+            cityNames = new[] { "Menfis", "Tebas", "Heliópolis", "Hermópolis", "Abidos", "Edfu", "Elefantina", "Hieracómpolis", "Amarna", "Pi-Ramsés", "Tanis", "Sais", "Alejandría", "Heracleópolis", "Bubastis", "Buto" }
+        },
+        new CivChoice
+        {
+            name = "India", color = new Color(0.9f, 0.35f, 0.6f),
+            description = "Desde las ciudades del Indo hasta los reinos del Ganges: urbanismo, matemáticas y comercio. Bonus: +30% de crecimiento y +10% de producción.",
+            growthBonus = 0.3f, productionBonus = 0.1f,
+            cityNames = new[] { "Mohenjo-daro", "Harappa", "Pataliputra", "Taxila", "Ujjain", "Varanasi", "Mathura", "Lothal", "Dholavira", "Kanchipuram", "Madurai", "Nalanda", "Ayodhya", "Vaishali", "Hampi", "Indraprastha" }
+        },
+        new CivChoice
+        {
+            name = "China", color = new Color(0.55f, 0.1f, 0.12f),
+            description = "Una de las civilizaciones más longevas: papel, pólvora, brújula e imprenta, con un Estado burocrático milenario. Bonus: +20% de ciencia y +10% de crecimiento.",
+            scienceBonus = 0.2f, growthBonus = 0.1f,
+            cityNames = new[] { "Chang'an", "Luoyang", "Anyang", "Pekín", "Nankín", "Xianyang", "Linzi", "Handan", "Chengdu", "Kaifeng", "Hangzhou", "Suzhou", "Cantón", "Yangzhou", "Xiangyang", "Jingzhou" }
+        },
+        new CivChoice
+        {
+            name = "Persia", color = new Color(0.3f, 0.25f, 0.65f),
+            description = "El primer gran imperio multicultural: satrapías, la Ruta Real y un comercio que unía tres continentes. Bonus: +25% de oro y +10% de producción.",
+            goldBonus = 0.25f, productionBonus = 0.1f,
+            cityNames = new[] { "Persépolis", "Pasargada", "Susa", "Ecbatana", "Babilonia", "Sardes", "Bactra", "Arbela", "Opis", "Maracanda", "Tarso", "Dascilio", "Gordión", "Tiro", "Sidón", "Damasco" }
+        },
+        new CivChoice
+        {
+            name = "Grecia", color = new Color(0.2f, 0.5f, 0.95f),
+            description = "Cuna de la filosofía, la democracia y la ciencia occidental, repartida en ciudades-estado rivales. Bonus: +15% de ciencia y +15% de oro.",
+            scienceBonus = 0.15f, goldBonus = 0.15f,
+            cityNames = new[] { "Atenas", "Esparta", "Corinto", "Tebas", "Argos", "Delfos", "Olimpia", "Mileto", "Éfeso", "Rodas", "Siracusa", "Mégara", "Calcis", "Eretria", "Mitilene", "Samos" }
+        },
+        new CivChoice
+        {
+            name = "Roma", color = new Color(0.85f, 0.85f, 0.9f),
+            description = "De una ciudad del Lacio a un imperio: derecho, ingeniería, calzadas y legiones. Bonus: +20% de producción y +10% de oro.",
+            productionBonus = 0.2f, goldBonus = 0.1f,
+            cityNames = new[] { "Roma", "Ostia", "Capua", "Pompeya", "Rávena", "Mediolanum", "Aquileia", "Lugdunum", "Londinium", "Tarraco", "Emerita Augusta", "Corduba", "Cartago", "Leptis Magna", "Alejandría", "Antioquía" }
+        },
+        new CivChoice
+        {
+            name = "Maya", color = new Color(0.1f, 0.42f, 0.28f),
+            description = "Señores de la selva con ciudades-estado de piedra, astronomía y un calendario muy preciso. Bonus: +20% de crecimiento y +15% de ciencia.",
+            growthBonus = 0.2f, scienceBonus = 0.15f,
+            cityNames = new[] { "Tikal", "Calakmul", "Palenque", "Copán", "Caracol", "Uxmal", "Chichén Itzá", "Mayapán", "Yaxchilán", "Quiriguá", "Uaxactún", "El Mirador", "Dos Pilas", "Cobá", "Tulum", "Edzná" }
+        },
+        new CivChoice
+        {
+            name = "Califatos", color = new Color(0.1f, 0.2f, 0.5f),
+            description = "El mundo islámico medieval, de Damasco a Córdoba: conservó y amplió el saber antiguo con la Casa de la Sabiduría. Bonus: +25% de ciencia y +10% de oro.",
+            scienceBonus = 0.25f, goldBonus = 0.1f,
+            cityNames = new[] { "Bagdad", "Damasco", "Medina", "La Meca", "Samarra", "Basora", "Kufa", "El Cairo", "Kairuán", "Córdoba", "Sevilla", "Granada", "Fez", "Marrakech", "Bujará", "Samarcanda" }
+        },
+        new CivChoice
+        {
+            name = "Inca", color = new Color(0.45f, 0.25f, 0.1f),
+            description = "El imperio de los Andes: unos 40.000 km de caminos, agricultura en terrazas y contabilidad con quipus. Bonus: +15% de crecimiento y +15% de producción.",
+            growthBonus = 0.15f, productionBonus = 0.15f,
+            cityNames = new[] { "Cusco", "Machu Picchu", "Ollantaytambo", "Pisac", "Choquequirao", "Vilcabamba", "Vilcashuamán", "Huánuco Pampa", "Hatun Xauxa", "Cajamarca", "Pachacámac", "Tomebamba", "Ingapirca", "Quito", "Chan Chan", "Tiahuanaco" }
+        }
+    };
+
+    /// <summary>Tamaños de mapa elegibles: número de casillas del planeta (más casillas = más tierra que explorar).</summary>
+    public struct MapSize { public string name; public int cells; public string hint; }
+
+    public static readonly MapSize[] MapSizes =
+    {
+        new MapSize { name = "Estándar", cells = 6000,  hint = "El tamaño de siempre" },
+        new MapSize { name = "Grande",   cells = 12000, hint = "El doble de casillas: más sitio, trayectos más largos" },
+        new MapSize { name = "Enorme",   cells = 20000, hint = "Más de 3 veces las casillas: la generación tarda más" }
+    };
+
     public static readonly string[] CivNames =
     {
         "Aurelia", "Borealis", "Cirene", "Dorada", "Etérea", "Fénix"
@@ -311,6 +407,9 @@ public class Civ
     public List<Unit> units = new List<Unit>();
 
     public int nameCounter;
+    public int choice;                 // índice en GameDefs.PlayableCivs (solo el jugador)
+    public float scienceBonus, growthBonus, productionBonus, goldBonus;
+    public string[] cityNames;         // null = nombres genéricos
     public float aiTimer;
     public GameObject territoryObject;
     public Mesh territoryMesh;

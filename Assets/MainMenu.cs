@@ -17,6 +17,10 @@ public class MainMenu : MonoBehaviour
 
     bool shown;
     bool showControls;
+    bool choosingCiv;          // pantalla "Elige tu civilización" que sale al pulsar Jugar
+    int civChoice;             // índice en GameDefs.PlayableCivs
+    bool choosingSize;         // pantalla "Tamaño del mapa", entre la civilización y los rivales
+    int mapSize;               // índice en GameDefs.MapSizes
     bool choosingRivals;       // pantalla "¿Cuántos rivales?" que sale al pulsar Jugar
     int rivals = 3;            // civilizaciones enemigas, manejadas por la IA
     int difficultyIndex = 1;   // 0 fácil, 1 normal, 2 difícil
@@ -27,7 +31,7 @@ public class MainMenu : MonoBehaviour
         "La IA juega con las mismas reglas que tú",
         "La IA produce y crece un 30% más y ataca antes"
     };
-    const int MaxRivals = 5;
+    const int MaxRivals = 9;
     bool loading;
     string loadingText = "Cargando partida…";
     float openTime;
@@ -79,7 +83,9 @@ public class MainMenu : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
         {
             if (choosingRivals) StartCoroutine(StartRoutine());
-            else if (!showControls) choosingRivals = true;
+            else if (choosingSize) { choosingSize = false; choosingRivals = true; }
+            else if (choosingCiv) { choosingCiv = false; choosingSize = true; }
+            else if (!showControls) choosingCiv = true;
         }
     }
 
@@ -87,6 +93,8 @@ public class MainMenu : MonoBehaviour
     {
         Active = true;
         showControls = false;
+        choosingCiv = false;
+        choosingSize = false;
         choosingRivals = false;
         openTime = Time.unscaledTime;
         previousTimeScale = Time.timeScale > 0f ? Time.timeScale : 1f;
@@ -121,11 +129,11 @@ public class MainMenu : MonoBehaviour
         CivGame game = CivGame.Instance;
         while (game == null || !game.worldBuilt) { yield return null; game = CivGame.Instance; }
 
-        game.StartMatch(rivals, (Difficulty)difficultyIndex);
+        game.StartMatch(rivals, (Difficulty)difficultyIndex, civChoice, mapSize);
         while (!game.ready && !game.startFailed) yield return null;
 
         loading = false;
-        if (game.startFailed) { choosingRivals = false; yield break; }   // no había tierra: se vuelve al menú
+        if (game.startFailed) { choosingRivals = false; choosingSize = false; choosingCiv = false; yield break; }   // no había tierra: se vuelve al menú
         choosingRivals = false;
         Play();
         IntroVideo.PlayClip(IntroClip);   // la introducción sale tras pulsar Jugar, ya con la partida creada
@@ -215,7 +223,51 @@ public class MainMenu : MonoBehaviour
         float bw = 340f * k, bh = 58f * k, gap = 16f * k;
         float y = Screen.height * 0.43f;
 
-        if (choosingRivals)
+        if (choosingCiv)
+        {
+            y -= 60f * k;   // la cuadrícula de civilizaciones ocupa más: se sube todo para que quepa el botón Volver
+            GUI.Label(new Rect(0, y - 20f * k, Screen.width, 44f * k), "Elige tu civilización", body);
+            y += 34f * k;
+
+            string[] names = new string[GameDefs.PlayableCivs.Length];
+            for (int i = 0; i < names.Length; i++) names[i] = GameDefs.PlayableCivs[i].name;
+            const int cols = 4;
+            int rows = (names.Length + cols - 1) / cols;
+            civChoice = GUI.SelectionGrid(new Rect(cx - 380f * k, y, 760f * k, 42f * k * rows), civChoice, names, cols, button);
+            y += 42f * k * rows + 10f * k;
+
+            GameDefs.CivChoice pick = GameDefs.PlayableCivs[civChoice];
+            hint2.wordWrap = true;
+            GUI.Label(new Rect(cx - 280f * k, y, 560f * k, 60f * k), pick.description, hint2);
+            y += 64f * k;
+            if (pick.cityNames != null)
+            {
+                GUI.Label(new Rect(cx - 280f * k, y, 560f * k, 50f * k),
+                    "Ciudades: " + string.Join(", ", pick.cityNames, 0, Mathf.Min(6, pick.cityNames.Length)) + "…", hint2);
+                y += 40f * k;
+            }
+
+            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Continuar", button)) { choosingCiv = false; choosingSize = true; }
+            y += bh + gap;
+            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Volver", button)) choosingCiv = false;
+        }
+        else if (choosingSize)
+        {
+            GUI.Label(new Rect(0, y - 20f * k, Screen.width, 44f * k), "Tamaño del mapa", body);
+            y += 34f * k;
+
+            string[] sizes = new string[GameDefs.MapSizes.Length];
+            for (int i = 0; i < sizes.Length; i++) sizes[i] = GameDefs.MapSizes[i].name;
+            mapSize = GUI.Toolbar(new Rect(cx - 280f * k, y, 560f * k, 48f * k), mapSize, sizes, button);
+            y += 58f * k;
+            GUI.Label(new Rect(0, y, Screen.width, 28f * k), GameDefs.MapSizes[mapSize].hint, hint2);
+            y += 44f * k;
+
+            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Continuar", button)) { choosingSize = false; choosingRivals = true; }
+            y += bh + gap;
+            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Volver", button)) { choosingSize = false; choosingCiv = true; }
+        }
+        else if (choosingRivals)
         {
             GUI.Label(new Rect(0, y - 20f * k, Screen.width, 44f * k), "Civilizaciones enemigas", body);
             GUI.Label(new Rect(0, y + 14f * k, Screen.width, 30f * k), "Las manejará la IA", hint2);
@@ -238,11 +290,11 @@ public class MainMenu : MonoBehaviour
 
             if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Comenzar", button)) StartCoroutine(StartRoutine());
             y += bh + gap;
-            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Volver", button)) choosingRivals = false;
+            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Volver", button)) { choosingRivals = false; choosingSize = true; }
         }
         else if (!showControls)
         {
-            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Jugar", button)) choosingRivals = true;
+            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Jugar", button)) choosingCiv = true;
             y += bh + gap;
 
             // Cargar partida: solo si hay una guardada (F5 en la partida guarda)
@@ -278,6 +330,6 @@ public class MainMenu : MonoBehaviour
             return;
         }
 
-        GUI.Label(new Rect(0, 0, Screen.width, Screen.height - 14f * k), choosingRivals ? "Enter: comenzar" : "Enter: jugar", hint);
+        GUI.Label(new Rect(0, 0, Screen.width, Screen.height - 14f * k), choosingRivals ? "Enter: comenzar" : (choosingCiv || choosingSize) ? "Enter: continuar" : "Enter: jugar", hint);
     }
 }

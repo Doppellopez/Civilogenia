@@ -16,6 +16,7 @@ public partial class CivUI : MonoBehaviour
 
     Unit selUnit;
     City selCity;
+    bool cityListOpen;   // lista desplegable de ciudades de la barra superior
     bool showHelp = true;
     bool showTech;
     bool showDiplomacy;       // panel de diplomacia (tecla D)
@@ -519,13 +520,39 @@ public partial class CivUI : MonoBehaviour
             : "— (pulsa T)";
         IconLabel(ResourceIcons.Science, Signed(h.scienceRate) + "/s: " + research, 300f, label);
 
-        GUILayout.Label("Ciudades: " + h.cities.Count + "  Unidades: " + h.units.Count, label, GUILayout.Width(200));
+        if (GUILayout.Button("Ciudades: " + h.cities.Count + (cityListOpen ? " ▲" : " ▼"), GUILayout.Width(120))) cityListOpen = !cityListOpen;
+        GUILayout.Label("Unidades: " + h.units.Count, label, GUILayout.Width(90));
         GUILayout.Label("<b>" + EraName(h) + "</b>", label, GUILayout.Width(130));
         GUILayout.FlexibleSpace();
 
         if (GUILayout.Button(game.gameSpeed <= 0f ? "▶" : "❚❚", GUILayout.Width(36))) HandleKeyPause();
 
         GUILayout.EndHorizontal();
+        GUILayout.EndArea();
+
+        if (cityListOpen) DrawCityList();
+    }
+
+    // Lista desplegable con las ciudades del jugador: al elegir una se selecciona y la cámara va a ella
+    void DrawCityList()
+    {
+        Civ h = game.human;
+        float width = 200f, rowH = 28f;
+        float x = 8f + 110f + 150f + 300f;   // bajo el botón "Ciudades", tras el nombre, el oro y la ciencia
+        Rect r = Panel(new Rect(x, 36f, width, 12f + Mathf.Max(1, h.cities.Count) * rowH));
+
+        GUILayout.BeginArea(new Rect(r.x + 6, r.y + 6, r.width - 12, r.height - 12));
+        if (h.cities.Count == 0) GUILayout.Label("Aún no tienes ciudades.", label);
+        foreach (City c in h.cities)
+        {
+            if (!c.alive) continue;
+            if (GUILayout.Button(c.name + "  (" + c.pop + ")", GUILayout.Height(rowH - 4f)))
+            {
+                Select(null, c);
+                game.FocusOn(c.cell);
+                cityListOpen = false;
+            }
+        }
         GUILayout.EndArea();
     }
 

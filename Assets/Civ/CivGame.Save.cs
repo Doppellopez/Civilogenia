@@ -38,6 +38,7 @@ public class CivSaveCiv
     public bool isHuman, alive, researching;
     public float gold, researchProgress;
     public int currentTech, nameCounter;
+    public int choice = -1;   // civilización elegida; -1 en partidas guardadas antes de existir la elección
     public List<int> techs = new List<int>();
 }
 
@@ -140,7 +141,7 @@ public partial class CivGame
             {
                 id = civ.id, isHuman = civ.isHuman, alive = civ.alive, researching = civ.researching,
                 gold = civ.gold, researchProgress = civ.researchProgress, currentTech = (int)civ.currentTech,
-                nameCounter = civ.nameCounter
+                nameCounter = civ.nameCounter, choice = civ.choice
             };
             foreach (TechKind t in civ.techs) c.techs.Add((int)t);
             data.civs.Add(c);
@@ -281,6 +282,7 @@ public partial class CivGame
                 aiTimer = UnityEngine.Random.Range(0f, 2f)
             };
             foreach (int t in s.techs) civ.techs.Add((TechKind)t);
+            if (s.choice >= 0) ApplyCivChoice(civ, s.choice);
 
             civs.Add(civ);
             if (civ.isHuman) human = civ;
