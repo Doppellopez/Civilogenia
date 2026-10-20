@@ -100,6 +100,7 @@ public partial class CivGame : MonoBehaviour
         grid = new WorldGrid();
         grid.Build(earth, gridCells);
         CivViews.BuildRivers(grid, earth, EarthT);
+        CivViews.BuildSpecials(grid, EarthT);
         Debug.Log("[Civilogenia] Mapa: " + grid.riverPaths.Count + " ríos.");
 
         worldBuilt = true;

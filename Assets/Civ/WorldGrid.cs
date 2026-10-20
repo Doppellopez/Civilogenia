@@ -27,6 +27,15 @@ public class WorldGrid
     public bool[] farmed;       // casillas con granja
     public bool[] wonderAt;     // casillas ocupadas por una maravilla
     public bool[] river;        // casillas de tierra por las que pasa un río
+    public byte[] special;      // recurso especial de la casilla: 0 ninguno, 1 trigo (planicies), 2 ganado (colinas), 3 pescado (mar), 4 piedra (montañas)
+
+    public const byte Wheat = 1, Cattle = 2, Fish = 3, Stone = 4;
+
+    /// <summary>Nombre del recurso especial de la casilla, o null si no tiene.</summary>
+    public string SpecialName(int cell)
+    {
+        return special[cell] == Wheat ? "Trigo" : special[cell] == Cattle ? "Ganado" : special[cell] == Fish ? "Pescado" : special[cell] == Stone ? "Piedra" : null;
+    }
 
     /// <summary>Cada río como lista de casillas, de la fuente (montaña) a la desembocadura (casilla de mar o de otro río).</summary>
     public readonly List<List<int>> riverPaths = new List<List<int>>();
@@ -97,6 +106,7 @@ public class WorldGrid
         farmed = new bool[n];
         wonderAt = new bool[n];
         river = new bool[n];
+        special = new byte[n];
 
         float golden = Mathf.PI * (3f - Mathf.Sqrt(5f));
         for (int i = 0; i < n; i++)
@@ -117,6 +127,28 @@ public class WorldGrid
         BuildNeighbors();
         BuildComponents();
         BuildRivers(earth);
+        BuildSpecials(earth);
+    }
+
+    // Recursos especiales: trigo en una de cada siete planicies, ganado en una de cada seis colinas pescado en una de cada cinco casillas de mar de la costa y piedra en una de cada cinco montañas. Con la misma semilla
+    // del planeta salen siempre en los mismos sitios, así que no hace falta guardarlos en la partida.
+    bool NextToLand(int cell)
+    {
+        foreach (int nb in nbr[cell]) if (land[nb]) return true;
+        return false;
+    }
+
+    void BuildSpecials(EarthTopography earth)
+    {
+        System.Random rng = new System.Random(earth.seed * 17 + 3);
+        for (int i = 0; i < count; i++)
+        {
+            double roll = rng.NextDouble();
+            if (biome[i] == Biome.Plains && roll < 1.0 / 7.0) special[i] = Wheat;
+            else if (biome[i] == Biome.Hills && roll < 1.0 / 6.0) special[i] = Cattle;
+            else if (biome[i] == Biome.Mountain && roll < 1.0 / 5.0) special[i] = Stone;
+            else if (biome[i] == Biome.Sea && roll < 1.0 / 5.0 && NextToLand(i)) special[i] = Fish;   // pescado: solo en la costa
+        }
     }
 
     // ---------------------------------------------------------------- Ríos
@@ -334,6 +366,10 @@ public class WorldGrid
     public Vector3 TileYield(int cell, Civ owner = null)
     {
         Vector3 y = GameDefs.Yield(biome[cell]);
+        if (special[cell] == Wheat) y.x += 2f;                    // trigo: +2 de comida
+        else if (special[cell] == Cattle) { y.x += 2f; y.y += 1f; } // ganado: +2 de comida y +1 de producción
+        else if (special[cell] == Fish) y.x += 2f;                  // pescado: +2 de comida
+        else if (special[cell] == Stone) y.y += 2f;                 // piedra: +2 de producción
         if (owner != null && owner.Has(TechKind.Husbandry) && biome[cell] == Biome.Plains) y.x += 1f; // Ganadería: +1 comida en llanura
         if (owner != null && owner.Has(TechKind.WaterMill) && land[cell] && NearWater(cell)) y.x += 1f; // Molino hidráulico: +1 comida con agua cerca
         if (owner != null && owner.Has(TechKind.Camshaft) && land[cell] && NearWater(cell)) y.y += 1f; // Árbol de levas: +1 producción con agua cerca
