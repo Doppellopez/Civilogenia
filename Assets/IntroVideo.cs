@@ -10,12 +10,12 @@ using UnityEngine.Video;
 /// </summary>
 public class IntroVideo : MonoBehaviour
 {
-    const string ClipName = "Intro del Civilogenia";
+    const string ClipName = "Video de introducción";
     const float PrepareTimeout = 10f;
     const float IgnoreInputSeconds = 0.6f;   // un clic residual al pulsar Play no debe saltar la intro
 
     /// <summary>Con false no se reproduce la introducción al empezar (el resto del juego no se entera). Ponlo a true para volver a activarla.</summary>
-    public static bool Enabled = false;
+    public static bool Enabled = true;
 
     /// <summary>true mientras la introducción está en pantalla (la partida y la música del juego esperan).</summary>
     public static bool Active { get; private set; }
