@@ -1040,6 +1040,7 @@ public partial class CivGame : MonoBehaviour
             winner = civ;
             winnerByTech = true;
             AddLog(civ.name + " alcanza la Omnisciencia: ¡victoria por tecnología!", civ.color);
+            IntroVideo.PlayClip(OmniscienceVideo);   // vídeo de victoria, sea quien sea la civilización ganadora
         }
 
         // La hoguera (Fuego) se ve en las ciudades; la Ganadería cambia el rendimiento de las casillas
@@ -1084,6 +1085,7 @@ public partial class CivGame : MonoBehaviour
     const string EraChange2Video = "Video cambio a edad moderna";
     const string EraChange3Video = "Cambio a edad contemporanea con jazz";
     const string EraChange4Video = "Cambio a edad futurista con audio";
+    const string OmniscienceVideo = "Victoria por omnisciencia";
 
     // ---------------------------------------------------------------- Unidades
 

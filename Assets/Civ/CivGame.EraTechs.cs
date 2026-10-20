@@ -76,6 +76,7 @@ public partial class CivGame
                     winner = civ;
                     winnerByTech = true;
                     AddLog(civ.name + " alcanza la Omnisciencia: ¡victoria por tecnología!", civ.color);
+                    IntroVideo.PlayClip(OmniscienceVideo);
                 }
             }
         }
