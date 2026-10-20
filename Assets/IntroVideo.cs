@@ -3,7 +3,7 @@ using UnityEngine.Video;
 
 /// <summary>
 /// Reproduce el vídeo de introducción (el neandertal que enciende el fuego con dos piedras, con el título 3D de
-/// Civilogenia y "Así habló Zaratustra") al pulsar Play, a pantalla completa y por encima de la interfaz.
+/// Civilogenia y "Así habló Zaratustra") al empezar una partida nueva (tras pulsar Jugar en el menú), a pantalla completa y por encima de la interfaz.
 /// El vídeo debe estar en una carpeta Resources (Assets/Resources/civilogenia_neandertal_fuego_cine.mp4).
 /// Enter, Intro del teclado numérico o clic con el ratón lo saltan. Mientras suena, la partida queda en pausa.
 /// Escribe en la consola (prefijo [Civilogenia] Intro) qué hace y por qué termina.
@@ -15,7 +15,7 @@ public class IntroVideo : MonoBehaviour
     const float IgnoreInputSeconds = 0.6f;   // un clic residual al pulsar Play no debe saltar la intro
 
     /// <summary>Con false no se reproduce la introducción al empezar (el resto del juego no se entera). Ponlo a true para volver a activarla.</summary>
-    public static bool Enabled = true;
+    public static bool Enabled = false;
 
     /// <summary>true mientras la introducción está en pantalla (la partida y la música del juego esperan).</summary>
     public static bool Active { get; private set; }

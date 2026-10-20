@@ -128,7 +128,10 @@ public class MainMenu : MonoBehaviour
         if (game.startFailed) { choosingRivals = false; yield break; }   // no había tierra: se vuelve al menú
         choosingRivals = false;
         Play();
+        IntroVideo.PlayClip(IntroClip);   // la introducción sale tras pulsar Jugar, ya con la partida creada
     }
+
+    const string IntroClip = "Intro del Civilogenia";
 
     void Play()
     {
