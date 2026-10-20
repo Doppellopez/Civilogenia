@@ -1086,6 +1086,8 @@ public partial class CivGame : MonoBehaviour
     const string EraChange3Video = "Cambio a edad contemporanea con jazz";
     const string EraChange4Video = "Cambio a edad futurista con audio";
     const string OmniscienceVideo = "Victoria por omnisciencia";
+    const string MilitaryVictoryVideo = "Video Victoria Militar";
+    const string MilitaryDefeatVideo = "Vídeo derrota militar";
 
     // ---------------------------------------------------------------- Unidades
 
@@ -2253,6 +2255,7 @@ public partial class CivGame : MonoBehaviour
         foreach (Unit u in civ.units.ToArray()) KillSilently(u);
 
         AddLog(civ.name + " ha sido eliminada", Color.red);
+        if (civ.isHuman) IntroVideo.PlayClip(MilitaryDefeatVideo);   // te quitan la última ciudad: derrota militar
 
         int alive = 0;
         Civ last = null;
@@ -2262,6 +2265,7 @@ public partial class CivGame : MonoBehaviour
         {
             winner = last;
             AddLog(last.name + " gobierna el mundo", last.color);
+            if (last.isHuman) IntroVideo.PlayClip(MilitaryVictoryVideo);   // eliminas a la última civilización rival: victoria militar
         }
     }
 
