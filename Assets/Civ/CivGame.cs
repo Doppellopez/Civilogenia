@@ -132,7 +132,17 @@ public partial class CivGame : MonoBehaviour
             yield break;
         }
 
+        BuildInitialFog();   // la niebla ya está puesta cuando la partida empieza a verse
         ready = true;
+    }
+
+    // Construye la niebla de guerra de golpe, antes de marcar la partida como lista: si no, el planeta se vería entero
+    // (también lo no explorado) hasta el primer fotograma de juego
+    void BuildInitialFog()
+    {
+        fogMeshStale = true;
+        fogTimer = 0f;
+        TickFog();
     }
 
     /// <summary>El jugador elige cuántas civilizaciones enemigas habrá (0-5); todas las demás las maneja la IA. Empieza la partida.</summary>
@@ -761,6 +771,9 @@ public partial class CivGame : MonoBehaviour
             {
                 AddLog(c.name + ": " + GameDefs.Buildings[c.itemBuilding].name + " construido", c.owner.color);
                 GameSfx.Play(IsWonder(c.itemBuilding) ? Sfx.Wonder : Sfx.Built);
+                if (c.itemBuilding == BuildingKind.Pyramids) IntroVideo.PlayClip(PyramidsVideo);   // vídeo al terminar las Pirámides (solo las tuyas)
+                if (c.itemBuilding == BuildingKind.LighthouseAlex) IntroVideo.PlayClip(LighthouseVideo);   // y al terminar el Faro de Alejandría
+                if (c.itemBuilding == BuildingKind.GreatWall) IntroVideo.PlayClip(GreatWallVideo);   // y al terminar la Gran Muralla
             }
         }
     }
@@ -782,6 +795,8 @@ public partial class CivGame : MonoBehaviour
             case UnitKind.Spearman: return civ.Has(TechKind.Mining);
             case UnitKind.Archer:   return civ.Has(TechKind.Archery);
             case UnitKind.Horseman: return civ.Has(TechKind.Riding);
+            case UnitKind.WarElephant: return civ.Has(TechKind.Riding) && civ.Has(TechKind.Bronze);
+            case UnitKind.HussiteWagon: return civ.Has(TechKind.Camshaft);
             case UnitKind.Chariot:  return civ.Has(TechKind.Wheel);
             case UnitKind.Phalanx:  return civ.Has(TechKind.Bronze);
             case UnitKind.Legion:   return civ.Has(TechKind.Iron);
@@ -925,7 +940,7 @@ public partial class CivGame : MonoBehaviour
         if (kind == BuildingKind.GeneBank && (!city.owner.Has(TechKind.GeneticEngineering) || WonderExists(kind))) return false;
         if (kind == BuildingKind.SpaceElevator && (!city.owner.Has(TechKind.SpaceColonization) || WonderExists(kind))) return false;
         if (kind == BuildingKind.Pyramids && (!city.owner.Has(TechKind.Masonry) || WonderExists(kind))) return false;
-        if (kind == BuildingKind.LighthouseAlex && (!city.owner.Has(TechKind.Sailing) || WonderExists(kind))) return false;
+        if (kind == BuildingKind.LighthouseAlex && (!city.owner.Has(TechKind.Sailing) || WonderExists(kind) || SeaCellNextTo(city) < 0)) return false;   // solo en ciudades costeras
         if (kind == BuildingKind.GreatWall && (!city.owner.Has(TechKind.Construction) || WonderExists(kind))) return false;
         if (kind == BuildingKind.Colosseum && (!city.owner.Has(TechKind.Construction) || WonderExists(kind))) return false;
         if (kind == BuildingKind.SistineChapel && (!city.owner.Has(TechKind.Universities) || WonderExists(kind))) return false;
@@ -1004,7 +1019,10 @@ public partial class CivGame : MonoBehaviour
                 if (civ.Has(TechKind.Mining)) return UnitKind.Spearman;
                 return null;
             case UnitKind.Spearman: return civ.Has(TechKind.Iron) ? UnitKind.Legion : (UnitKind?)null;
-            case UnitKind.Horseman: return civ.Has(TechKind.Wheel) ? UnitKind.Chariot : (UnitKind?)null;
+            case UnitKind.Horseman:
+                if (civ.Has(TechKind.Camshaft)) return UnitKind.HussiteWagon;
+                return civ.Has(TechKind.Wheel) ? UnitKind.Chariot : (UnitKind?)null;
+            case UnitKind.Chariot: return civ.Has(TechKind.Camshaft) ? UnitKind.HussiteWagon : (UnitKind?)null;
             case UnitKind.Archer:
                 if (civ.Has(TechKind.Rifle)) return UnitKind.Rifleman;
                 if (civ.Has(TechKind.Gunpowder)) return UnitKind.Musketeer;
@@ -1018,6 +1036,7 @@ public partial class CivGame : MonoBehaviour
                 if (civ.Has(TechKind.PlasmaWeapons)) return UnitKind.Mecha;
                 if (civ.Has(TechKind.Tanks)) return UnitKind.Tank;
                 return civ.Has(TechKind.Artillery) ? UnitKind.Cannon : (UnitKind?)null;
+            case UnitKind.HussiteWagon:
             case UnitKind.Cannon:
                 if (civ.Has(TechKind.PlasmaWeapons)) return UnitKind.Mecha;
                 return civ.Has(TechKind.Tanks) ? UnitKind.Tank : (UnitKind?)null;
@@ -1156,6 +1175,9 @@ public partial class CivGame : MonoBehaviour
     const string EraChange3Video = "Cambio a edad contemporanea con jazz";
     const string EraChange4Video = "Cambio a edad futurista con audio";
     const string OmniscienceVideo = "Victoria por omnisciencia";
+    const string PyramidsVideo = "Construcción de las pirámides";
+    const string GreatWallVideo = "Construcción de la Gran Muralla";
+    const string LighthouseVideo = "Construcción del Faro";   // el nombre debe coincidir con el archivo (con F mayúscula)
     const string MilitaryVictoryVideo = "Video Victoria Militar";
     const string MilitaryDefeatVideo = "Vídeo derrota militar";
 
@@ -1238,18 +1260,21 @@ public partial class CivGame : MonoBehaviour
         u.view.transform.localPosition = p;
         Quaternion rot = Quaternion.FromToRotation(Vector3.up, d);
 
-        // Barcos, aviones y caravanas apuntan el frente (+Z del modelo) hacia la casilla a la que se dirigen
-        if (u.def.naval || u.def.air || u.IsTrader)
-        {
-            if (u.Moving)
-            {
-                Vector3 toward = Vector3.ProjectOnPlane(grid.dir[u.moveTo] - grid.dir[u.cell], d);
-                if (toward.sqrMagnitude > 1e-8f) u.heading = toward.normalized;
-            }
+        // Todas las unidades apuntan el frente (+Z del modelo) hacia la casilla a la que se dirigen; si no se mueven pero
+        // atacan, hacia su objetivo; y si no, conservan hacia donde miraban
+        int faceCell = -1;
+        if (u.Moving) faceCell = u.moveTo;
+        else if (u.targetCity != null) faceCell = u.targetCity.cell;
+        else if (u.targetUnit != null && u.targetUnit.alive) faceCell = u.targetUnit.cell;
 
-            Vector3 fwd = Vector3.ProjectOnPlane(u.heading, d);
-            if (fwd.sqrMagnitude > 1e-8f) rot = Quaternion.LookRotation(fwd.normalized, d);
+        if (faceCell >= 0 && faceCell != u.cell)
+        {
+            Vector3 toward = Vector3.ProjectOnPlane(grid.dir[faceCell] - grid.dir[u.cell], d);
+            if (toward.sqrMagnitude > 1e-8f) u.heading = toward.normalized;
         }
+
+        Vector3 fwd = Vector3.ProjectOnPlane(u.heading, d);
+        if (fwd.sqrMagnitude > 1e-8f) rot = Quaternion.LookRotation(fwd.normalized, d);
 
         u.view.transform.localRotation = rot;
     }

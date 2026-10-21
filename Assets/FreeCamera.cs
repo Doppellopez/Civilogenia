@@ -83,9 +83,9 @@ public class FreeCamera : MonoBehaviour
 
     void HandleDoubleClick()
     {
-        if (earth == null || !Input.GetMouseButtonDown(0)) return;
+        if (earth == null || !Inp.GetMouseButtonDown(0)) return;
 
-        Vector2 pos = Input.mousePosition;
+        Vector2 pos = Inp.mousePosition;
         bool isDouble = Time.unscaledTime - lastClickTime <= doubleClickTime && (pos - lastClickPos).sqrMagnitude < 25f * 25f;
         lastClickTime = isDouble ? -10f : Time.unscaledTime;
         lastClickPos = pos;
@@ -194,27 +194,27 @@ public class FreeCamera : MonoBehaviour
     [Tooltip("Fracción de la altura sobre la superficie que se avanza por cada muesca de la rueda")]
     public float zoomPerNotch = 0.2f;
     [Tooltip("Altura mínima sobre la superficie, en unidades")]
-    public float minAltitude = 0.05f;
+    public float minAltitude = 0.5f;
 
     // La rueda acerca (adelante) o aleja (atrás) la cámara a lo largo del rayo que pasa por el cursor,
     // así el zoom se dirige a lo que se ve bajo el ratón. El paso crece con la altura, como la velocidad.
     void HandleZoom()
     {
-        float scroll = Input.mouseScrollDelta.y;
+        float scroll = Inp.mouseScrollDelta.y;
         if (Mathf.Approximately(scroll, 0f)) return;
 
         Camera cam = GetComponent<Camera>();
         if (cam == null) return;
 
-        Vector3 dir = cam.ScreenPointToRay(Input.mousePosition).direction;
+        Vector3 dir = cam.ScreenPointToRay(Inp.mousePosition).direction;
         float step = Mathf.Max(minAltitude, Altitude()) * zoomPerNotch * scroll;
 
         if (earth != null && step > 0f)
         {
-            // No atravesar la superficie: se limita el avance a la altura mínima
-            float minDist = earth.FinalRadius + minAltitude;
+            // No atravesar la superficie: se limita el avance a la altura mínima sobre el relieve que hay debajo
             Vector3 next = transform.position + dir * step;
             Vector3 fromCenter = next - earth.transform.position;
+            float minDist = MinDistanceAt(next);
             if (fromCenter.magnitude < minDist)
             {
                 next = earth.transform.position + fromCenter.normalized * minDist;
@@ -236,7 +236,7 @@ public class FreeCamera : MonoBehaviour
         if (following)
         {
             // Retroceso suelta el punto (Espacio ya pausa la partida); los cursores siguen moviendo la cámara
-            if (Input.GetKeyDown(KeyCode.Backspace)) StopFollowing();
+            if (Inp.GetKeyDown(KeyCode.Backspace)) StopFollowing();
             else { MoveWithArrows(); return; }
         }
 
@@ -266,19 +266,19 @@ public class FreeCamera : MonoBehaviour
         if (earth == null) return;
 
         float speed = Mathf.Max(moveSpeed, Altitude() * speedPerAltitude);
-        if (Input.GetKey(KeyCode.LeftShift)) speed *= fastMultiplier;
+        if (Inp.GetKey(KeyCode.LeftShift)) speed *= fastMultiplier;
 
         float poleDir = 0f;
-        if (Input.GetKey(KeyCode.UpArrow)) poleDir += 1f;
-        if (Input.GetKey(KeyCode.DownArrow)) poleDir -= 1f;
+        if (Inp.GetKey(KeyCode.UpArrow)) poleDir += 1f;
+        if (Inp.GetKey(KeyCode.DownArrow)) poleDir -= 1f;
 
         float eastDir = 0f;
-        if (Input.GetKey(KeyCode.RightArrow) || Input.GetKey(KeyCode.Period)) eastDir += 1f;
-        if (Input.GetKey(KeyCode.LeftArrow) || Input.GetKey(KeyCode.Comma)) eastDir -= 1f;
+        if (Inp.GetKey(KeyCode.RightArrow) || Inp.GetKey(KeyCode.Period)) eastDir += 1f;
+        if (Inp.GetKey(KeyCode.LeftArrow) || Inp.GetKey(KeyCode.Comma)) eastDir -= 1f;
 
         float zoomDir = 0f;
-        if (Input.GetKey(KeyCode.Plus) || Input.GetKey(KeyCode.KeypadPlus) || Input.GetKey(KeyCode.Equals)) zoomDir += 1f;
-        if (Input.GetKey(KeyCode.Minus) || Input.GetKey(KeyCode.KeypadMinus) || Input.GetKey(KeyCode.Slash)) zoomDir -= 1f;
+        if (Inp.GetKey(KeyCode.Plus) || Inp.GetKey(KeyCode.KeypadPlus) || Inp.GetKey(KeyCode.Equals)) zoomDir += 1f;
+        if (Inp.GetKey(KeyCode.Minus) || Inp.GetKey(KeyCode.KeypadMinus) || Inp.GetKey(KeyCode.Slash)) zoomDir -= 1f;
 
         Transform e = earth.transform;
         Vector3 radial = transform.position - e.position;
@@ -298,15 +298,31 @@ public class FreeCamera : MonoBehaviour
 
         radial = rot * radial;
 
-        // Zoom con + y -, sin atravesar la superficie
-        if (zoomDir != 0f)
+        // Zoom con + y -, sin atravesar la superficie. Además, al desplazarse sobre montañas la cámara sube lo necesario
+        // para no quedar dentro del relieve
         {
-            float minDist = earth.FinalRadius + minAltitude;
-            float newDist = Mathf.Max(minDist, radial.magnitude - zoomDir * speed * Time.deltaTime);
+            float newDist = radial.magnitude - zoomDir * speed * Time.deltaTime;
+            Vector3 candidate = e.position + radial.normalized * newDist;
+            newDist = Mathf.Max(MinDistanceAt(candidate), newDist);
             radial = radial.normalized * newDist;
         }
 
         transform.position = e.position + radial;
+    }
+
+    // Distancia al centro del planeta a la que está el relieve (montañas incluidas) bajo una posición del espacio
+    float TerrainRadiusAt(Vector3 worldPos)
+    {
+        Vector3 local = earth.transform.InverseTransformPoint(worldPos);
+        if (local.sqrMagnitude < 1e-6f) return earth.FinalRadius;
+
+        return earth.LocalSurfacePoint(local.normalized).magnitude * earth.transform.lossyScale.x;
+    }
+
+    // Distancia mínima al centro permitida en esa dirección: el relieve más la altura mínima (nunca por debajo de la esfera base)
+    float MinDistanceAt(Vector3 worldPos)
+    {
+        return Mathf.Max(earth.FinalRadius, TerrainRadiusAt(worldPos)) + minAltitude;
     }
 
     float Altitude()
@@ -314,6 +330,6 @@ public class FreeCamera : MonoBehaviour
         if (earth == null) return 0f;
 
         float distance = Vector3.Distance(transform.position, earth.transform.position);
-        return Mathf.Max(0f, distance - earth.FinalRadius);
+        return Mathf.Max(0f, distance - TerrainRadiusAt(transform.position));
     }
 }

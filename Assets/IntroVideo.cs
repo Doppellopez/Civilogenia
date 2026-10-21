@@ -173,7 +173,7 @@ public class IntroVideo : MonoBehaviour
             return;
         }
 
-        bool skip = Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || Input.GetMouseButtonDown(0);
+        bool skip = Inp.GetKeyDown(KeyCode.Return) || Inp.GetKeyDown(KeyCode.KeypadEnter) || Inp.GetMouseButtonDown(0);
         if (skip && sinceStart > IgnoreInputSeconds) Finish("saltado por el jugador");
     }
 

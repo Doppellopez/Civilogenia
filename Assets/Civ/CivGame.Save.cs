@@ -257,6 +257,7 @@ public partial class CivGame
         grid = new WorldGrid();
         grid.Build(earth, gridCells);
         CivViews.BuildRivers(grid, earth, EarthT);
+        CivViews.BuildSpecials(grid, EarthT);   // ResetWorld retira los recursos dibujados: se vuelven a crear
         yield return null;
 
         // Mejoras del terreno: granjas, riegos y minas (las carreteras y el ferrocarril, tras crear las civilizaciones)
@@ -391,6 +392,7 @@ public partial class CivGame
         CivUI ui = FindFirstObjectByType<CivUI>();
         if (ui != null) ui.ClearSelection();
 
+        BuildInitialFog();
         ready = true;
     }
 

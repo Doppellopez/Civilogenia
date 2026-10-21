@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public static partial class CivViews
@@ -5,15 +6,102 @@ public static partial class CivViews
     // Recursos especiales del mapa: un manojo de trigo dorado en las planicies y una vaca en las colinas
     public static void BuildSpecials(WorldGrid grid, Transform earthTransform)
     {
+        specialViews.Clear();
+        specialMaterials.Clear();
+
         GameObject parent = new GameObject("Recursos especiales");
         parent.transform.SetParent(earthTransform, false);
 
+        List<KeyValuePair<int, Transform>> built = new List<KeyValuePair<int, Transform>>();
         for (int cell = 0; cell < grid.count; cell++)
         {
+            int before = parent.transform.childCount;
+
             if (grid.special[cell] == WorldGrid.Wheat) BuildWheat(cell, grid, parent.transform);
             else if (grid.special[cell] == WorldGrid.Cattle) BuildCattle(cell, grid, parent.transform);
             else if (grid.special[cell] == WorldGrid.Fish) BuildFish(cell, grid, parent.transform);
             else if (grid.special[cell] == WorldGrid.Stone) BuildStone(cell, grid, parent.transform);
+
+            if (parent.transform.childCount > before) built.Add(new KeyValuePair<int, Transform>(cell, parent.transform.GetChild(before)));
+        }
+
+        CombineSpecials(parent.transform, built);
+    }
+
+    // Vista de cada recurso (una sola malla por casilla) para mostrarlo u ocultarlo según la niebla
+    static readonly Dictionary<int, GameObject> specialViews = new Dictionary<int, GameObject>();
+    static readonly Dictionary<string, Material> specialMaterials = new Dictionary<string, Material>();
+
+    // Cada recurso se construye con muchas piezas sueltas (un objeto y un material por pieza): en un mapa grande son decenas
+    // de miles de objetos y de llamadas de dibujo. Cada casilla se junta en una sola malla (con un submaterial por color)
+    // y los materiales se comparten entre todos los recursos.
+    static void CombineSpecials(Transform parent, List<KeyValuePair<int, Transform>> built)
+    {
+        Matrix4x4 toParent = parent.worldToLocalMatrix;
+
+        foreach (KeyValuePair<int, Transform> entry in built)
+        {
+            Transform root = entry.Value;
+            Dictionary<string, List<CombineInstance>> groups = new Dictionary<string, List<CombineInstance>>();
+            List<string> order = new List<string>();
+
+            foreach (MeshFilter f in root.GetComponentsInChildren<MeshFilter>(true))
+            {
+                MeshRenderer r = f.GetComponent<MeshRenderer>();
+                if (r == null || f.sharedMesh == null || r.sharedMaterial == null) continue;
+
+                Material m = r.sharedMaterial;
+                string key = m.shader.name + "|" + ColorUtility.ToHtmlStringRGBA(m.color) + "|" + m.renderQueue;
+                if (!specialMaterials.ContainsKey(key)) specialMaterials[key] = m;
+                else if (specialMaterials[key] != m) Object.Destroy(m);   // ya hay un material igual: se comparte
+
+                if (!groups.TryGetValue(key, out List<CombineInstance> list))
+                {
+                    list = new List<CombineInstance>();
+                    groups[key] = list;
+                    order.Add(key);
+                }
+                list.Add(new CombineInstance { mesh = f.sharedMesh, transform = toParent * f.transform.localToWorldMatrix });
+            }
+
+            // Una malla por color y, juntas, una sola malla con un submaterial por color
+            CombineInstance[] perColor = new CombineInstance[order.Count];
+            Material[] mats = new Material[order.Count];
+            List<Mesh> temp = new List<Mesh>();
+            for (int i = 0; i < order.Count; i++)
+            {
+                Mesh colorMesh = new Mesh();
+                colorMesh.CombineMeshes(groups[order[i]].ToArray(), true, true);
+                temp.Add(colorMesh);
+                perColor[i] = new CombineInstance { mesh = colorMesh, transform = Matrix4x4.identity };
+                mats[i] = specialMaterials[order[i]];
+            }
+
+            Mesh mesh = new Mesh { name = "Recurso " + entry.Key };
+            mesh.CombineMeshes(perColor, false, false);
+            foreach (Mesh t in temp) Object.Destroy(t);
+
+            GameObject view = new GameObject("Recurso " + entry.Key);
+            view.transform.SetParent(parent, false);
+            view.AddComponent<MeshFilter>().sharedMesh = mesh;
+            MeshRenderer mr = view.AddComponent<MeshRenderer>();
+            mr.sharedMaterials = mats;
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            specialViews[entry.Key] = view;
+
+            root.gameObject.SetActive(false);
+            Object.Destroy(root.gameObject);
+        }
+    }
+
+    /// <summary>Muestra solo los recursos de casillas ya exploradas (null = se ven todos).</summary>
+    public static void ShowSpecials(bool[] explored)
+    {
+        foreach (KeyValuePair<int, GameObject> kv in specialViews)
+        {
+            if (kv.Value == null) continue;
+            bool on = explored == null || explored[kv.Key];
+            if (kv.Value.activeSelf != on) kv.Value.SetActive(on);
         }
     }
 

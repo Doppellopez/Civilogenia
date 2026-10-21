@@ -80,7 +80,7 @@ public class MainMenu : MonoBehaviour
 
         if (!Active || loading || Time.unscaledTime - openTime < IgnoreInputSeconds) return;
 
-        if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
+        if (Inp.GetKeyDown(KeyCode.Return) || Inp.GetKeyDown(KeyCode.KeypadEnter))
         {
             if (choosingRivals) StartCoroutine(StartRoutine());
             else if (choosingSize) { choosingSize = false; choosingRivals = true; }
@@ -323,7 +323,7 @@ public class MainMenu : MonoBehaviour
 
         if (loading)
         {
-            GUI.color = new Color(0f, 0f, 0f, 0.75f);
+            GUI.color = Color.black;   // opaco: mientras se prepara la partida no se ve el planeta sin niebla
             GUI.DrawTexture(new Rect(-4, -4, Screen.width + 8, Screen.height + 8), Texture2D.whiteTexture);
             GUI.color = Color.white;
             GUI.Label(new Rect(0, 0, Screen.width, Screen.height), loadingText, title);

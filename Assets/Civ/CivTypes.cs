@@ -3,7 +3,7 @@ using UnityEngine;
 
 // Tipos y datos del juego de civilizaciones en tiempo real.
 
-public enum UnitKind { Settler, Worker, Warrior, Spearman, Sailboat, Caravan, Archer, Horseman, Chariot, Phalanx, Legion, Catapult, Merchant, Galleon, Musketeer, Crossbowman, Ballista, Rifleman, Cannon, Steamship, Grenadier, Tank, Fighter, Bomber, Mecha }
+public enum UnitKind { Settler, Worker, Warrior, Spearman, Sailboat, Caravan, Archer, Horseman, Chariot, Phalanx, Legion, Catapult, Merchant, Galleon, Musketeer, Crossbowman, Ballista, Rifleman, Cannon, Steamship, Grenadier, Tank, Fighter, Bomber, Mecha, WarElephant, HussiteWagon }
 public enum TechKind { Fire, Agriculture, Husbandry, Mining, Sailing, Archery, Pottery, Riding, Wheel, Masonry, Bronze, Writing, Construction, Iron, Astronomy, Mathematics, Currency, Philosophy, EraChange, HeavyPlow, WaterMill, Camshaft, ArabicNumerals, Universities, Cities, EraChange2, Bridges, Compass, Clock, Gunpowder, PrintingPress, Crossbow, SteamEngine, Electricity, Railway, Rifle, Artillery, MovableType, Grenade, Telescope, Thermometer, EraChange3, CombustionEngine, Aviation, Radio, SteelConcrete, Penicillin, Tanks, Computers, NuclearEnergy, EraChange4, SpaceFlight, ArtificialIntelligence, Robotics, FusionEnergy, QuantumComputing, GeneticEngineering, Nanotech, Antigravity, PlasmaWeapons, EnergyShields, SpaceColonization, Omniscience }
 public enum BuildingKind{ Granary, Workshop, Market, Library, Walls, PublicBaths, GreatLibrary, Observatory, FibonacciLab, Bank, Academy, FullingMill, University, AlexandriaLibrary, PrintingHouse, GutenbergPress, Factory, HydroDam, HooverDam, Newspaper, GutenbergPrint, GalileoObservatory, FahrenheitStudy, ComputerLab, NuclearPlant, RadioTower, FordAssembly, FlemingLab, ManhattanProject, Internet, Satellite, FusionReactor, QuantumComputer, LunarBase, GeneBank, SpaceElevator, Temple, Amphitheater, Cathedral, Theater, Hospital, Stadium, Park, Mall, Cinema, VRPark, OrbitalGarden, Pyramids, LighthouseAlex, GreatWall, Colosseum, SistineChapel, MarcoPolo, EiffelTower, StatueOfLiberty, Hollywood, ApolloProgram, UnitedNations, Biosphere }
 public enum Difficulty { Easy, Normal, Hard }   // dificultad de la IA: fácil, normal o difícil
@@ -59,7 +59,7 @@ public static class GameDefs
         // Tecnologías de la Edad Media: solo se pueden investigar tras el Cambio de era
         { TechKind.HeavyPlow,   new TechDef { name = "Arado y collera", cost = 800, unlocks = "Granja (alimento x2)", requires = TechKind.EraChange } },
         { TechKind.WaterMill,   new TechDef { name = "Molino hidráulico", cost = 850, unlocks = "+1 comida en casillas junto al mar o a un río", requires = TechKind.EraChange } },
-        { TechKind.Camshaft,   new TechDef { name = "Árbol de levas", cost = 950, unlocks = "+1 producción en casillas junto al mar o a un río y Batán", requires = TechKind.WaterMill } },
+        { TechKind.Camshaft,   new TechDef { name = "Árbol de levas", cost = 950, unlocks = "+1 producción en casillas junto al mar o a un río, Batán y Carro husita", requires = TechKind.WaterMill } },
         { TechKind.ArabicNumerals, new TechDef { name = "Cifras arábigas", cost = 900, unlocks = "+25% de ciencia y de oro en todas las ciudades, Banco, Mercader y Laboratorio de Fibonacci", requires = TechKind.EraChange } },
         { TechKind.Compass,    new TechDef { name = "Brújula magnética", cost = 900, unlocks = "Galeón y los barcos navegan un 50% más rápido", requires = TechKind.EraChange, alsoRequires = TechKind.Sailing } },
         { TechKind.Clock,      new TechDef { name = "Reloj mecánico", cost = 1100, unlocks = "+25% de producción en todas las ciudades", requires = TechKind.Camshaft } },
@@ -90,7 +90,7 @@ public static class GameDefs
         { TechKind.Radio,      new TechDef { name = "Radio", cost = 2900, unlocks = "+25% de ciencia en todas las ciudades", requires = TechKind.EraChange3 } },
         { TechKind.SteelConcrete, new TechDef { name = "Acero y hormigón", cost = 3000, unlocks = "los edificios cuestan un 15% menos (rascacielos)", requires = TechKind.EraChange3 } },
         { TechKind.Penicillin, new TechDef { name = "Penicilina", cost = 3100, unlocks = "+30% de crecimiento en todas las ciudades", requires = TechKind.EraChange3 } },
-        { TechKind.Tanks,      new TechDef { name = "Carro de combate", cost = 3300, unlocks = "Tanque (mejora del Cañón)", requires = TechKind.CombustionEngine } },
+        { TechKind.Tanks,      new TechDef { name = "Carro de combate", cost = 3300, unlocks = "Tanque (mejora del Cañón y del Carro husita)", requires = TechKind.CombustionEngine } },
         { TechKind.Computers,  new TechDef { name = "Ordenadores", cost = 3600, unlocks = "Laboratorio informático (+100% de ciencia en su ciudad)", requires = TechKind.Radio } },
         { TechKind.NuclearEnergy, new TechDef { name = "Energía nuclear", cost = 4200, unlocks = "Central nuclear (+10 de producción en su ciudad)", requires = TechKind.Computers, alsoRequires = TechKind.Aviation } },
         // Aparece cuando se han descubierto todas las tecnologías de la Edad Contemporánea
@@ -119,7 +119,7 @@ public static class GameDefs
         { TechKind.Bridges,    new TechDef { name = "Construcción de puentes", cost = 120, unlocks = "carreteras que atraviesan ríos", requires = TechKind.Masonry } },
         { TechKind.Masonry,   new TechDef { name = "Mampostería", cost = 105, unlocks = "Muro de la Ciudad", requires = TechKind.Mining } },
         { TechKind.Wheel,      new TechDef { name = "Rueda",       cost = 105, unlocks = "caminos y Carro", requires = TechKind.Husbandry } },
-        { TechKind.Riding,     new TechDef { name = "Equitación",  cost = 105, unlocks = "Jinete", requires = TechKind.Husbandry } },
+        { TechKind.Riding,     new TechDef { name = "Equitación",  cost = 105, unlocks = "Jinete (y, con Bronce, Elefante de guerra)", requires = TechKind.Husbandry } },
         { TechKind.Pottery,    new TechDef { name = "Cerámica",    cost = 105, unlocks = "crecimiento de población x1,5 en todas las ciudades", requires = TechKind.Agriculture } },
         { TechKind.Husbandry,  new TechDef { name = "Ganadería",   cost = 75, unlocks = "+1 comida en llanuras", requires = TechKind.Fire } },
         { TechKind.Mining,      new TechDef { name = "Minería",     cost = 75, unlocks = "minas (producción x2) y Lancero", requires = TechKind.Fire } },
@@ -153,7 +153,9 @@ public static class GameDefs
         { UnitKind.Phalanx,  new UnitDef { name = "Falange", cost = 80, hp = 35, attack = 7, defense = 8, speed = 0.55f } },
         { UnitKind.Chariot,  new UnitDef { name = "Carro", cost = 90, hp = 28, attack = 10, defense = 4, speed = 0.9f } },
         { UnitKind.Horseman, new UnitDef { name = "Jinete", cost = 70, hp = 22, attack = 8, defense = 3, speed = 1.1f } },
-        { UnitKind.Archer,   new UnitDef { name = "Arquero", cost = 50, hp = 15, attack = 7, defense = 2, speed = 0.7f, range = 2 } },    };
+        { UnitKind.Archer,   new UnitDef { name = "Arquero", cost = 50, hp = 15, attack = 7, defense = 2, speed = 0.7f, range = 2 } },
+        { UnitKind.WarElephant, new UnitDef { name = "Elefante de guerra", cost = 130, hp = 55, attack = 14, defense = 6, speed = 0.75f } },
+        { UnitKind.HussiteWagon, new UnitDef { name = "Carro husita", cost = 120, hp = 45, attack = 12, defense = 14, speed = 0.45f, range = 2 } },    };
 
     public static readonly Dictionary<BuildingKind, BuildingDef> Buildings = new Dictionary<BuildingKind, BuildingDef>
     {
@@ -204,7 +206,7 @@ public static class GameDefs
         { BuildingKind.VRPark, new BuildingDef { name = "Parque de realidad virtual", cost = 450, effect = "+6 de felicidad" } },
         { BuildingKind.OrbitalGarden, new BuildingDef { name = "Jardín orbital", cost = 600, effect = "+8 de felicidad" } },
         { BuildingKind.Pyramids, new BuildingDef { name = "Pirámides", cost = 250, effect = "maravilla única: +25% de producción en todas tus ciudades" } },
-        { BuildingKind.LighthouseAlex, new BuildingDef { name = "Faro de Alejandría", cost = 200, effect = "maravilla única: tus barcos van un 50% más rápido" } },
+        { BuildingKind.LighthouseAlex, new BuildingDef { name = "Faro de Alejandría", cost = 200, effect = "maravilla única (solo en ciudades costeras): tus barcos van un 50% más rápido" } },
         { BuildingKind.GreatWall, new BuildingDef { name = "Gran Muralla", cost = 300, effect = "maravilla única: +4 de defensa en todas tus ciudades" } },
         { BuildingKind.Colosseum, new BuildingDef { name = "Coliseo", cost = 300, effect = "maravilla única: +2 de felicidad en todas tus ciudades" } },
         { BuildingKind.SistineChapel, new BuildingDef { name = "Capilla Sixtina", cost = 450, effect = "maravilla única: +3 de felicidad en todas tus ciudades" } },
@@ -562,7 +564,7 @@ public class Unit
 
     public Vector2 jitter;          // pequeño desplazamiento para que no se solapen
     public Vector3 currentDir;       // dirección actual sobre la esfera (para selección)
-    public Vector3 heading;          // hacia dónde mira (solo barcos); se conserva al detenerse
+    public Vector3 heading;          // hacia dónde mira; se conserva al detenerse
 
     public GameObject view;
     public GameObject selectionRing;

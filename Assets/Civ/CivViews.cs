@@ -78,6 +78,32 @@ public static partial class CivViews
         return ring;
     }
 
+    // El disco de selección es plano pero el terreno no: en una ladera parte del disco quedaba bajo tierra. Se sube lo justo
+    // para que todo el disco quede por encima del relieve que tiene debajo (se llama cada fotograma con la unidad seleccionada,
+    // porque al moverse cambia el terreno que pisa).
+    public static void FitRing(GameObject ring, EarthTopography earth)
+    {
+        Transform root = ring != null ? ring.transform.parent : null;
+        if (root == null || earth == null) return;
+
+        float diameter = ring.transform.localScale.x;
+        Quaternion rot = root.localRotation;
+        Vector3 origin = root.localPosition;
+        Vector3 up = rot * Vector3.up;
+
+        float highest = Vector3.Dot(earth.LocalSurfacePoint(origin.normalized) - origin, up);
+        for (int i = 0; i < 12; i++)
+        {
+            float a = (i % 8) / 8f * Mathf.PI * 2f;
+            float r = diameter * (i < 8 ? 0.5f : 0.25f);
+            Vector3 p = origin + rot * (new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * r);
+            highest = Mathf.Max(highest, Vector3.Dot(earth.LocalSurfacePoint(p.normalized) - origin, up));
+        }
+
+        float y = Mathf.Clamp(highest + 0.03f * diameter, 0.02f * diameter, 0.5f * diameter);
+        ring.transform.localPosition = new Vector3(0f, y, 0f);
+    }
+
     // ---------------------------------------------------------------- Ciudades
 
     // Donde se dibuja una maravilla: su propia celdilla libre (centrada en ella) o, si no hubo sitio, junto a la ciudad en 'at'
@@ -1621,7 +1647,11 @@ public static partial class CivViews
         // Tras el Cambio de era (Edad Media) las unidades usan su modelo medieval
         // y tras el tercero (Edad Contemporánea) su modelo actual
         // y tras el cuarto (Edad Futura) su modelo futurista
-        if (unit.owner.Has(TechKind.EraChange4))
+        if (unit.kind == UnitKind.WarElephant)
+            BuildElephantModel(root.transform, size, unit.owner.color);   // el elefante se dibuja igual en todas las eras
+        else if (unit.kind == UnitKind.HussiteWagon)
+            BuildHussiteWagonModel(root.transform, size, unit.owner.color);   // y el carro husita también
+        else if (unit.owner.Has(TechKind.EraChange4))
             BuildFuturisticUnit(root.transform, size, unit);
         else if (unit.owner.Has(TechKind.EraChange3))
             BuildContemporaryUnit(root.transform, size, unit);
@@ -1854,6 +1884,109 @@ public static partial class CivViews
     }
 
     // Caballo marrón (cuerpo, cuello, cabeza, crin, cuatro patas y cola), centrado en z = zOffset. Mira hacia +Z.
+    // Elefante de guerra: cuerpo gris con cabeza, trompa, colmillos, orejas, cuatro patas y una torre de madera con tela
+    // del color de la civilización y un soldado. Mira hacia +Z.
+    static void BuildElephantModel(Transform root, float size, Color civColor)
+    {
+        Material skin = LitMaterial(new Color(0.5f, 0.5f, 0.52f));
+        Material skinDark = LitMaterial(new Color(0.4f, 0.4f, 0.42f));
+        Material ivory = LitMaterial(new Color(0.95f, 0.92f, 0.8f));
+        Material wood = LitMaterial(new Color(0.45f, 0.3f, 0.16f));
+        Material cloth = LitMaterial(civColor);
+
+        // Cuerpo y cabeza
+        Piece(root, Sphere, skin, new Vector3(0f, size * 0.52f, 0f), new Vector3(size * 0.62f, size * 0.55f, size * 0.95f));
+        Piece(root, Sphere, skin, new Vector3(0f, size * 0.6f, size * 0.55f), new Vector3(size * 0.38f, size * 0.4f, size * 0.38f));
+
+        // Trompa (cae desde la cabeza, curvada hacia delante) y colmillos
+        GameObject trunk = Piece(root, Capsule, skinDark, new Vector3(0f, size * 0.38f, size * 0.78f), new Vector3(size * 0.1f, size * 0.24f, size * 0.1f));
+        trunk.transform.localRotation = Quaternion.Euler(-18f, 0f, 0f);
+        for (int sx = -1; sx <= 1; sx += 2)
+        {
+            GameObject tusk = Piece(root, Capsule, ivory, new Vector3(sx * size * 0.14f, size * 0.42f, size * 0.8f), new Vector3(size * 0.035f, size * 0.17f, size * 0.035f));
+            tusk.transform.localRotation = Quaternion.Euler(-65f, 0f, sx * -12f);
+
+            // Orejas grandes a los lados de la cabeza
+            GameObject ear = Piece(root, Sphere, skinDark, new Vector3(sx * size * 0.27f, size * 0.62f, size * 0.46f), new Vector3(size * 0.04f, size * 0.3f, size * 0.26f));
+            ear.transform.localRotation = Quaternion.Euler(0f, sx * 12f, 0f);
+        }
+
+        // Patas gruesas
+        for (int sx = -1; sx <= 1; sx += 2)
+            for (int sz = -1; sz <= 1; sz += 2)
+                Piece(root, Cylinder, skin, new Vector3(sx * size * 0.2f, size * 0.17f, sz * size * 0.3f), new Vector3(size * 0.16f, size * 0.17f, size * 0.16f));
+
+        // Cola
+        Piece(root, Cylinder, skinDark, new Vector3(0f, size * 0.5f, -size * 0.52f), new Vector3(size * 0.03f, size * 0.12f, size * 0.03f));
+
+        // Torre: manta del color de la civilización, plataforma de madera, barandilla y un soldado con lanza
+        Piece(root, Cube, cloth, new Vector3(0f, size * 0.78f, 0f), new Vector3(size * 0.7f, size * 0.04f, size * 0.55f));
+        Piece(root, Cube, wood, new Vector3(0f, size * 0.84f, 0f), new Vector3(size * 0.42f, size * 0.05f, size * 0.4f));
+        for (int sx = -1; sx <= 1; sx += 2)
+            Piece(root, Cube, wood, new Vector3(sx * size * 0.2f, size * 0.95f, 0f), new Vector3(size * 0.03f, size * 0.2f, size * 0.4f));
+        Piece(root, Cube, wood, new Vector3(0f, size * 0.95f, -size * 0.19f), new Vector3(size * 0.4f, size * 0.2f, size * 0.03f));
+
+        GameObject rider = new GameObject("Soldado");
+        rider.transform.SetParent(root, false);
+        rider.transform.localPosition = new Vector3(0f, size * 0.85f, 0f);
+        rider.transform.localScale = Vector3.one * 0.5f;
+        BuildSoldierModel(rider.transform, size, civColor, true);
+    }
+
+    // Carro husita: carro de guerra blindado con tablones altos y escudos del color de la civilización, aspilleras,
+    // un cañoncito al frente y dos caballos que tiran de él. Mira hacia +Z.
+    static void BuildHussiteWagonModel(Transform root, float size, Color civColor)
+    {
+        Material wood = LitMaterial(new Color(0.45f, 0.3f, 0.16f));
+        Material woodDark = LitMaterial(new Color(0.3f, 0.2f, 0.1f));
+        Material iron = LitMaterial(new Color(0.35f, 0.36f, 0.4f));
+        Material slit = LitMaterial(new Color(0.08f, 0.08f, 0.09f));
+        Material shield = LitMaterial(civColor);
+
+        // Plataforma del carro
+        Piece(root, Cube, woodDark, new Vector3(0f, size * 0.3f, -size * 0.15f), new Vector3(size * 0.62f, size * 0.07f, size * 1.05f));
+
+        // Muros de tablones a los lados, atrás y delante, con escudos pintados y aspilleras
+        for (int sx = -1; sx <= 1; sx += 2)
+        {
+            Piece(root, Cube, wood, new Vector3(sx * size * 0.3f, size * 0.55f, -size * 0.15f), new Vector3(size * 0.05f, size * 0.45f, size * 1.0f));
+            for (int i = 0; i < 3; i++)
+            {
+                float z = -size * 0.45f + i * size * 0.3f;
+                Piece(root, Cube, shield, new Vector3(sx * size * 0.34f, size * 0.55f, z), new Vector3(size * 0.03f, size * 0.32f, size * 0.22f));
+                Piece(root, Cube, slit, new Vector3(sx * size * 0.325f, size * 0.7f, z), new Vector3(size * 0.04f, size * 0.04f, size * 0.12f));
+            }
+        }
+        Piece(root, Cube, wood, new Vector3(0f, size * 0.55f, -size * 0.65f), new Vector3(size * 0.6f, size * 0.45f, size * 0.05f));
+        Piece(root, Cube, wood, new Vector3(0f, size * 0.55f, size * 0.35f), new Vector3(size * 0.6f, size * 0.45f, size * 0.05f));
+        Piece(root, Cube, slit, new Vector3(0f, size * 0.62f, size * 0.38f), new Vector3(size * 0.14f, size * 0.07f, size * 0.03f));
+
+        // Cañoncito asomando por la aspillera delantera
+        GameObject barrel = Piece(root, Cylinder, iron, new Vector3(0f, size * 0.62f, size * 0.5f), new Vector3(size * 0.08f, size * 0.17f, size * 0.08f));
+        barrel.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+
+        // Ruedas con llanta de hierro
+        for (int sx = -1; sx <= 1; sx += 2)
+            for (int sz = -1; sz <= 1; sz += 2)
+            {
+                GameObject wheel = Piece(root, Cylinder, woodDark, new Vector3(sx * size * 0.36f, size * 0.2f, -size * 0.15f + sz * size * 0.3f), new Vector3(size * 0.34f, size * 0.03f, size * 0.34f));
+                wheel.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+                GameObject rim = Piece(root, Cylinder, iron, new Vector3(sx * size * 0.37f, size * 0.2f, -size * 0.15f + sz * size * 0.3f), new Vector3(size * 0.2f, size * 0.035f, size * 0.2f));
+                rim.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+            }
+
+        // Lanza de tiro y dos caballos
+        Piece(root, Cube, woodDark, new Vector3(0f, size * 0.32f, size * 0.62f), new Vector3(size * 0.05f, size * 0.05f, size * 0.55f));
+        for (int sx = -1; sx <= 1; sx += 2)
+        {
+            GameObject horse = new GameObject("Caballo");
+            horse.transform.SetParent(root, false);
+            horse.transform.localPosition = new Vector3(sx * size * 0.13f, 0f, size * 1.0f);
+            horse.transform.localScale = Vector3.one * 0.7f;
+            BuildHorseModel(horse.transform, size, 0f);
+        }
+    }
+
     static void BuildHorseModel(Transform root, float size, float zOffset)
     {
         Material horse = LitMaterial(new Color(0.45f, 0.28f, 0.14f));
@@ -4261,6 +4394,12 @@ public static partial class CivViews
     static readonly List<Color32> fogColors = new List<Color32>();
     static readonly List<int> fogTriangles = new List<int>();
 
+    // Vértices de cada hexágono de niebla: calcularlos pide el relieve del planeta 6 veces por casilla, así que se guardan
+    // la primera vez y se reutilizan en cada reconstrucción (la niebla se rehace varias veces por segundo)
+    static WorldGrid fogRingGrid;
+    static Vector3[] fogRing;
+    static bool[] fogRingDone;
+
     // Malla de hexágonos oscuros sobre las casillas que el jugador no ve: casi negros si nunca se exploraron,
     // atenuados si ya se vieron alguna vez
     public static void RebuildFog(bool[] visible, bool[] explored, WorldGrid grid, EarthTopography earth, Transform earthTransform)
@@ -4288,7 +4427,14 @@ public static partial class CivViews
 
         float ang = grid.angularSpacing * 0.8f;   // más grande que la casilla: se solapan y no queda ningún hueco entre ellas
         float lift = grid.radius * 0.0045f;
-        Color32 unknown = new Color32(0, 0, 4, 245);
+
+        if (fogRingGrid != grid || fogRing == null || fogRing.Length != grid.count * 6)
+        {
+            fogRingGrid = grid;
+            fogRing = new Vector3[grid.count * 6];
+            fogRingDone = new bool[grid.count];
+        }
+        Color32 unknown = new Color32(0, 0, 0, 255);   // sin explorar: negro opaco, no se ve nada por debajo
         Color32 seen = new Color32(0, 0, 8, 140);
 
         for (int cell = 0; cell < grid.count; cell++)
@@ -4298,10 +4444,22 @@ public static partial class CivViews
             Color32 col = explored[cell] ? seen : unknown;
 
             Vector3 d = grid.dir[cell];
-            Vector3 t1 = Vector3.Cross(Vector3.up, d);
-            if (t1.sqrMagnitude < 1e-6f) t1 = Vector3.Cross(Vector3.right, d);
-            t1.Normalize();
-            Vector3 t2 = Vector3.Cross(d, t1);
+
+            if (!fogRingDone[cell])
+            {
+                Vector3 t1 = Vector3.Cross(Vector3.up, d);
+                if (t1.sqrMagnitude < 1e-6f) t1 = Vector3.Cross(Vector3.right, d);
+                t1.Normalize();
+                Vector3 t2 = Vector3.Cross(d, t1);
+
+                for (int i = 0; i < 6; i++)
+                {
+                    float a = i / 6f * Mathf.PI * 2f;
+                    Vector3 cd = (d + (t1 * Mathf.Cos(a) + t2 * Mathf.Sin(a)) * ang).normalized;
+                    fogRing[cell * 6 + i] = earth.LocalSurfacePoint(cd) + cd * lift;
+                }
+                fogRingDone[cell] = true;
+            }
 
             int start = fogVertices.Count;
             fogVertices.Add(grid.pos[cell] + d * lift);
@@ -4309,9 +4467,7 @@ public static partial class CivViews
 
             for (int i = 0; i < 6; i++)
             {
-                float a = i / 6f * Mathf.PI * 2f;
-                Vector3 cd = (d + (t1 * Mathf.Cos(a) + t2 * Mathf.Sin(a)) * ang).normalized;
-                fogVertices.Add(earth.LocalSurfacePoint(cd) + cd * lift);
+                fogVertices.Add(fogRing[cell * 6 + i]);
                 fogColors.Add(col);
             }
 

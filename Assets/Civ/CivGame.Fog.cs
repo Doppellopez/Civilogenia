@@ -58,7 +58,8 @@ public partial class CivGame
 
         fogTimer -= Time.unscaledDeltaTime;
         if (fogTimer > 0f) return;
-        fogTimer = 0.3f;
+        // En mapas grandes la niebla pesa más: se recalcula con menos frecuencia (0,3 s con 6000 casillas, hasta 0,8 s)
+        fogTimer = Mathf.Clamp(0.3f * grid.count / 6000f, 0.3f, 0.8f);
 
         int n = grid.count;
         if (fogVisible == null || fogVisible.Length != n)
@@ -109,6 +110,7 @@ public partial class CivGame
         if (changed || fogMeshStale)
         {
             CivViews.RebuildFog(fogVisible, fogExplored, grid, earth, EarthT);
+            CivViews.ShowSpecials(fogExplored);   // los recursos solo se ven en casillas exploradas
             fogMeshStale = false;
         }
 

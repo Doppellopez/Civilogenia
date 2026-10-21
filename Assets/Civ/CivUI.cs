@@ -87,15 +87,15 @@ public partial class CivUI : MonoBehaviour
         if (game.GameOver && !gameOverDismissed) return;      // con la pantalla de partida terminada abierta, el juego no atiende nada más
 
         // F1 abre o cierra la guía del juego (Esc también la cierra); con ella abierta no se atiende nada más
-        if (!pauseOpen && Input.GetKeyDown(KeyCode.F1)) { ToggleGuide(); return; }
+        if (!pauseOpen && Inp.GetKeyDown(KeyCode.F1)) { ToggleGuide(); return; }
         if (showGuide)
         {
-            if (Input.GetKeyDown(KeyCode.Escape)) ToggleGuide();
+            if (Inp.GetKeyDown(KeyCode.Escape)) ToggleGuide();
             return;
         }
 
         // Esc abre o cierra el menú de pausa; con él abierto no se atiende nada más
-        if (Input.GetKeyDown(KeyCode.Escape))
+        if (Inp.GetKeyDown(KeyCode.Escape))
         {
             if (pauseOpen) ClosePause(); else OpenPause();
             return;
@@ -119,79 +119,87 @@ public partial class CivUI : MonoBehaviour
 
         HandleKeys();
 
-        if (Input.GetMouseButtonDown(0) && !OverUi()) LeftClick();
-        if (Input.GetMouseButtonDown(1) && !OverUi()) RightClick();
+        if (Inp.GetMouseButtonDown(0) && !OverUi()) LeftClick();
+        if (Inp.GetMouseButtonDown(1) && !OverUi()) RightClick();
 
         // Anillo de selección
-        if (selUnit != null && selUnit.selectionRing != null) selUnit.selectionRing.SetActive(true);
-        if (selCity != null && selCity.selectionRing != null) selCity.selectionRing.SetActive(true);
+        if (selUnit != null && selUnit.selectionRing != null)
+        {
+            selUnit.selectionRing.SetActive(true);
+            CivViews.FitRing(selUnit.selectionRing, game.earth);
+        }
+        if (selCity != null && selCity.selectionRing != null)
+        {
+            selCity.selectionRing.SetActive(true);
+            CivViews.FitRing(selCity.selectionRing, game.earth);
+        }
     }
 
     void HandleKeys()
     {
-        if (Input.GetKeyDown(KeyCode.Space))
+        if (Inp.GetKeyDown(KeyCode.Space))
         {
             if (game.gameSpeed > 0f) { lastSpeed = game.gameSpeed; game.gameSpeed = 0f; }
             else game.gameSpeed = lastSpeed > 0f ? lastSpeed : 1f;
         }
 
 
-        if (Input.GetKeyDown(KeyCode.H)) showHelp = !showHelp;
-        if (Input.GetKeyDown(KeyCode.N)) showMinimap = !showMinimap;
-        if (Input.GetKeyDown(KeyCode.F2))
+        if (Inp.GetKeyDown(KeyCode.H)) showHelp = !showHelp;
+        if (Inp.GetKeyDown(KeyCode.N)) showMinimap = !showMinimap;
+        if (Inp.GetKeyDown(KeyCode.F2))
         {
             GameSfx.Muted = !GameSfx.Muted;
             game.AddLog(GameSfx.Muted ? "Efectos de sonido desactivados (F2)" : "Efectos de sonido activados (F2)", Color.white);
             if (!GameSfx.Muted) GameSfx.Play(Sfx.Built);
         }
-        if (Input.GetKeyDown(KeyCode.T))
+        if (Inp.GetKeyDown(KeyCode.T))
         {
             // Mayús+T (pruebas): desarrolla todas las tecnologías de la edad actual; T solo: panel de tecnologías
-            if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) game.AddLog(game.DevelopEraTechs(game.human), Color.white);
+            if (Inp.GetKey(KeyCode.LeftShift) || Inp.GetKey(KeyCode.RightShift)) game.AddLog(game.DevelopEraTechs(game.human), Color.white);
             else showTech = !showTech;
         }
-        if (Input.GetKeyDown(KeyCode.D)) showDiplomacy = !showDiplomacy;
+        if (Inp.GetKeyDown(KeyCode.D)) showDiplomacy = !showDiplomacy;
 
-        if (Input.GetKeyDown(KeyCode.B) && selUnit != null && selUnit.owner == game.human)
+        if (Inp.GetKeyDown(KeyCode.B) && selUnit != null && selUnit.owner == game.human)
             game.TryFound(selUnit);
 
-        if (Input.GetKeyDown(KeyCode.J) && selUnit != null && selUnit.owner == game.human)
+        if (Inp.GetKeyDown(KeyCode.J) && selUnit != null && selUnit.owner == game.human)
             game.TryJoin(selUnit);
 
-        if (Input.GetKeyDown(KeyCode.U) && selUnit != null && selUnit.owner == game.human)
+        if (Inp.GetKeyDown(KeyCode.U) && selUnit != null && selUnit.owner == game.human)
             game.TryUpgrade(selUnit);
 
-        if (Input.GetKeyDown(KeyCode.K) && selUnit != null && selUnit.owner == game.human && selUnit.IsTrader)
+        if (Inp.GetKeyDown(KeyCode.K) && selUnit != null && selUnit.owner == game.human && selUnit.IsTrader)
             game.TryTrade(selUnit);
 
-        if (Input.GetKeyDown(KeyCode.I) && selUnit != null && selUnit.owner == game.human && selUnit.kind == UnitKind.Worker && !selUnit.Moving)
+        if (Inp.GetKeyDown(KeyCode.I) && selUnit != null && selUnit.owner == game.human && selUnit.kind == UnitKind.Worker && !selUnit.Moving)
             game.OrderIrrigate(selUnit, selUnit.cell);
 
-        if (Input.GetKeyDown(KeyCode.M) && selUnit != null && selUnit.owner == game.human && selUnit.kind == UnitKind.Worker && !selUnit.Moving)
+        if (Inp.GetKeyDown(KeyCode.M) && selUnit != null && selUnit.owner == game.human && selUnit.kind == UnitKind.Worker && !selUnit.Moving)
             game.OrderMine(selUnit, selUnit.cell);
 
-        if (Input.GetKeyDown(KeyCode.F) && selUnit != null && selUnit.owner == game.human && selUnit.def.IsMilitary)
+        if (Inp.GetKeyDown(KeyCode.F) && selUnit != null && selUnit.owner == game.human && selUnit.def.IsMilitary)
             game.ToggleFortify(selUnit);   // F: fortificar la unidad militar (+25 % de defensa)
 
-        if (Input.GetKeyDown(KeyCode.F) && selUnit != null && selUnit.owner == game.human && selUnit.kind == UnitKind.Worker && !selUnit.Moving)
+        if (Inp.GetKeyDown(KeyCode.F) && selUnit != null && selUnit.owner == game.human && selUnit.kind == UnitKind.Worker && !selUnit.Moving)
             game.OrderFarm(selUnit, selUnit.cell);
 
-        if (Input.GetKeyDown(KeyCode.R) && selUnit != null && selUnit.owner == game.human && CanRoad(selUnit))
+        if (Inp.GetKeyDown(KeyCode.R) && selUnit != null && selUnit.owner == game.human && CanRoad(selUnit))
         {
             if (roadPick > 0) CancelRoadMode();
             else StartRoadMode();
         }
 
-        if (Input.GetKeyDown(KeyCode.V) && selUnit != null && selUnit.owner == game.human && CanRoad(selUnit) && game.human.Has(TechKind.Railway))
+        if (Inp.GetKeyDown(KeyCode.V) && selUnit != null && selUnit.owner == game.human && CanRoad(selUnit) && game.human.Has(TechKind.Railway))
         {
             if (roadPick > 0) CancelRoadMode();
             else StartRoadMode(2);
         }
 
-        if (Input.GetKeyDown(KeyCode.F5)) game.SaveGame();
-        if (Input.GetKeyDown(KeyCode.F9) && CivSave.Exists) StartCoroutine(game.LoadRoutine());
+        if (Inp.GetKeyDown(KeyCode.F5)) game.SaveGame();
+        if (Inp.GetKeyDown(KeyCode.F9) && CivSave.Exists) StartCoroutine(game.LoadRoutine());
 
-        if (Input.GetKeyDown(KeyCode.C))
+        if (Inp.GetKeyDown(KeyCode.C))
         {
             if (selUnit != null) game.FocusOn(selUnit.cell);
             else if (selCity != null) game.FocusOn(selCity.cell);
@@ -276,7 +284,7 @@ public partial class CivUI : MonoBehaviour
         if (!PickPoint(out Vector3 dir)) return;
 
         // Ctrl + clic derecho sobre una casilla de tierra: el trabajador construye la carretera hasta ella
-        if (CanRoad(selUnit) && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)))
+        if (CanRoad(selUnit) && (Inp.GetKey(KeyCode.LeftControl) || Inp.GetKey(KeyCode.RightControl)))
         {
             int roadCell = game.grid.Nearest(dir);
             City roadCity = game.grid.cityAt[roadCell];
@@ -288,7 +296,7 @@ public partial class CivUI : MonoBehaviour
         }
 
         // Ctrl + clic derecho de un colono sobre una ciudad propia: va y se une a ella (+1 de población)
-        if (selUnit.kind == UnitKind.Settler && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)))
+        if (selUnit.kind == UnitKind.Settler && (Inp.GetKey(KeyCode.LeftControl) || Inp.GetKey(KeyCode.RightControl)))
         {
             City joinTarget = PickCity(dir);
             if (joinTarget != null && joinTarget.owner == game.human)
@@ -336,7 +344,7 @@ public partial class CivUI : MonoBehaviour
 
         game.OrderMove(selUnit, cell);
 
-        if (Input.GetKey(KeyCode.LeftShift) && selUnit.kind == UnitKind.Settler && game.CanFound(game.human, cell))
+        if (Inp.GetKey(KeyCode.LeftShift) && selUnit.kind == UnitKind.Settler && game.CanFound(game.human, cell))
             selUnit.foundAt = cell;
     }
 
@@ -346,7 +354,7 @@ public partial class CivUI : MonoBehaviour
     {
         if (selUnit.kind != UnitKind.Worker) return false;
 
-        if (Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt))
+        if (Inp.GetKey(KeyCode.LeftAlt) || Inp.GetKey(KeyCode.RightAlt))
         {
             int farmCell = game.grid.Nearest(dir);
             if (!game.grid.CanFarm(farmCell))
@@ -356,7 +364,7 @@ public partial class CivUI : MonoBehaviour
             return true;
         }
 
-        if (!Input.GetKey(KeyCode.LeftShift)) return false;
+        if (!Inp.GetKey(KeyCode.LeftShift)) return false;
 
         int cell = game.grid.Nearest(dir);
 
@@ -383,7 +391,7 @@ public partial class CivUI : MonoBehaviour
         Camera cam = Camera.main;
         if (cam == null) return false;
 
-        Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+        Ray ray = cam.ScreenPointToRay(Inp.mousePosition);
         Transform et = game.EarthT;
 
         Vector3 o = et.InverseTransformPoint(ray.origin);
@@ -440,7 +448,7 @@ public partial class CivUI : MonoBehaviour
 
     bool OverUi()
     {
-        Vector2 m = new Vector2(Input.mousePosition.x / s, (Screen.height - Input.mousePosition.y) / s);
+        Vector2 m = new Vector2(Inp.mousePosition.x / s, (Screen.height - Inp.mousePosition.y) / s);
         foreach (Rect r in lastRects) if (r.Contains(m)) return true;
         return false;
     }

@@ -18,7 +18,7 @@ public class QuitOnEscape : MonoBehaviour
 
     void Update()
     {
-        if (!Input.GetKeyDown(KeyCode.Escape)) return;
+        if (!Inp.GetKeyDown(KeyCode.Escape)) return;
         if (CivUI.HandlesEscape) return;   // durante la partida, Esc abre el menú de pausa
 
 #if UNITY_EDITOR
