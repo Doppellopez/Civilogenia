@@ -774,6 +774,9 @@ public partial class CivGame : MonoBehaviour
                 if (c.itemBuilding == BuildingKind.Pyramids) IntroVideo.PlayClip(PyramidsVideo);   // vídeo al terminar las Pirámides (solo las tuyas)
                 if (c.itemBuilding == BuildingKind.LighthouseAlex) IntroVideo.PlayClip(LighthouseVideo);   // y al terminar el Faro de Alejandría
                 if (c.itemBuilding == BuildingKind.GreatWall) IntroVideo.PlayClip(GreatWallVideo);   // y al terminar la Gran Muralla
+                if (c.itemBuilding == BuildingKind.FibonacciLab) IntroVideo.PlayClip(FibonacciVideo);   // y al terminar el Laboratorio de Fibonacci
+                if (c.itemBuilding == BuildingKind.Colosseum)IntroVideo.PlayClip(ColosseumVideo);   // y al terminar el Coliseo
+                if (c.itemBuilding == BuildingKind.AlexandriaLibrary) IntroVideo.PlayClip(AlexandriaVideo);   // y al terminar la Gran Biblioteca de Alejandría
             }
         }
     }
@@ -916,7 +919,7 @@ public partial class CivGame : MonoBehaviour
         if (kind == BuildingKind.Walls && !city.owner.Has(TechKind.Masonry)) return false;
         if (kind == BuildingKind.Library && !city.owner.Has(TechKind.Writing)) return false;
         if (kind == BuildingKind.Observatory && !city.owner.Has(TechKind.Astronomy)) return false;
-        if (kind == BuildingKind.GreatLibrary && (!city.owner.Has(TechKind.Writing) || GreatLibraryExists())) return false;
+        if (kind == BuildingKind.GreatLibrary) return false;   // maravilla retirada del juego (se conserva el tipo para las partidas guardadas)
         if (kind == BuildingKind.AlexandriaLibrary && (!city.owner.Has(TechKind.Universities) || WonderExists(kind))) return false;
         if (kind == BuildingKind.University && !city.owner.Has(TechKind.Universities)) return false;
         if (kind == BuildingKind.FullingMill && !city.owner.Has(TechKind.Camshaft)) return false;
@@ -1176,7 +1179,10 @@ public partial class CivGame : MonoBehaviour
     const string EraChange4Video = "Cambio a edad futurista con audio";
     const string OmniscienceVideo = "Victoria por omnisciencia";
     const string PyramidsVideo = "Construcción de las pirámides";
-    const string GreatWallVideo = "Construcción de la Gran Muralla";
+    const string FibonacciVideo = "Construcción de Laboratorio Fibonacci";   // el archivo dice "de", no "del"
+    const string ColosseumVideo ="Construcción del Coliseo";
+    const string AlexandriaVideo ="Construcción de la Gran Biblioteca Alejandria";   // el archivo lleva tilde en Construcción y no en Alejandria
+    const string GreatWallVideo ="Construccion de la Gran Muralla";   // el archivo se llama sin tilde
     const string LighthouseVideo = "Construcción del Faro";   // el nombre debe coincidir con el archivo (con F mayúscula)
     const string MilitaryVictoryVideo = "Video Victoria Militar";
     const string MilitaryDefeatVideo = "Vídeo derrota militar";

@@ -49,6 +49,8 @@ public class IntroVideo : MonoBehaviour
     float startTime;
     float waited;
     float playStartTime = -1f;
+    Texture2D image;        // si no es null, se muestra esta imagen en vez de un vídeo
+    float imageSeconds;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Create()
@@ -106,6 +108,28 @@ public class IntroVideo : MonoBehaviour
         new GameObject("Vídeo (" + clipName + ")").AddComponent<IntroVideo>().Begin(clip);
     }
 
+    /// <summary>
+    /// Muestra a pantalla completa una imagen de la carpeta Resources (nombre sin extensión) durante unos segundos, con el juego
+    /// congelado. Enter o clic la saltan. No hace nada si ya hay un vídeo o una imagen en pantalla.
+    /// </summary>
+    public static void PlayImage(string imageName, float seconds)
+    {
+        if (Active) return;
+
+        Texture2D texture = Resources.Load<Texture2D>(imageName);
+        if (texture == null)
+        {
+            Debug.LogWarning("[Civilogenia] Imagen: no se encuentra '" + imageName + "' en Resources.");
+            return;
+        }
+
+        Active = true;
+        PauseWorld(true);
+        IntroVideo shown = new GameObject("Imagen (" + imageName + ")").AddComponent<IntroVideo>();
+        shown.image = texture;
+        shown.imageSeconds = seconds;
+    }
+
     void Begin(VideoClip clip)
     {
         startTime = Time.realtimeSinceStartup;
@@ -153,7 +177,18 @@ public class IntroVideo : MonoBehaviour
 
     void Update()
     {
-        if (finished || player == null) return;
+        if (finished) return;
+
+        if (image != null)
+        {
+            waited += Mathf.Min(Time.unscaledDeltaTime, 0.1f);
+            bool skipImage = Inp.GetKeyDown(KeyCode.Return) || Inp.GetKeyDown(KeyCode.KeypadEnter) || Inp.GetMouseButtonDown(0);
+            if (waited >= imageSeconds) Finish("imagen mostrada " + imageSeconds + " s");
+            else if (skipImage && waited > IgnoreInputSeconds) Finish("saltada por el jugador");
+            return;
+        }
+
+        if (player == null) return;
 
         // Tiempo de espera acumulado fotograma a fotograma, con cada fotograma limitado a 0,1 s: la carga pesada de la partida
         // (generar el planeta) bloquea el hilo principal unos segundos y no debe contar como "el vídeo no se preparó"
@@ -193,7 +228,15 @@ public class IntroVideo : MonoBehaviour
         GUI.DrawTexture(new Rect(-4, -4, Screen.width + 8, Screen.height + 8), Texture2D.whiteTexture);
         GUI.color = Color.white;
 
-        if (player != null && player.isPlaying && target != null)
+        if (image != null)
+        {
+            float aspect = (float)image.width / image.height;
+            float ih = Screen.height;
+            float iw = ih * aspect;
+            if (iw > Screen.width) { iw = Screen.width; ih = iw / aspect; }
+            GUI.DrawTexture(new Rect((Screen.width - iw) * 0.5f, (Screen.height - ih) * 0.5f, iw, ih), image, ScaleMode.StretchToFill, false);
+        }
+        else if (player != null && player.isPlaying && target != null)
         {
             // El vídeo se ajusta a la pantalla sin deformarse; se calcula su rectángulo para tapar de negro todo lo demás
             float videoAspect = (float)target.width / target.height;

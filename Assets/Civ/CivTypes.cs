@@ -114,7 +114,7 @@ public static class GameDefs
         { TechKind.Astronomy,  new TechDef { name = "Astronomía",  cost = 165, unlocks = "Observatorio", requires = TechKind.Writing } },
         { TechKind.Iron,       new TechDef { name = "Hierro",      cost = 135, unlocks = "Legión", requires = TechKind.Bronze } },
         { TechKind.Construction,new TechDef { name = "Construcción", cost = 150, unlocks = "edificios al 90% de su coste", requires = TechKind.Wheel, alsoRequires = TechKind.Masonry } },
-        { TechKind.Writing,    new TechDef { name = "Escritura",   cost = 135, unlocks = "Biblioteca y Gran Biblioteca", requires = TechKind.Pottery } },
+        { TechKind.Writing,    new TechDef { name = "Escritura",   cost = 135, unlocks = "Biblioteca", requires = TechKind.Pottery } },
         { TechKind.Bronze,     new TechDef { name = "Bronce",      cost = 105, unlocks = "Falange", requires = TechKind.Mining } },
         { TechKind.Bridges,    new TechDef { name = "Construcción de puentes", cost = 120, unlocks = "carreteras que atraviesan ríos", requires = TechKind.Masonry } },
         { TechKind.Masonry,   new TechDef { name = "Mampostería", cost = 105, unlocks = "Muro de la Ciudad", requires = TechKind.Mining } },
