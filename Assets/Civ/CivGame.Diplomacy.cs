@@ -15,6 +15,7 @@ public enum DiploState { War, Peace, Alliance }
 public class DiploProposal
 {
     public Civ from;
+    public Civ to;            // quien debe responder (null = el jugador local)
     public DiploState kind;   // Peace o Alliance
 }
 
@@ -119,7 +120,9 @@ public partial class CivGame
     /// <summary>El jugador propone la paz a una civilización en guerra con él. Devuelve el mensaje de la respuesta.</summary>
     public string ProposePeace(Civ other)
     {
+        if (NetCmd("peace", other.id)) return "Orden enviada al anfitrión…";
         if (!AtWar(human, other)) return "Ya no estáis en guerra.";
+        if (other.isHuman) return ProposeToHuman(other, DiploState.Peace);
         if (!AiAcceptsPeace(other, human)) { AddLog(other.name + " rechaza la paz", other.color); return other.name + " rechaza la paz."; }
 
         SetState(human, other, DiploState.Peace);
@@ -129,7 +132,9 @@ public partial class CivGame
     /// <summary>El jugador propone una alianza a una civilización con la que está en paz.</summary>
     public string ProposeAlliance(Civ other)
     {
+        if (NetCmd("ally", other.id)) return "Orden enviada al anfitrión…";
         if (StateBetween(human, other) != DiploState.Peace) return "Hace falta estar en paz para proponer una alianza.";
+        if (other.isHuman) return ProposeToHuman(other, DiploState.Alliance);
         if (!AiAcceptsAlliance(other, human)) { AddLog(other.name + " rechaza la alianza", other.color); return other.name + " rechaza la alianza."; }
 
         SetState(human, other, DiploState.Alliance);
@@ -139,6 +144,7 @@ public partial class CivGame
     /// <summary>El jugador declara la guerra (desde la paz) o rompe una alianza (que pasa a paz).</summary>
     public string DeclareWar(Civ other)
     {
+        if (NetCmd("war", other.id)) return "Orden enviada al anfitrión…";
         DiploState state = StateBetween(human, other);
 
         if (state == DiploState.War) return "Ya estáis en guerra.";
@@ -156,16 +162,30 @@ public partial class CivGame
         return "Has declarado la guerra a " + other.name + ".";
     }
 
-    /// <summary>El jugador responde a una propuesta de la IA.</summary>
+    // Otro jugador humano no responde solo: la propuesta le llega y decide él
+    string ProposeToHuman(Civ other, DiploState kind)
+    {
+        foreach (DiploProposal p in proposals)
+            if (p.from == human && p.to == other) return "Ya le has hecho una propuesta a " + other.name + ".";
+
+        proposals.Add(new DiploProposal { from = human, to = other, kind = kind });
+        Notify(other, human.name + " te propone " + (kind == DiploState.Peace ? "la paz" : "una alianza") + " (D)", human.color);
+        return "Propuesta enviada a " + other.name + ".";
+    }
+
+    /// <summary>El jugador responde a una propuesta (de la IA o de otro jugador).</summary>
     public void RespondProposal(DiploProposal p, bool accept)
     {
+        if (NetCommandRespond(p, accept)) return;
+
+        Civ me = p.to ?? human;
         proposals.Remove(p);
-        if (!accept) { AddLog("Rechazas la propuesta de " + p.from.name, p.from.color); return; }
+        if (!accept) { Notify(me, "Rechazas la propuesta de " + p.from.name, p.from.color); return; }
 
         // Puede haber cambiado la situación mientras tanto
         if (!p.from.alive) return;
-        if (p.kind == DiploState.Peace && AtWar(human, p.from)) SetState(human, p.from, DiploState.Peace);
-        else if (p.kind == DiploState.Alliance && StateBetween(human, p.from) == DiploState.Peace) SetState(human, p.from, DiploState.Alliance);
+        if (p.kind == DiploState.Peace && AtWar(me, p.from)) SetState(me, p.from, DiploState.Peace);
+        else if (p.kind == DiploState.Alliance && StateBetween(me, p.from) == DiploState.Peace) SetState(me, p.from, DiploState.Alliance);
     }
 
     // ---------------------------------------------------------------- Decisiones de la IA
@@ -198,7 +218,7 @@ public partial class CivGame
     {
         if (other.isHuman)
         {
-            AiQueueProposal(ai, DiploState.Peace);
+            AiQueueProposal(ai, DiploState.Peace, other);
             return;
         }
 
@@ -209,18 +229,18 @@ public partial class CivGame
     {
         if (other.isHuman)
         {
-            AiQueueProposal(ai, DiploState.Alliance);
+            AiQueueProposal(ai, DiploState.Alliance, other);
             return;
         }
 
         if (AiAcceptsAlliance(other, ai)) SetState(ai, other, DiploState.Alliance);
     }
 
-    void AiQueueProposal(Civ from, DiploState kind)
+    void AiQueueProposal(Civ from, DiploState kind, Civ to)
     {
-        foreach (DiploProposal p in proposals) if (p.from == from) return;   // ya hay una pendiente de esa civilización
-        proposals.Add(new DiploProposal { from = from, kind = kind });
-        AddLog(from.name + " te propone " + (kind == DiploState.Peace ? "la paz" : "una alianza") + " (D)", from.color);
+        foreach (DiploProposal p in proposals) if (p.from == from && p.to == to) return;   // ya hay una pendiente de esa civilización
+        proposals.Add(new DiploProposal { from = from, to = to, kind = kind });
+        Notify(to, from.name + " te propone " + (kind == DiploState.Peace ? "la paz" : "una alianza") + " (D)", from.color);
     }
 
     float AiWarChance
@@ -262,7 +282,7 @@ public partial class CivGame
                 {
                     // Más fuerte que su vecino y sin guerras: le declara la guerra
                     SetState(civ, other, DiploState.War);
-                    if (other.isHuman) AddLog(civ.name + " te declara la guerra!", civ.color);
+                    if (other.isHuman) Notify(other, civ.name + " te declara la guerra!", civ.color);
                 }
             }
         }

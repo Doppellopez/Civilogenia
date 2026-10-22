@@ -151,7 +151,10 @@ public partial class CivGame : MonoBehaviour
         difficulty = level;
         requestedCells = GameDefs.MapSizes[Mathf.Clamp(mapSize, 0, GameDefs.MapSizes.Length - 1)].cells;
         playerChoice = Mathf.Clamp(playerCiv, 0, GameDefs.PlayableCivs.Length - 1);
-        civCount = Mathf.Clamp(1 + enemies, 1, GameDefs.PlayableCivs.Length);
+        humanChoices.Clear();
+        humanChoices.Add(playerChoice);
+        foreach (int c in extraHumanChoices) humanChoices.Add(Mathf.Clamp(c, 0, GameDefs.PlayableCivs.Length - 1));
+        civCount = Mathf.Clamp(humanChoices.Count + enemies, humanChoices.Count, GameDefs.PlayableCivs.Length);
         aiEnabled = true;
         startFailed = false;
         matchRequested = true;
@@ -160,6 +163,8 @@ public partial class CivGame : MonoBehaviour
     // ---------------------------------------------------------------- Preparación
 
     int playerChoice;
+    readonly List<int> humanChoices = new List<int>();            // civilización de cada jugador humano (el 0 es el local)
+    public readonly List<int> extraHumanChoices = new List<int>(); // multijugador: civilización elegida por cada jugador remoto
     int requestedCells;   // casillas del mapa elegidas en el menú (0 = las del inspector)
 
     /// <summary>Aplica a una civilización la elección del jugador: nombre, color, nombres de ciudades y bonus.</summary>
@@ -183,7 +188,7 @@ public partial class CivGame : MonoBehaviour
     {
         enemyPool = new List<int>();
         for (int i = 0; i < GameDefs.PlayableCivs.Length; i++)
-            if (i != playerChoice) enemyPool.Add(i);
+            if (!humanChoices.Contains(i)) enemyPool.Add(i);
 
         for (int i = enemyPool.Count - 1; i > 0; i--)
         {
@@ -194,11 +199,12 @@ public partial class CivGame : MonoBehaviour
 
     int EnemyChoice(int index)
     {
-        return enemyPool[(index - 1) % enemyPool.Count];
+        return enemyPool[(index - humanChoices.Count) % enemyPool.Count];
     }
 
     bool SetupCivs()
     {
+        if (humanChoices.Count == 0) humanChoices.Add(playerChoice);
         ShuffleEnemyPool();
         List<int> starts = ChooseStarts(civCount);
         if (starts.Count == 0) return false;
@@ -210,13 +216,14 @@ public partial class CivGame : MonoBehaviour
                 id = i,
                 name = GameDefs.CivNames[i % GameDefs.CivNames.Length],
                 color = GameDefs.CivColors[i % GameDefs.CivColors.Length],
-                isHuman = i == 0,
+                isHuman = i < humanChoices.Count,
+                remote = i >= 1 && i < humanChoices.Count,
                 aiTimer = Random.Range(0f, 2f)
             };
 
-            ApplyCivChoice(civ, civ.isHuman ? playerChoice : EnemyChoice(i));
+            ApplyCivChoice(civ, civ.isHuman ? humanChoices[i] : EnemyChoice(i));
             civs.Add(civ);
-            if (civ.isHuman) human = civ;
+            if (i == 0) human = civ;
 
             City capital = FoundCity(civ, starts[i]);
             if (capital != null)
@@ -308,6 +315,7 @@ public partial class CivGame : MonoBehaviour
 
     public void AddLog(string text, Color color)
     {
+        if (NetRedirectLog(text, color)) return;
         log.Add(new LogEntry { text = text, time = Time.time, color = color });
         if (log.Count > 40) log.RemoveAt(0);
     }
@@ -316,7 +324,9 @@ public partial class CivGame : MonoBehaviour
 
     void Update()
     {
+        NetPump();   // multijugador: lobby, órdenes y mensajes (también en el menú y mientras se carga)
         if (!ready) return;
+        if (netGame) gameSpeed = 1f;   // en el multijugador no se pausa ni se cambia la velocidad
         if (IntroVideo.Active || MainMenu.Active) return;   // la partida espera mientras suena la introducción y está el menú
 
         TickFog();   // niebla de guerra: solo se ve en torno a las unidades y ciudades propias
@@ -324,6 +334,12 @@ public partial class CivGame : MonoBehaviour
         float dt = Time.deltaTime * gameSpeed * SimulationScale;
         if (dt <= 0f) return;
         gameTime += dt;
+
+        if (netGame)
+        {
+            if (IsNetClient) { NetClientUpdate(dt); return; }   // el cliente no simula: dibuja lo que manda el anfitrión
+            NetHostUpdate();
+        }
 
         foreach (City c in allCities.ToArray())
             if (c.alive) TickCity(c, dt);
@@ -384,6 +400,7 @@ public partial class CivGame : MonoBehaviour
 
         City city = new City
         {
+            id = nextNetId++,
             owner = civ,
             name = CityNameFor(civ),
             cell = cell,
@@ -411,6 +428,7 @@ public partial class CivGame : MonoBehaviour
 
     void RebuildCityView(City c)
     {
+        netStructDirty = true;   // multijugador: la próxima instantánea lleva también el territorio y los edificios
         UpdateFootprint(c);
         CivViews.BuildCity(c, grid, EarthT);
     }
@@ -664,7 +682,7 @@ public partial class CivGame : MonoBehaviour
         {
             c.food = 0f;
             c.pop++;
-            if (c.owner.isHuman) GameSfx.Play(Sfx.Grow, 0.6f);
+            if (IsLocal(c.owner)) GameSfx.Play(Sfx.Grow, 0.6f);
 
             // El territorio se amplía poco a poco hacia el nuevo radio (ver TickTerritory)
             if (c.pop == 4) c.claimDepth = Mathf.Max(c.claimDepth, 3);
@@ -672,7 +690,7 @@ public partial class CivGame : MonoBehaviour
 
             RecomputeCity(c);
             RebuildCityView(c);
-            if (c.owner.isHuman) AddLog(c.name + " crece a " + c.pop + " habitantes", c.owner.color);
+            Notify(c.owner, c.name + " crece a " + c.pop + " habitantes", c.owner.color);
         }
         else if (c.food < -10f && c.pop > 1)
         {
@@ -680,7 +698,7 @@ public partial class CivGame : MonoBehaviour
             c.food = 0f;
             RecomputeCity(c);
             RebuildCityView(c);
-            if (c.owner.isHuman) AddLog("Hambruna en " + c.name, Color.red);
+            Notify(c.owner, "Hambruna en " + c.name, Color.red);
         }
         else if (c.food < 0f && c.pop == 1)
         {
@@ -692,7 +710,7 @@ public partial class CivGame : MonoBehaviour
         {
             // Otra ciudad se adelantó: la maravilla ya existe, esta producción se cancela (lo acumulado se conserva)
             c.hasItem = false;
-            if (c.owner.isHuman) AddLog(c.name + ": " + GameDefs.Buildings[c.itemBuilding].name + " ya existe en el mundo", Color.red);
+            Notify(c.owner, c.name + ": " + GameDefs.Buildings[c.itemBuilding].name + " ya existe en el mundo", Color.red);
         }
 
         if (c.hasItem)
@@ -748,11 +766,8 @@ public partial class CivGame : MonoBehaviour
             if (built.kind == UnitKind.Caravan) built.homeCity = c;
             RecomputeCity(c);
             RebuildCityView(c);
-            if (c.owner.isHuman)
-            {
-                AddLog(c.name + ": " + d.name + " listo", c.owner.color);
-                GameSfx.Play(Sfx.UnitReady);
-            }
+            Notify(c.owner, c.name + ": " + d.name + " listo", c.owner.color);
+            if (IsLocal(c.owner)) GameSfx.Play(Sfx.UnitReady);
         }
         else
         {
@@ -767,9 +782,9 @@ public partial class CivGame : MonoBehaviour
             RecomputeCity(c);
             RebuildCityView(c);
             if (c.itemBuilding == BuildingKind.GutenbergPrint) GrantNewspapers(c.owner);
-            if (c.owner.isHuman)
+            Notify(c.owner, c.name + ": " + GameDefs.Buildings[c.itemBuilding].name + " construido", c.owner.color);
+            if (IsLocal(c.owner))
             {
-                AddLog(c.name + ": " + GameDefs.Buildings[c.itemBuilding].name + " construido", c.owner.color);
                 GameSfx.Play(IsWonder(c.itemBuilding) ? Sfx.Wonder : Sfx.Built);
                 if (c.itemBuilding == BuildingKind.Pyramids) IntroVideo.PlayClip(PyramidsVideo);   // vídeo al terminar las Pirámides (solo las tuyas)
                 if (c.itemBuilding == BuildingKind.LighthouseAlex) IntroVideo.PlayClip(LighthouseVideo);   // y al terminar el Faro de Alejandría
@@ -976,6 +991,7 @@ public partial class CivGame : MonoBehaviour
 
     public void SetProduction(City city, UnitKind kind)
     {
+        if (NetCmd("produce", city.id, (int)kind, 1)) return;
         if (!Available(city, kind)) return;
         city.hasItem = true;
         city.itemIsUnit = true;
@@ -984,6 +1000,7 @@ public partial class CivGame : MonoBehaviour
 
     public void SetProduction(City city, BuildingKind kind)
     {
+        if (NetCmd("produce", city.id, (int)kind, 0)) return;
         if (!Available(city, kind)) return;
         city.hasItem = true;
         city.itemIsUnit = false;
@@ -998,13 +1015,14 @@ public partial class CivGame : MonoBehaviour
 
     public bool Buy(City city)
     {
+        if (NetCmd("buy", city.id)) return true;
         if (!city.hasItem || ItemBlocked(city)) return false;
 
         int price = BuyPrice(city);
         if (city.owner.gold < price) return false;
 
         city.owner.gold -= price;
-        if (city.owner.isHuman) GameSfx.Play(Sfx.Buy);
+        if (IsLocal(city.owner)) GameSfx.Play(Sfx.Buy);
         city.prodStock = city.ItemCost;
         CompleteItem(city);
         return true;
@@ -1076,6 +1094,7 @@ public partial class CivGame : MonoBehaviour
 
     public bool TryUpgrade(Unit u)
     {
+        if (u != null && NetCmd("upgrade", u.id)) return true;
         if (u == null || !u.alive || UpgradeBlocker(u) != null) return false;
 
         UnitKind target = UpgradeTarget(u.owner, u.kind).Value;
@@ -1090,7 +1109,7 @@ public partial class CivGame : MonoBehaviour
         CivViews.BuildUnit(u, grid, EarthT);
         PlaceUnit(u);
 
-        if (u.owner.isHuman) AddLog(oldName + " mejorado a " + u.def.name, u.owner.color);
+        Notify(u.owner, oldName + " mejorado a " + u.def.name, u.owner.color);
         return true;
     }
 
@@ -1098,12 +1117,13 @@ public partial class CivGame : MonoBehaviour
 
     public bool StartResearch(Civ civ, TechKind t)
     {
+        if (civ == human && NetCmd("research", civ.id, (int)t)) return true;
         if (!civ.CanResearch(t)) return false;
 
         civ.researching = true;
         civ.currentTech = t;
         civ.researchProgress = 0f;
-        if (civ.isHuman) GameSfx.Play(Sfx.Research);
+        if (IsLocal(civ)) GameSfx.Play(Sfx.Research);
         return true;
     }
 
@@ -1120,11 +1140,8 @@ public partial class CivGame : MonoBehaviour
         civ.researching = false;
         civ.researchProgress = 0f;
 
-        if (civ.isHuman)
-        {
-            AddLog("Descubres " + def.name + " (" + def.unlocks + ")", civ.color);
-            GameSfx.Play(Sfx.Tech);
-        }
+        Notify(civ, "Descubres " + def.name + " (" + def.unlocks + ")", civ.color);
+        if (IsLocal(civ)) GameSfx.Play(Sfx.Tech);
 
         // Victoria por tecnología: la primera civilización que descubre la Omnisciencia gana la partida
         if (civ.currentTech == TechKind.Omniscience && winner == null)
@@ -1157,19 +1174,19 @@ public partial class CivGame : MonoBehaviour
             }
 
         // Cambio de era del jugador: vídeo "Video cambio a edad media" (Assets/Resources) a pantalla completa
-        if (civ.isHuman && def == GameDefs.Techs[TechKind.EraChange])
+        if (IsLocal(civ) && def == GameDefs.Techs[TechKind.EraChange])
             IntroVideo.PlayClip(EraChangeVideo);
 
         // Segundo Cambio de era del jugador: vídeo "Video cambio a edad moderna"
-        if (civ.isHuman && def == GameDefs.Techs[TechKind.EraChange2])
+        if (IsLocal(civ) && def == GameDefs.Techs[TechKind.EraChange2])
             IntroVideo.PlayClip(EraChange2Video);
 
         // Tercer Cambio de era del jugador: vídeo "Cambio a edad contemporanea con jazz"
-        if (civ.isHuman && def == GameDefs.Techs[TechKind.EraChange3])
+        if (IsLocal(civ) && def == GameDefs.Techs[TechKind.EraChange3])
             IntroVideo.PlayClip(EraChange3Video);
 
         // Cuarto Cambio de era del jugador: vídeo "Cambio a edad futurista con audio"
-        if (civ.isHuman && def == GameDefs.Techs[TechKind.EraChange4])
+        if (IsLocal(civ) && def == GameDefs.Techs[TechKind.EraChange4])
             IntroVideo.PlayClip(EraChange4Video);
     }
 
@@ -1193,6 +1210,7 @@ public partial class CivGame : MonoBehaviour
     {
         Unit u = new Unit
         {
+            id = nextNetId++,
             owner = civ,
             kind = kind,
             def = GameDefs.Units[kind],
@@ -1233,7 +1251,7 @@ public partial class CivGame : MonoBehaviour
         }
         if (u.carriedBy != null) u.carriedBy.cargo.Remove(u);
 
-        if (u.owner.isHuman) AddLog("Pierdes un " + u.def.name, Color.red);
+        Notify(u.owner, "Pierdes un " + u.def.name, Color.red);
         CheckElimination(u.owner);
     }
 
@@ -1300,17 +1318,18 @@ public partial class CivGame : MonoBehaviour
     /// </summary>
     public bool OrderRoad(Unit u, int goal, bool rail = false)
     {
+        if (NetCmd("road", u.id, goal, rail ? 1 : 0)) return true;
         if (u.kind != UnitKind.Worker || !grid.land[goal]) return false;
 
         if (rail && !u.owner.Has(TechKind.Railway))
         {
-            if (u.owner.isHuman) AddLog("Necesitas descubrir el Ferrocarril para construir vías (T)", Color.red);
+            Notify(u.owner, "Necesitas descubrir el Ferrocarril para construir vías (T)", Color.red);
             return false;
         }
 
         if (grid.river[goal] && !u.owner.Has(TechKind.Bridges))
         {
-            if (u.owner.isHuman) AddLog("Necesitas descubrir la Construcción de puentes para hacer carreteras sobre un río (T)", Color.red);
+            Notify(u.owner, "Necesitas descubrir la Construcción de puentes para hacer carreteras sobre un río (T)", Color.red);
             return false;
         }
 
@@ -1320,7 +1339,7 @@ public partial class CivGame : MonoBehaviour
 
         if (!u.owner.Has(TechKind.Wheel))
         {
-            if (u.owner.isHuman) AddLog("Necesitas descubrir la Rueda para construir caminos (T)", Color.red);
+            Notify(u.owner, "Necesitas descubrir la Rueda para construir caminos (T)", Color.red);
             return false;
         }
 
@@ -1345,7 +1364,7 @@ public partial class CivGame : MonoBehaviour
         u.roadProgress = 0f;
         u.railMode = rail;
 
-        if (u.owner.isHuman) AddLog("Trabajador: construyendo " + (rail ? "ferrocarril" : "carretera") + " hacia " + RoadGoalName(goal), u.owner.color);
+        Notify(u.owner, "Trabajador: construyendo " + (rail ? "ferrocarril" : "carretera") + " hacia " + RoadGoalName(goal), u.owner.color);
         return true;
     }
 
@@ -1358,6 +1377,7 @@ public partial class CivGame : MonoBehaviour
 
     public void CancelRoad(Unit u)
     {
+        if (NetCmd("cancelroad", u.id)) return;
         u.roadGoal = -1;
         u.roadProgress = 0f;
         u.railMode = false;
@@ -1381,11 +1401,12 @@ public partial class CivGame : MonoBehaviour
     /// </summary>
     public bool OrderFarm(Unit u, int cell)
     {
+        if (NetCmd("farm", u.id, cell)) return true;
         if (u.kind != UnitKind.Worker || !grid.CanFarm(cell)) return false;
 
         if (!u.owner.Has(TechKind.HeavyPlow))
         {
-            if (u.owner.isHuman) AddLog("Necesitas descubrir el Arado y collera para construir granjas (T)", Color.red);
+            Notify(u.owner, "Necesitas descubrir el Arado y collera para construir granjas (T)", Color.red);
             return false;
         }
 
@@ -1402,7 +1423,7 @@ public partial class CivGame : MonoBehaviour
         u.farmAt = cell;
         u.farmProgress = 0f;
 
-        if (u.owner.isHuman) AddLog("Trabajador: construyendo granja", u.owner.color);
+        Notify(u.owner, "Trabajador: construyendo granja", u.owner.color);
         return true;
     }
 
@@ -1432,7 +1453,7 @@ public partial class CivGame : MonoBehaviour
         CivViews.BuildFarm(cell, grid, EarthT);
 
         if (grid.tileCity[cell] != null) RecomputeCity(grid.tileCity[cell]);
-        if (u.owner.isHuman) AddLog("Granja construida: alimento x2", u.owner.color);
+        Notify(u.owner, "Granja construida: alimento x2", u.owner.color);
 
         u.farmAt = -1;
         u.farmProgress = 0f;
@@ -1451,11 +1472,12 @@ public partial class CivGame : MonoBehaviour
     /// </summary>
     public bool OrderMine(Unit u, int cell)
     {
+        if (NetCmd("mine", u.id, cell)) return true;
         if (u.kind != UnitKind.Worker || !grid.CanMine(cell)) return false;
 
         if (!u.owner.Has(TechKind.Mining))
         {
-            if (u.owner.isHuman) AddLog("Necesitas descubrir la Minería para construir minas (T)", Color.red);
+            Notify(u.owner, "Necesitas descubrir la Minería para construir minas (T)", Color.red);
             return false;
         }
 
@@ -1472,7 +1494,7 @@ public partial class CivGame : MonoBehaviour
         u.mineAt = cell;
         u.mineProgress = 0f;
 
-        if (u.owner.isHuman) AddLog("Trabajador: construyendo mina", u.owner.color);
+        Notify(u.owner, "Trabajador: construyendo mina", u.owner.color);
         return true;
     }
 
@@ -1502,7 +1524,7 @@ public partial class CivGame : MonoBehaviour
         CivViews.BuildMine(cell, grid, EarthT);
 
         if (grid.tileCity[cell] != null) RecomputeCity(grid.tileCity[cell]);
-        if (u.owner.isHuman) AddLog("Mina construida: producción x2", u.owner.color);
+        Notify(u.owner, "Mina construida: producción x2", u.owner.color);
 
         u.mineAt = -1;
         u.mineProgress = 0f;
@@ -1521,11 +1543,12 @@ public partial class CivGame : MonoBehaviour
     /// </summary>
     public bool OrderIrrigate(Unit u, int cell)
     {
+        if (NetCmd("irrigate", u.id, cell)) return true;
         if (u.kind != UnitKind.Worker || !grid.CanIrrigate(cell)) return false;
 
         if (!u.owner.Has(TechKind.Agriculture))
         {
-            if (u.owner.isHuman) AddLog("Necesitas descubrir la Agricultura para irrigar (T)", Color.red);
+            Notify(u.owner, "Necesitas descubrir la Agricultura para irrigar (T)", Color.red);
             return false;
         }
 
@@ -1542,7 +1565,7 @@ public partial class CivGame : MonoBehaviour
         u.irrigateAt = cell;
         u.irrigateProgress = 0f;
 
-        if (u.owner.isHuman) AddLog("Trabajador: irrigando casilla", u.owner.color);
+        Notify(u.owner, "Trabajador: irrigando casilla", u.owner.color);
         return true;
     }
 
@@ -1572,7 +1595,7 @@ public partial class CivGame : MonoBehaviour
         CivViews.BuildIrrigation(cell, grid, EarthT);
 
         if (grid.tileCity[cell] != null) RecomputeCity(grid.tileCity[cell]);
-        if (u.owner.isHuman) AddLog("Casilla irrigada: comida x1,5", u.owner.color);
+        Notify(u.owner, "Casilla irrigada: comida x1,5", u.owner.color);
 
         u.irrigateAt = -1;
         u.irrigateProgress = 0f;
@@ -1592,7 +1615,7 @@ public partial class CivGame : MonoBehaviour
 
         if (u.cell == u.roadGoal)
         {
-            if (u.owner.isHuman) AddLog((u.railMode ? "Ferrocarril terminado hasta " : "Carretera terminada hasta ") + RoadGoalName(u.roadGoal), u.owner.color);
+            Notify(u.owner, (u.railMode ? "Ferrocarril terminado hasta " : "Carretera terminada hasta ") + RoadGoalName(u.roadGoal), u.owner.color);
             CancelRoad(u);
             u.path.Clear();
             return;
@@ -1640,7 +1663,7 @@ public partial class CivGame : MonoBehaviour
 
             grid.AddRoad(u.cell, next);
             CivViews.BuildRoad(u.cell, next, grid, earth, EarthT, u.owner);
-            if (u.owner.isHuman) GameSfx.Play(Sfx.Work, 0.6f);
+            if (IsLocal(u.owner)) GameSfx.Play(Sfx.Work, 0.6f);
             u.roadProgress = 0f;
         }
 
@@ -1719,6 +1742,7 @@ public partial class CivGame : MonoBehaviour
     /// </summary>
     public bool ToggleFortify(Unit u)
     {
+        if (u != null && NetCmd("fortify", u.id)) return true;
         if (u == null || !u.alive || !u.def.IsMilitary || u.carriedBy != null) return false;
 
         // Ya fortificada o fortificándose: se cancela
@@ -1745,7 +1769,8 @@ public partial class CivGame : MonoBehaviour
 
     public void OrderMove(Unit u, int cell)
     {
-        if (u.owner.isHuman) GameSfx.Play(Sfx.Order);
+        if (NetCmd("move", u.id, cell)) return;
+        if (IsLocal(u.owner)) GameSfx.Play(Sfx.Order);
         u.fortified = false;
         u.fortifying = false;
         u.fortifyProgress = 0f;
@@ -1817,10 +1842,11 @@ public partial class CivGame : MonoBehaviour
     /// <summary>Orden de la caravana: establece la ruta comercial entre su ciudad de origen y la ciudad donde está.</summary>
     public bool TryTrade(Unit u)
     {
+        if (NetCmd("trade", u.id)) return true;
         string blocker = TradeBlocker(u);
         if (blocker != null)
         {
-            if (u.owner.isHuman) AddLog(blocker, Color.red);
+            Notify(u.owner, blocker, Color.red);
             return false;
         }
 
@@ -1843,8 +1869,7 @@ public partial class CivGame : MonoBehaviour
         RecomputeCity(a);
         RecomputeCity(b);
 
-        if (u.owner.isHuman)
-            AddLog("Comercio entre " + a.name + " y " + b.name + ": +" + Mathf.RoundToInt((merchant ? MerchantTradeBonus : TradeBonus) * 100f) + "% de oro y ciencia en ambas", u.owner.color);
+        Notify(u.owner, "Comercio entre " + a.name + " y " + b.name + ": +" + Mathf.RoundToInt((merchant ? MerchantTradeBonus : TradeBonus) * 100f) + "% de oro y ciencia en ambas", u.owner.color);
 
         KillSilently(u);
     }
@@ -1854,6 +1879,7 @@ public partial class CivGame : MonoBehaviour
     /// <summary>Una unidad de tierra va hasta la costa junto al barco y embarca en él.</summary>
     public bool OrderBoard(Unit u, Unit ship)
     {
+        if (ship != null && NetCmd("board", u.id, ship.id)) return true;
         if (u.def.naval || u.carriedBy != null || ship == null || !ship.alive) return false;
         if (ship.owner != u.owner || ship.def.capacity <= 0 || ship.cargo.Count >= ship.def.capacity) return false;
 
@@ -1902,7 +1928,7 @@ public partial class CivGame : MonoBehaviour
             if (best == null)
             {
                 u.boardTarget = null;
-                if (u.owner.isHuman) AddLog("No se puede llegar al barco por tierra", Color.red);
+                Notify(u.owner, "No se puede llegar al barco por tierra", Color.red);
                 return false;
             }
 
@@ -1924,12 +1950,13 @@ public partial class CivGame : MonoBehaviour
         u.t = 0f;
         if (u.view != null) u.view.SetActive(false);
 
-        if (u.owner.isHuman) AddLog(u.def.name + " embarca en el " + ship.def.name, u.owner.color);
+        Notify(u.owner, u.def.name + " embarca en el " + ship.def.name, u.owner.color);
     }
 
     /// <summary>El barco lleva su carga hasta el mar junto a la casilla de tierra y la desembarca allí.</summary>
     public bool OrderDisembark(Unit ship, int landCell)
     {
+        if (NetCmd("disembark", ship.id, landCell)) return true;
         if (ship.cargo.Count == 0 || !grid.land[landCell]) return false;
 
         City city = grid.cityAt[landCell];
@@ -1951,7 +1978,7 @@ public partial class CivGame : MonoBehaviour
 
         if (best == null)
         {
-            if (ship.owner.isHuman) AddLog("El barco no puede llegar a esa costa", Color.red);
+            Notify(ship.owner, "El barco no puede llegar a esa costa", Color.red);
             return false;
         }
 
@@ -1980,16 +2007,17 @@ public partial class CivGame : MonoBehaviour
             if (p.view != null) p.view.SetActive(true);
             PlaceUnit(p);
 
-            if (ship.owner.isHuman) AddLog(p.def.name + " desembarca", ship.owner.color);
+            Notify(ship.owner, p.def.name + " desembarca", ship.owner.color);
         }
     }
 
     public void OrderAttack(Unit u, Unit target)
     {
+        if (target != null && NetCmd("attackunit", u.id, target.id)) return;
         if (!u.def.IsMilitary || target == null) return;
         if (!AtWar(u.owner, target.owner))
         {
-            if (u.owner.isHuman) AddLog("No estás en guerra con " + target.owner.name + " (D: diplomacia)", Color.red);
+            Notify(u.owner, "No estás en guerra con " + target.owner.name + " (D: diplomacia)", Color.red);
             return;
         }
         u.fortified = false;
@@ -1998,7 +2026,7 @@ public partial class CivGame : MonoBehaviour
         CancelRoad(u);
         u.targetCity = null;
         u.targetUnit = target;
-        if (u.owner.isHuman) GameSfx.Play(Sfx.Order);
+        if (IsLocal(u.owner)) GameSfx.Play(Sfx.Order);
         u.foundAt = -1;
         u.path.Clear();
         u.lastTargetCell = -1;
@@ -2006,10 +2034,11 @@ public partial class CivGame : MonoBehaviour
 
     public void OrderAttack(Unit u, City target)
     {
+        if (target != null && NetCmd("attackcity", u.id, target.id)) return;
         if (!u.def.IsMilitary || target == null) return;
         if (!AtWar(u.owner, target.owner))
         {
-            if (u.owner.isHuman) AddLog("No estás en guerra con " + target.owner.name + " (D: diplomacia)", Color.red);
+            Notify(u.owner, "No estás en guerra con " + target.owner.name + " (D: diplomacia)", Color.red);
             return;
         }
         u.fortified = false;
@@ -2018,7 +2047,7 @@ public partial class CivGame : MonoBehaviour
         CancelRoad(u);
         u.targetUnit = null;
         u.targetCity = target;
-        if (u.owner.isHuman) GameSfx.Play(Sfx.Order);
+        if (IsLocal(u.owner)) GameSfx.Play(Sfx.Order);
         u.foundAt = -1;
         u.path.Clear();
         u.lastTargetCell = -1;
@@ -2026,12 +2055,13 @@ public partial class CivGame : MonoBehaviour
 
     public bool TryFound(Unit settler)
     {
+        if (NetCmd("found", settler.id)) return true;
         if (settler.kind != UnitKind.Settler || settler.Moving) return false;
 
         City city = FoundCity(settler.owner, settler.cell);
         if (city == null) return false;
 
-        if (settler.owner.isHuman) GameSfx.Play(Sfx.Found);
+        if (IsLocal(settler.owner)) GameSfx.Play(Sfx.Found);
         KillSilently(settler);
         return true;
     }
@@ -2039,6 +2069,7 @@ public partial class CivGame : MonoBehaviour
     /// <summary>El colono se une a la ciudad propia en cuya casilla está: +1 de población y desaparece.</summary>
     public bool TryJoin(Unit settler)
     {
+        if (NetCmd("join", settler.id)) return true;
         if (settler.kind != UnitKind.Settler || settler.Moving) return false;
 
         City city = grid.cityAt[settler.cell];
@@ -2047,7 +2078,7 @@ public partial class CivGame : MonoBehaviour
         city.pop++;
         RecomputeCity(city);
         RebuildCityView(city);
-        if (settler.owner.isHuman) AddLog("Un colono se une a " + city.name + " (población " + city.pop + ")", city.owner.color);
+        Notify(settler.owner, "Un colono se une a " + city.name + " (población " + city.pop + ")", city.owner.color);
 
         KillSilently(settler);
         return true;
@@ -2056,6 +2087,7 @@ public partial class CivGame : MonoBehaviour
     /// <summary>Orden de ir a una ciudad propia y unirse a ella al llegar.</summary>
     public bool OrderJoin(Unit u, City city)
     {
+        if (city != null && NetCmd("joincity", u.id, city.id)) return true;
         if (u.kind != UnitKind.Settler || city == null || !city.alive || city.owner != u.owner) return false;
 
         OrderMove(u, city.cell);
@@ -2356,7 +2388,7 @@ public partial class CivGame : MonoBehaviour
         foreach (Unit u in civ.units.ToArray()) KillSilently(u);
 
         AddLog(civ.name + " ha sido eliminada", Color.red);
-        if (civ.isHuman) IntroVideo.PlayClip(MilitaryDefeatVideo);   // te quitan la última ciudad: derrota militar
+        if (IsLocal(civ)) IntroVideo.PlayClip(MilitaryDefeatVideo);   // te quitan la última ciudad: derrota militar
 
         int alive = 0;
         Civ last = null;
@@ -2366,7 +2398,7 @@ public partial class CivGame : MonoBehaviour
         {
             winner = last;
             AddLog(last.name + " gobierna el mundo", last.color);
-            if (last.isHuman) IntroVideo.PlayClip(MilitaryVictoryVideo);   // eliminas a la última civilización rival: victoria militar
+            if (IsLocal(last)) IntroVideo.PlayClip(MilitaryVictoryVideo);   // eliminas a la última civilización rival: victoria militar
         }
     }
 
@@ -2746,6 +2778,6 @@ public partial class CivGame : MonoBehaviour
 
         for (int i = 0; i < send; i++) OrderAttack(idle[i], target);
 
-        if (target.owner.isHuman) AddLog(civ.name + " marcha contra " + target.name + "!", civ.color);
+        Notify(target.owner, civ.name + " marcha contra " + target.name + "!", civ.color);
     }
 }

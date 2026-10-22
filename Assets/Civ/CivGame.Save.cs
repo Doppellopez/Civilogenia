@@ -29,13 +29,21 @@ public class CivSaveData
     public List<int> farmed = new List<int>();
     public List<int> irrigated = new List<int>();
     public List<int> mined = new List<int>();
+
+    // Multijugador: las instantáneas de red usan este mismo formato
+    public bool net;                 // instantánea de red (las posiciones de las unidades van tal cual, sin redondear a casilla)
+    public bool structure = true;    // incluye lo que cambia poco (territorio, edificios, carreteras...); si no, solo lo dinámico
+    public int winner = -1;
+    public bool winnerByTech;
+    public int nextId = 1;
+    public List<int> proposals = new List<int>();   // de tres en tres: civilización que propone, estado (1 paz, 2 alianza), civilización destinataria (-1 = cualquiera)
 }
 
 [Serializable]
 public class CivSaveCiv
 {
     public int id;
-    public bool isHuman, alive, researching;
+    public bool isHuman, remote, alive, researching;
     public float gold, researchProgress;
     public int currentTech, nameCounter;
     public int choice = -1;   // civilización elegida; -1 en partidas guardadas antes de existir la elección
@@ -45,6 +53,7 @@ public class CivSaveCiv
 [Serializable]
 public class CivSaveCity
 {
+    public int id = -1;
     public int owner;
     public string name;
     public int cell, pop, claimDepth;
@@ -63,8 +72,11 @@ public class CivSaveCity
 [Serializable]
 public class CivSaveUnit
 {
+    public int id = -1;
     public int owner, kind, cell, homeCity = -1, carriedBy = -1;
-    public float hp;
+    public int moveTo = -1;   // solo en instantáneas de red
+    public float hp, t;
+    public bool fortified, fortifying;
 }
 
 public static class CivSave
@@ -121,25 +133,33 @@ public partial class CivGame
 
     // ---------------------------------------------------------------- Guardar
 
-    public bool SaveGame()
+    /// <summary>
+    /// Estado de la partida en el formato de guardado. En "net" (instantánea para los clientes) las unidades llevan su posición exacta
+    /// y, si "structure" es false, se omite lo que cambia poco (territorio, edificios, carreteras...) para que el mensaje sea ligero.
+    /// </summary>
+    CivSaveData BuildSaveData(bool net, bool structure)
     {
-        if (!ready || grid == null) return false;
-
         CivSaveData data = new CivSaveData
         {
             seed = earth.seed,
             gridCells = gridCells,
             difficulty = (int)difficulty,
             gameTime = gameTime,
-            savedAt = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+            savedAt = DateTime.Now.ToString("dd/MM/yyyy HH:mm"),
+            net = net,
+            structure = structure,
+            winner = winner != null ? winner.id : -1,
+            winnerByTech = winnerByTech,
+            nextId = nextNetId
         };
         ExportDiplomacy(data.diplomacy);
+        foreach (DiploProposal p in proposals) { data.proposals.Add(p.from.id); data.proposals.Add((int)p.kind); data.proposals.Add(p.to != null ? p.to.id : -1); }
 
         foreach (Civ civ in civs)
         {
             CivSaveCiv c = new CivSaveCiv
             {
-                id = civ.id, isHuman = civ.isHuman, alive = civ.alive, researching = civ.researching,
+                id = civ.id, isHuman = civ.isHuman, remote = civ.remote, alive = civ.alive, researching = civ.researching,
                 gold = civ.gold, researchProgress = civ.researchProgress, currentTech = (int)civ.currentTech,
                 nameCounter = civ.nameCounter, choice = civ.choice
             };
@@ -154,16 +174,19 @@ public partial class CivGame
         {
             CivSaveCity c = new CivSaveCity
             {
-                owner = city.owner.id, name = city.name, cell = city.cell, pop = city.pop, claimDepth = city.claimDepth,
+                id = city.id, owner = city.owner.id, name = city.name, cell = city.cell, pop = city.pop, claimDepth = city.claimDepth,
                 food = city.food, prodStock = city.prodStock, hp = city.hp, maxHp = city.maxHp, claimTimer = city.claimTimer,
                 hasItem = city.hasItem, itemIsUnit = city.itemIsUnit, itemUnit = (int)city.itemUnit, itemBuilding = (int)city.itemBuilding
             };
-            c.cells.AddRange(city.cells);
-            c.tiles.AddRange(city.tiles);
-            foreach (BuildingKind b in city.buildings) c.buildings.Add((int)b);
-            foreach (KeyValuePair<BuildingKind, int> w in city.wonderCells) { c.wonderKinds.Add((int)w.Key); c.wonderCells.Add(w.Value); }
-            foreach (City p in city.tradePartners) { int i = cityList.IndexOf(p); if (i >= 0) c.tradePartners.Add(i); }
-            foreach (City p in city.merchantPartners) { int i = cityList.IndexOf(p); if (i >= 0) c.merchantPartners.Add(i); }
+            if (structure)
+            {
+                c.cells.AddRange(city.cells);
+                c.tiles.AddRange(city.tiles);
+                foreach (BuildingKind b in city.buildings) c.buildings.Add((int)b);
+                foreach (KeyValuePair<BuildingKind, int> w in city.wonderCells) { c.wonderKinds.Add((int)w.Key); c.wonderCells.Add(w.Value); }
+                foreach (City p in city.tradePartners) { int i = cityList.IndexOf(p); if (i >= 0) c.tradePartners.Add(i); }
+                foreach (City p in city.merchantPartners) { int i = cityList.IndexOf(p); if (i >= 0) c.merchantPartners.Add(i); }
+            }
             data.cities.Add(c);
         }
 
@@ -172,13 +195,18 @@ public partial class CivGame
 
         foreach (Unit u in unitList)
         {
-            data.units.Add(new CivSaveUnit
+            CivSaveUnit s = new CivSaveUnit
             {
-                owner = u.owner.id, kind = (int)u.kind, cell = u.moveTo >= 0 && u.t >= 0.5f ? u.moveTo : u.cell, hp = u.hp,
+                id = u.id, owner = u.owner.id, kind = (int)u.kind, hp = u.hp,
+                cell = net ? u.cell : (u.moveTo >= 0 && u.t >= 0.5f ? u.moveTo : u.cell),
                 homeCity = u.homeCity != null ? cityList.IndexOf(u.homeCity) : -1,
                 carriedBy = u.carriedBy != null ? unitList.IndexOf(u.carriedBy) : -1
-            });
+            };
+            if (net) { s.moveTo = u.moveTo; s.t = u.t; s.fortified = u.fortified; s.fortifying = u.fortifying; }
+            data.units.Add(s);
         }
+
+        if (!structure) return data;
 
         // Carreteras (con quien las construyó, que decide su aspecto), ferrocarril y mejoras del terreno
         List<int> roadFlat = new List<int>();
@@ -192,6 +220,16 @@ public partial class CivGame
             if (grid.irrigated[i]) data.irrigated.Add(i);
             if (grid.mined[i]) data.mined.Add(i);
         }
+
+        return data;
+    }
+
+    public bool SaveGame()
+    {
+        if (!ready || grid == null) return false;
+        if (IsMultiplayer) return false;   // en el multijugador no se guarda
+
+        CivSaveData data = BuildSaveData(false, true);
 
         bool ok = CivSave.Write(data);
         AddLog(ok ? "Partida guardada (" + data.savedAt + ")" : "No se pudo guardar la partida", ok ? Color.white : Color.red);
@@ -236,6 +274,14 @@ public partial class CivGame
             yield break;
         }
 
+        yield return LoadFromData(data, -1);
+    }
+
+    /// <summary>Reconstruye la partida desde unos datos (guardado o estado enviado por el anfitrión). "myCivId" >= 0 elige la civilización local.</summary>
+    public IEnumerator LoadFromData(CivSaveData data, int myCivId)
+    {
+        if (grid == null) yield break;
+
         startCancelled = true;   // la partida nueva que esperaba el menú ya no se crea
         ready = false;
         yield return null;
@@ -274,6 +320,7 @@ public partial class CivGame
                 name = GameDefs.CivNames[s.id % GameDefs.CivNames.Length],
                 color = GameDefs.CivColors[s.id % GameDefs.CivColors.Length],
                 isHuman = s.isHuman,
+                remote = s.remote && myCivId < 0,
                 alive = s.alive,
                 gold = s.gold,
                 researching = s.researching,
@@ -289,6 +336,7 @@ public partial class CivGame
             if (civ.isHuman) human = civ;
         }
 
+        if (myCivId >= 0) human = CivById(myCivId);
         if (human == null && civs.Count > 0) human = civs[0];
         ImportDiplomacy(data.diplomacy);   // paz, guerra y alianzas entre civilizaciones
 
@@ -314,6 +362,7 @@ public partial class CivGame
 
             City city = new City
             {
+                id = s.id >= 0 ? s.id : nextNetId++,
                 owner = owner, name = s.name, cell = s.cell, pop = s.pop, claimDepth = s.claimDepth,
                 food = s.food, prodStock = s.prodStock, hp = s.hp, maxHp = s.maxHp, claimTimer = s.claimTimer,
                 hasItem = s.hasItem, itemIsUnit = s.itemIsUnit, itemUnit = (UnitKind)s.itemUnit, itemBuilding = (BuildingKind)s.itemBuilding,
@@ -363,6 +412,7 @@ public partial class CivGame
             if (owner == null) { unitList.Add(null); continue; }
 
             Unit u = SpawnUnit(owner, (UnitKind)s.kind, s.cell);
+            if (s.id >= 0) u.id = s.id;
             u.hp = Mathf.Min(s.hp, u.def.hp);
             unitList.Add(u);
         }
@@ -385,7 +435,8 @@ public partial class CivGame
         }
 
         gameTime = data.gameTime;
-        AddLog("Partida cargada (" + data.savedAt + ")", human != null ? human.color : Color.white);
+        if (data.nextId > nextNetId) nextNetId = data.nextId;
+        AddLog(myCivId >= 0 ? "Te has unido a la partida" : "Partida cargada (" + data.savedAt + ")", human != null ? human.color : Color.white);
         if (human != null && human.cities.Count > 0) FocusOn(human.cities[0].cell);
 
         FreeCamera.ClearViewedCity();

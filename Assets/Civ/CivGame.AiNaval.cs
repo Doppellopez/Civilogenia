@@ -267,7 +267,7 @@ public partial class CivGame
 
             ship.aiSailing = true;
             ship.aiOpTimer = 0f;
-            if (!colonize && t.owner.isHuman) AddLog(civ.name + " envía una flota hacia " + t.name + "!", civ.color);
+            if (!colonize) Notify(t.owner, civ.name + " envía una flota hacia " + t.name + "!", civ.color);
             return;
         }
 

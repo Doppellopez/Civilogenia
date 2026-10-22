@@ -32,6 +32,15 @@ public class MainMenu : MonoBehaviour
         "La IA produce y crece un 30% más y ataca antes"
     };
     const int MaxRivals = 9;
+    // Multijugador (ver CivGame.Net.cs): el anfitrión abre una sala y los demás se unen por IP
+    int mpMode;                // 0 = un jugador, 1 = anfitrión, 2 = se une a una sala
+    bool mpMenu;               // pantalla "Multijugador": crear o unirse
+    bool hostLobby;            // sala del anfitrión: jugadores conectados y botón Comenzar
+    bool joinForm;             // formulario para unirse: nombre e IP
+    bool joinWait;             // conectado (o conectando): se espera a que el anfitrión empiece
+    string joinIp = "127.0.0.1";
+    string playerName = "Jugador";
+    string mpError = "";
     bool loading;
     string loadingText = "Cargando partida…";
     float openTime;
@@ -78,13 +87,18 @@ public class MainMenu : MonoBehaviour
             Open();
         }
 
+        if (Active && joinWait) UpdateJoinWait();
+
         if (!Active || loading || Time.unscaledTime - openTime < IgnoreInputSeconds) return;
 
         if (Inp.GetKeyDown(KeyCode.Return) || Inp.GetKeyDown(KeyCode.KeypadEnter))
         {
-            if (choosingRivals) StartCoroutine(StartRoutine());
+            if (mpMenu || hostLobby || joinWait) return;
+            if (joinForm) { Connect(); return; }
+
+            if (choosingRivals) { if (mpMode == 1) OpenHostLobby(); else StartCoroutine(StartRoutine()); }
             else if (choosingSize) { choosingSize = false; choosingRivals = true; }
-            else if (choosingCiv) { choosingCiv = false; choosingSize = true; }
+            else if (choosingCiv) AfterCivChosen();
             else if (!showControls) choosingCiv = true;
         }
     }
@@ -96,6 +110,11 @@ public class MainMenu : MonoBehaviour
         choosingCiv = false;
         choosingSize = false;
         choosingRivals = false;
+        mpMenu = false;
+        hostLobby = false;
+        joinForm = false;
+        joinWait = false;
+        mpMode = 0;
         openTime = Time.unscaledTime;
         previousTimeScale = Time.timeScale > 0f ? Time.timeScale : 1f;
         Time.timeScale = 0f;
@@ -140,6 +159,103 @@ public class MainMenu : MonoBehaviour
     }
 
     const string IntroClip = "Intro del Civilogenia";
+
+    // ---------------------------------------------------------------- Multijugador
+
+    void AfterCivChosen()
+    {
+        choosingCiv = false;
+        if (mpMode == 2) joinForm = true;
+        else choosingSize = true;
+    }
+
+    void BackToMpMenu()
+    {
+        if (CivNet.Instance != null) CivNet.Instance.Shutdown();
+        choosingCiv = choosingSize = choosingRivals = hostLobby = joinForm = joinWait = false;
+        mpMenu = true;
+        mpMode = 0;
+    }
+
+    // El anfitrión abre el puerto y espera a los demás jugadores
+    void OpenHostLobby()
+    {
+        mpError = "";
+        if (!CivNet.Instance.StartHost())
+        {
+            mpError = CivNet.Instance.status;
+            BackToMpMenu();
+            return;
+        }
+
+        choosingRivals = false;
+        hostLobby = true;
+    }
+
+    // Cliente: conecta con "ip" o "ip:puerto"
+    void Connect()
+    {
+        string host = joinIp.Trim();
+        int port = CivNet.DefaultPort;
+        int colon = host.LastIndexOf(':');
+        if (colon > 0 && int.TryParse(host.Substring(colon + 1), out int parsed)) { port = parsed; host = host.Substring(0, colon); }
+
+        if (host.Length == 0) { mpError = "Escribe la IP del anfitrión."; return; }
+
+        mpError = "";
+        CivNet.Instance.StartClient(host, port, playerName.Trim().Length > 0 ? playerName.Trim() : "Jugador", civChoice);
+        joinForm = false;
+        joinWait = true;
+    }
+
+    // Cliente a la espera: pasa a jugar en cuanto el anfitrión empieza y la partida está cargada
+    void UpdateJoinWait()
+    {
+        CivGame game = CivGame.Instance;
+        CivNet net = CivNet.Instance;
+
+        if (game != null && game.netJoining) { loading = true; loadingText = "Uniéndose a la partida…"; }
+
+        if (game != null && game.ready && game.IsNetClient)
+        {
+            loading = false;
+            joinWait = false;
+            Play();
+            return;
+        }
+
+        if (net != null && !loading && (!net.Active || (game != null && game.netLost)))
+        {
+            mpError = string.IsNullOrEmpty(net.status) ? "Se ha perdido la conexión." : net.status;
+            BackToMpMenu();
+        }
+    }
+
+    // El anfitrión empieza: se crea la partida con los jugadores de la sala, se les manda el estado y se juega
+    System.Collections.IEnumerator HostStartRoutine()
+    {
+        loading = true;
+        loadingText = "Preparando partida…";
+        yield return null;
+        yield return null;
+
+        CivGame game = CivGame.Instance;
+        while (game == null || !game.worldBuilt) { yield return null; game = CivGame.Instance; }
+
+        int remotes = game.NetPrepareHost(civChoice);
+        game.StartMatch(rivals, (Difficulty)difficultyIndex, civChoice, mapSize);
+        while (!game.ready && !game.startFailed) yield return null;
+
+        loading = false;
+        if (game.startFailed) { BackToMpMenu(); yield break; }
+
+        hostLobby = false;
+        if (remotes > 0) game.NetHostBegin();
+        else CivNet.Instance.Shutdown();   // nadie se unió: partida normal
+
+        Play();
+        IntroVideo.PlayClip(IntroClip);   // en el multijugador no se reproduce
+    }
 
     void Play()
     {
@@ -223,7 +339,79 @@ public class MainMenu : MonoBehaviour
         float bw = 340f * k, bh = 58f * k, gap = 16f * k;
         float y = Screen.height * 0.43f;
 
-        if (choosingCiv)
+        if (mpMenu)
+        {
+            GUI.Label(new Rect(0, y - 20f * k, Screen.width, 44f * k), "Multijugador", body);
+            y += 34f * k;
+
+            if (mpError.Length > 0) { GUI.Label(new Rect(0, y - 6f * k, Screen.width, 28f * k), mpError, hint2); y += 30f * k; }
+
+            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Crear partida", button)) { mpError = ""; mpMenu = false; mpMode = 1; choosingCiv = true; }
+            y += bh + gap;
+            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Unirse a una partida", button)) { mpError = ""; mpMenu = false; mpMode = 2; choosingCiv = true; }
+            y += bh + gap;
+            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Volver", button)) mpMenu = false;
+        }
+        else if (hostLobby)
+        {
+            CivGame game = CivGame.Instance;
+            GUI.Label(new Rect(0, y - 40f * k, Screen.width, 44f * k), "Sala de la partida", body);
+
+            string ips = string.Join("   ", CivNet.LocalAddresses().ToArray());
+            hint2.wordWrap = true;
+            GUI.Label(new Rect(cx - 320f * k, y, 640f * k, 54f * k), "Que los demás se unan a: " + (ips.Length > 0 ? ips : "(IP no encontrada)") + "   puerto " + CivNet.DefaultPort, hint2);
+            y += 58f * k;
+
+            string players = game != null ? game.HostLobbyText() : "";
+            int lines = players.Split('\n').Length;
+            GUI.Label(new Rect(cx - 280f * k, y, 560f * k, 28f * k * lines + 10f * k), players, body);
+            y += 28f * k * lines + 24f * k;
+
+            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Comenzar partida", button)) StartCoroutine(HostStartRoutine());
+            y += bh + gap;
+            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Cancelar", button)) BackToMpMenu();
+        }
+        else if (joinForm)
+        {
+            GUI.Label(new Rect(0, y - 40f * k, Screen.width, 44f * k), "Unirse a una partida", body);
+            y += 4f * k;
+
+            GUI.Label(new Rect(cx - 280f * k, y, 560f * k, 28f * k), "Tu nombre", hint2);
+            y += 28f * k;
+            playerName = GUI.TextField(new Rect(cx - 200f * k, y, 400f * k, 40f * k), playerName, 20, button);
+            y += 50f * k;
+
+            GUI.Label(new Rect(cx - 280f * k, y, 560f * k, 28f * k), "IP del anfitrión (ejemplo 192.168.1.20 o 192.168.1.20:7777)", hint2);
+            y += 28f * k;
+            joinIp = GUI.TextField(new Rect(cx - 200f * k, y, 400f * k, 40f * k), joinIp, 64, button);
+            y += 54f * k;
+
+            if (mpError.Length > 0) { GUI.Label(new Rect(0, y - 6f * k, Screen.width, 28f * k), mpError, hint2); y += 30f * k; }
+
+            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Conectar", button)) Connect();
+            y += bh + gap;
+            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Volver", button)) { joinForm = false; choosingCiv = true; }
+        }
+        else if (joinWait)
+        {
+            CivGame game = CivGame.Instance;
+            CivNet net = CivNet.Instance;
+            GUI.Label(new Rect(0, y - 20f * k, Screen.width, 44f * k), net != null ? net.status : "", body);
+            y += 40f * k;
+
+            string players = game != null ? game.netLobbyText : "";
+            if (players.Length > 0)
+            {
+                int lines = players.Split('\n').Length;
+                GUI.Label(new Rect(0, y, Screen.width, 28f * k), "Jugadores en la sala", hint2);
+                y += 30f * k;
+                GUI.Label(new Rect(cx - 280f * k, y, 560f * k, 28f * k * lines + 10f * k), players, body);
+                y += 28f * k * lines + 20f * k;
+            }
+
+            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Cancelar", button)) BackToMpMenu();
+        }
+        else if (choosingCiv)
         {
             y -= 60f * k;   // la cuadrícula de civilizaciones ocupa más: se sube todo para que quepa el botón Volver
             GUI.Label(new Rect(0, y - 20f * k, Screen.width, 44f * k), "Elige tu civilización", body);
@@ -247,9 +435,9 @@ public class MainMenu : MonoBehaviour
                 y += 40f * k;
             }
 
-            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Continuar", button)) { choosingCiv = false; choosingSize = true; }
+            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Continuar", button)) AfterCivChosen();
             y += bh + gap;
-            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Volver", button)) choosingCiv = false;
+            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Volver", button)) { choosingCiv = false; if (mpMode != 0) { mpMode = 0; mpMenu = true; } }
         }
         else if (choosingSize)
         {
@@ -288,7 +476,11 @@ public class MainMenu : MonoBehaviour
             GUI.Label(new Rect(0, y, Screen.width, 24f * k), DifficultyHints[difficultyIndex], hint2);
             y += 30f * k + gap * 0.6f;
 
-            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Comenzar", button)) StartCoroutine(StartRoutine());
+            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), mpMode == 1 ? "Abrir sala" : "Comenzar", button))
+            {
+                if (mpMode == 1) OpenHostLobby();
+                else StartCoroutine(StartRoutine());
+            }
             y += bh + gap;
             if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Volver", button)) { choosingRivals = false; choosingSize = true; }
         }
@@ -304,6 +496,8 @@ public class MainMenu : MonoBehaviour
             if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), canLoad ? "Cargar partida" : "Cargar partida (no hay ninguna)", button))
                 StartCoroutine(LoadRoutine());
             GUI.enabled = enabledBefore;
+            y += bh + gap;
+            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Multijugador", button)) { mpError = ""; mpMenu = true; }
             y += bh + gap;
             if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Controles", button)) showControls = true;
             y += bh + gap;
@@ -330,6 +524,7 @@ public class MainMenu : MonoBehaviour
             return;
         }
 
-        GUI.Label(new Rect(0, 0, Screen.width, Screen.height - 14f * k), choosingRivals ? "Enter: comenzar" : (choosingCiv || choosingSize) ? "Enter: continuar" : "Enter: jugar", hint);
+        if (mpMenu || hostLobby || joinWait) return;
+        GUI.Label(new Rect(0, 0, Screen.width, Screen.height - 14f * k), joinForm ? "Enter: conectar" : choosingRivals ? (mpMode == 1 ? "Enter: abrir sala" : "Enter: comenzar") : (choosingCiv || choosingSize) ? "Enter: continuar" : "Enter: jugar", hint);
     }
 }

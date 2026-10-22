@@ -93,6 +93,7 @@ public class IntroVideo : MonoBehaviour
     public static void PlayClip(string clipName)
     {
         if (Active) return;
+        if (CivGame.Instance != null && CivGame.Instance.IsMultiplayer) return;   // en el multijugador no se congela la partida para nadie
 
         VideoClip clip = Resources.Load<VideoClip>(clipName);
         if (clip == null)
@@ -115,6 +116,7 @@ public class IntroVideo : MonoBehaviour
     public static void PlayImage(string imageName, float seconds)
     {
         if (Active) return;
+        if (CivGame.Instance != null && CivGame.Instance.IsMultiplayer) return;
 
         Texture2D texture = Resources.Load<Texture2D>(imageName);
         if (texture == null)

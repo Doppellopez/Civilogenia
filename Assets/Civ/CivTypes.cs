@@ -372,7 +372,8 @@ public class Civ
     public int id;
     public string name;
     public Color color;
-    public bool isHuman;
+    public bool isHuman;       // la maneja una persona (la IA no juega por ella), sea la local o una remota
+    public bool remote;        // anfitrión: la maneja un jugador conectado por red
     public bool alive = true;
 
     public float gold = 30f;
@@ -421,6 +422,7 @@ public class Civ
 
 public class City
 {
+    public int id;   // identificador estable (el multijugador lo usa para referirse a la ciudad)
     public Civ owner;
     public string name;
     public int cell;
@@ -504,6 +506,7 @@ public class City
 
 public class Unit
 {
+    public int id;   // identificador estable (el multijugador lo usa para referirse a la unidad)
     public Civ owner;
     public UnitKind kind;
     public UnitDef def;

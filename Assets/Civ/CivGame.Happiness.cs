@@ -107,12 +107,12 @@ public partial class CivGame
         city.happiness = happiness;
         city.mood = mood;
 
-        if (city.owner.isHuman && mood != before)
+        if (city.owner.isHuman && !IsNetClient && mood != before)
         {
-            if (mood == MoodRiot) GameSfx.Play(Sfx.Alert);
-            if (mood == MoodRiot) AddLog("¡Disturbios en " + city.name + "! No produce nada. Construye Baños públicos o guarnece la ciudad.", Color.red);
-            else if (mood == MoodUnhappy && before > MoodUnhappy) AddLog(city.name + " está descontenta (producción -25%).", new Color(1f, 0.7f, 0.3f));
-            else if (mood >= MoodContent && before <= MoodUnhappy) AddLog(city.name + " recupera la calma.", Color.white);
+            if (mood == MoodRiot && IsLocal(city.owner)) GameSfx.Play(Sfx.Alert);
+            if (mood == MoodRiot) Notify(city.owner, "¡Disturbios en " + city.name + "! No produce nada. Construye Baños públicos o guarnece la ciudad.", Color.red);
+            else if (mood == MoodUnhappy && before > MoodUnhappy) Notify(city.owner, city.name + " está descontenta (producción -25%).", new Color(1f, 0.7f, 0.3f));
+            else if (mood >= MoodContent && before <= MoodUnhappy) Notify(city.owner, city.name + " recupera la calma.", Color.white);
         }
 
         return mood == MoodHappy ? 1.1f : mood == MoodUnhappy ? 0.75f : mood == MoodRiot ? 0f : 1f;

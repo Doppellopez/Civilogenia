@@ -155,7 +155,8 @@ public partial class CivUI : MonoBehaviour
         if (Inp.GetKeyDown(KeyCode.T))
         {
             // Mayús+T (pruebas): desarrolla todas las tecnologías de la edad actual; T solo: panel de tecnologías
-            if (Inp.GetKey(KeyCode.LeftShift) || Inp.GetKey(KeyCode.RightShift)) game.AddLog(game.DevelopEraTechs(game.human), Color.white);
+            if (Inp.GetKey(KeyCode.LeftShift) || Inp.GetKey(KeyCode.RightShift))
+                game.AddLog(game.IsMultiplayer ? "No disponible en el multijugador" : game.DevelopEraTechs(game.human), Color.white);
             else showTech = !showTech;
         }
         if (Inp.GetKeyDown(KeyCode.D)) showDiplomacy = !showDiplomacy;
@@ -197,7 +198,7 @@ public partial class CivUI : MonoBehaviour
         }
 
         if (Inp.GetKeyDown(KeyCode.F5)) game.SaveGame();
-        if (Inp.GetKeyDown(KeyCode.F9) && CivSave.Exists) StartCoroutine(game.LoadRoutine());
+        if (Inp.GetKeyDown(KeyCode.F9) && CivSave.Exists && !game.IsMultiplayer) StartCoroutine(game.LoadRoutine());
 
         if (Inp.GetKeyDown(KeyCode.C))
         {
@@ -1001,6 +1002,8 @@ public partial class CivUI : MonoBehaviour
 
         foreach (DiploProposal p in list)
         {
+            if (p.to != null && p.to != game.human) continue;   // la propuesta es para otro jugador
+            if (p.from == game.human) continue;                 // la hice yo: espero la respuesta
             Rect r = Panel(new Rect(vw / 2f - 250f, y, 500f, 50f));
 
             GUILayout.BeginArea(new Rect(r.x + 10, r.y + 8, r.width - 20, r.height - 14));
