@@ -790,6 +790,10 @@ public partial class CivGame : MonoBehaviour
                 if (c.itemBuilding == BuildingKind.LighthouseAlex) IntroVideo.PlayClip(LighthouseVideo);   // y al terminar el Faro de Alejandría
                 if (c.itemBuilding == BuildingKind.GreatWall) IntroVideo.PlayClip(GreatWallVideo);   // y al terminar la Gran Muralla
                 if (c.itemBuilding == BuildingKind.FibonacciLab) IntroVideo.PlayClip(FibonacciVideo);   // y al terminar el Laboratorio de Fibonacci
+                if (c.itemBuilding == BuildingKind.GalileoObservatory) IntroVideo.PlayClip(GalileoVideo);   // y al terminar el Observatorio de Galileo
+                if (c.itemBuilding == BuildingKind.FahrenheitStudy)IntroVideo.PlayClip(FahrenheitVideo);   // y al terminar el Estudio de Fahrenheit
+                if (c.itemBuilding == BuildingKind.SistineChapel)IntroVideo.PlayClip(SistineVideo);   // y al terminar la Capilla Sixtina
+                if (c.itemBuilding == BuildingKind.MarcoPolo)IntroVideo.PlayClip(SilkRoadVideo);   // y al terminar la Ruta de la seda de Marco Polo
                 if (c.itemBuilding == BuildingKind.Colosseum)IntroVideo.PlayClip(ColosseumVideo);   // y al terminar el Coliseo
                 if (c.itemBuilding == BuildingKind.AlexandriaLibrary) IntroVideo.PlayClip(AlexandriaVideo);   // y al terminar la Gran Biblioteca de Alejandría
             }
@@ -1197,6 +1201,10 @@ public partial class CivGame : MonoBehaviour
     const string OmniscienceVideo = "Victoria por omnisciencia";
     const string PyramidsVideo = "Construcción de las pirámides";
     const string FibonacciVideo = "Construcción de Laboratorio Fibonacci";   // el archivo dice "de", no "del"
+    const string GalileoVideo = "Construcción del Observatorio de Galileo";   // el archivo dice "Observatorio", no "Laboratorio"
+    const string FahrenheitVideo ="Construcción del Laboratorio de Farenheit";   // el archivo se llama "Laboratorio" y "Farenheit" sin la h
+    const string SistineVideo ="Construcción de la Capilla Sixtina";
+    const string SilkRoadVideo ="Construcción de la Ruta de la seda";
     const string ColosseumVideo ="Construcción del Coliseo";
     const string AlexandriaVideo ="Construcción de la Gran Biblioteca Alejandria";   // el archivo lleva tilde en Construcción y no en Alejandria
     const string GreatWallVideo ="Construccion de la Gran Muralla";   // el archivo se llama sin tilde

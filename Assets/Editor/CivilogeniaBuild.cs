@@ -21,9 +21,28 @@ public static class CivilogeniaBuild
         EditorApplication.Exit(buildOk ? 0 : 1);
     }
 
-    // Guarda la escena actual, incluye los shaders que se buscan por nombre y compila para Windows.
+    // Igual que BuildFromCommandLine pero para Linux (Ubuntu, x86_64): -executeMethod CivilogeniaBuild.BuildLinuxFromCommandLine
+    public static void BuildLinuxFromCommandLine()
+    {
+        EditorSceneManager.OpenScene("Assets/prueba.unity");
+        BuildLinux();
+        EditorApplication.Exit(buildOk ? 0 : 1);
+    }
+
+    [MenuItem("Civilogenia/Compilar (Linux)")]
+    public static void BuildLinux()
+    {
+        Build(BuildTarget.StandaloneLinux64, Path.Combine("ExeLinux", "Civilogenia.x86_64"));
+    }
+
     [MenuItem("Civilogenia/Compilar (Windows)")]
     public static void BuildWindows()
+    {
+        Build(BuildTarget.StandaloneWindows64, Path.Combine(OutputFolder, "Civilogenia.exe"));
+    }
+
+    // Guarda la escena actual, incluye los shaders que se buscan por nombre y compila para la plataforma indicada.
+    static void Build(BuildTarget target, string outputPath)
     {
         Scene scene = SceneManager.GetActiveScene();
 
@@ -45,8 +64,8 @@ public static class CivilogeniaBuild
         BuildPlayerOptions options = new BuildPlayerOptions
         {
             scenes = new[] { path },
-            locationPathName = Path.Combine(OutputFolder, "Civilogenia.exe"),
-            target = BuildTarget.StandaloneWindows64,
+            locationPathName = outputPath,
+            target = target,
             options = BuildOptions.None
         };
 
