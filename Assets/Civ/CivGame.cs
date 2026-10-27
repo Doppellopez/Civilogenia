@@ -796,6 +796,15 @@ public partial class CivGame : MonoBehaviour
                 if (c.itemBuilding == BuildingKind.MarcoPolo)IntroVideo.PlayClip(SilkRoadVideo);   // y al terminar la Ruta de la seda de Marco Polo
                 if (c.itemBuilding == BuildingKind.Colosseum)IntroVideo.PlayClip(ColosseumVideo);   // y al terminar el Coliseo
                 if (c.itemBuilding == BuildingKind.AlexandriaLibrary) IntroVideo.PlayClip(AlexandriaVideo);   // y al terminar la Gran Biblioteca de Alejandría
+                if (c.itemBuilding == BuildingKind.GutenbergPress) IntroVideo.PlayClip(GutenbergPressVideo);   // y al terminar la Imprenta de Gutenberg
+                if (c.itemBuilding == BuildingKind.HooverDam) IntroVideo.PlayClip(HooverDamVideo);   // y al terminar la Presa Hoover
+                if (c.itemBuilding == BuildingKind.EiffelTower) IntroVideo.PlayClip(EiffelTowerVideo);   // y al terminar la Torre Eiffel
+                if (c.itemBuilding == BuildingKind.UnitedNations) IntroVideo.PlayClip(UnitedNationsVideo);   // y al terminar las Naciones Unidas
+                if (c.itemBuilding == BuildingKind.FlemingLab) IntroVideo.PlayClip(FlemingLabVideo);   // y al terminar el Laboratorio de Fleming
+                if (c.itemBuilding == BuildingKind.FordAssembly) IntroVideo.PlayClip(FordAssemblyVideo);   // y al terminar el Ensamblaje Ford
+                if (c.itemBuilding == BuildingKind.ManhattanProject) IntroVideo.PlayClip(ManhattanProjectVideo);   // y al terminar el Proyecto Manhattan
+                if (c.itemBuilding == BuildingKind.ApolloProgram) IntroVideo.PlayClip(ApolloProgramVideo);   // y al terminar el Programa Apollo
+                if (c.itemBuilding == BuildingKind.Internet) IntroVideo.PlayClip(InternetVideo);   // y al terminar Internet
             }
         }
     }
@@ -1208,6 +1217,15 @@ public partial class CivGame : MonoBehaviour
     const string ColosseumVideo ="Construcción del Coliseo";
     const string AlexandriaVideo ="Construcción de la Gran Biblioteca Alejandria";   // el archivo lleva tilde en Construcción y no en Alejandria
     const string GreatWallVideo ="Construccion de la Gran Muralla";   // el archivo se llama sin tilde
+    const string GutenbergPressVideo = "Construcción de la Imprenta de Gutemberg";   // el archivo dice "Gutemberg" con m
+    const string InternetVideo = "Construcción de Internet";
+    const string ApolloProgramVideo = "Construcción del Programa Apollo";
+    const string ManhattanProjectVideo = "Construcción de Proyecto Manhattan";   // el archivo dice "de", no "del"
+    const string FordAssemblyVideo = "Construcción de Ensamblaje Ford";
+    const string FlemingLabVideo = "Construcción del Laboratorio de Fleming";
+    const string UnitedNationsVideo = "Construcción de la las Naciones Unidas";   // el archivo dice "de la las"
+    const string EiffelTowerVideo = "Costrucción de la Torre Eiffel";   // el archivo dice "Costrucción", sin la n
+    const string HooverDamVideo = "Construcción de la presa Hoover";
     const string LighthouseVideo = "Construcción del Faro";   // el nombre debe coincidir con el archivo (con F mayúscula)
     const string MilitaryVictoryVideo = "Video Victoria Militar";
     const string MilitaryDefeatVideo = "Vídeo derrota militar";
