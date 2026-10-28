@@ -805,6 +805,12 @@ public partial class CivGame : MonoBehaviour
                 if (c.itemBuilding == BuildingKind.ManhattanProject) IntroVideo.PlayClip(ManhattanProjectVideo);   // y al terminar el Proyecto Manhattan
                 if (c.itemBuilding == BuildingKind.ApolloProgram) IntroVideo.PlayClip(ApolloProgramVideo);   // y al terminar el Programa Apollo
                 if (c.itemBuilding == BuildingKind.Internet) IntroVideo.PlayClip(InternetVideo);   // y al terminar Internet
+                if (c.itemBuilding == BuildingKind.StatueOfLiberty) IntroVideo.PlayClip(StatueOfLibertyVideo);   // y al terminar la Estatua de la Libertad
+                if (c.itemBuilding == BuildingKind.RadioTower) IntroVideo.PlayClip(MarconiTowerVideo);   // y al terminar la Torre de radio de Marconi
+                if (c.itemBuilding == BuildingKind.Biosphere) IntroVideo.PlayClip(BiosphereVideo);   // y al terminar la Biosfera
+                if (c.itemBuilding == BuildingKind.GeneBank) IntroVideo.PlayClip(GeneBankVideo);   // y al terminar el Banco genético
+                if (c.itemBuilding == BuildingKind.SpaceElevator) IntroVideo.PlayClip(SpaceElevatorVideo);   // y al terminar el Ascensor espacial
+                if (c.itemBuilding == BuildingKind.Hollywood) IntroVideo.PlayClip(HollywoodVideo);   // y al terminar Hollywood
             }
         }
     }
@@ -1226,6 +1232,12 @@ public partial class CivGame : MonoBehaviour
     const string UnitedNationsVideo = "Construcción de la las Naciones Unidas";   // el archivo dice "de la las"
     const string EiffelTowerVideo = "Costrucción de la Torre Eiffel";   // el archivo dice "Costrucción", sin la n
     const string HooverDamVideo = "Construcción de la presa Hoover";
+    const string StatueOfLibertyVideo = "Construcción de la Estatua de la Libertad";
+    const string MarconiTowerVideo = "Construcción de la Torre de Marconi";
+    const string BiosphereVideo = "Construcción de la Biosfera";
+    const string GeneBankVideo = "Construcción del Banco Genético";
+    const string SpaceElevatorVideo = "Construcción del Ascensor Espacial";
+    const string HollywoodVideo = "Construcción de Hollywood";
     const string LighthouseVideo = "Construcción del Faro";   // el nombre debe coincidir con el archivo (con F mayúscula)
     const string MilitaryVictoryVideo = "Video Victoria Militar";
     const string MilitaryDefeatVideo = "Vídeo derrota militar";
