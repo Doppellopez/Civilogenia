@@ -147,7 +147,7 @@ public static class GameDefs
         { UnitKind.Musketeer, new UnitDef { name = "Mosquetero", cost = 90, hp = 28, attack = 16, defense = 8, speed = 0.6f, range = 2 } },
         { UnitKind.Galleon,  new UnitDef { name = "Galeón", cost = 120, hp = 45, attack = 20, defense = 4, speed = 0.35f, range = 2, naval = true, capacity = 3 } },
         { UnitKind.Caravan,  new UnitDef { name = "Caravana de comercio", cost = 50, hp = 10, attack = 0, defense = 0, speed = 0.5f } },
-        { UnitKind.Merchant, new UnitDef { name = "Mercader", cost = 90, hp = 15, attack = 0, defense = 0, speed = 0.7f } }, // solo se obtiene mejorando una caravana en una Academia
+        { UnitKind.Merchant, new UnitDef { name = "Mercader", cost = 90, hp = 15, attack = 0, defense = 0, speed = 0.7f } }, // con Cifras arábigas sustituye a la caravana; también se obtiene mejorando una caravana en una Academia
         { UnitKind.Catapult, new UnitDef { name = "Catapulta", cost = 100, hp = 18, attack = 14, defense = 1, speed = 0.4f, range = 3 } },
         { UnitKind.Legion,   new UnitDef { name = "Legión", cost = 110, hp = 45, attack = 12, defense = 9, speed = 0.6f } },
         { UnitKind.Phalanx,  new UnitDef { name = "Falange", cost = 80, hp = 35, attack = 7, defense = 8, speed = 0.55f } },
@@ -445,8 +445,8 @@ public class City
 
     public HashSet<BuildingKind> buildings = new HashSet<BuildingKind>();
     public Dictionary<BuildingKind, int> wonderCells = new Dictionary<BuildingKind, int>(); // celdilla libre de la ciudad donde está cada maravilla
-    public HashSet<City> tradePartners = new HashSet<City>(); // ciudades con las que hay ruta comercial (+15 % oro y ciencia por cada una)
-    public HashSet<City> merchantPartners = new HashSet<City>(); // las rutas de tradePartners creadas por un mercader (+20 % en vez de +15 %)
+    public HashSet<City> tradePartners = new HashSet<City>(); // ciudades con las que hay ruta comercial (+0,1 % de oro y ciencia por casilla de distancia si la creó una caravana)
+    public HashSet<City> merchantPartners = new HashSet<City>(); // las rutas de tradePartners creadas por un mercader (+0,2 % por casilla en vez de +0,1 %)
     public List<int> tiles = new List<int>();
     public HashSet<int> worked = new HashSet<int>(); // casillas que trabaja ahora (las mejores, tantas como habitantes)
 
@@ -568,9 +568,12 @@ public class Unit
     public Vector2 jitter;          // pequeño desplazamiento para que no se solapen
     public Vector3 currentDir;       // dirección actual sobre la esfera (para selección)
     public Vector3 heading;          // hacia dónde mira; se conserva al detenerse
+    public bool shownOnMap;          // unidad de una ciudad propia elegida desde la vista de la ciudad: se ve en el mapa mientras siga seleccionada
 
     public GameObject view;
     public GameObject selectionRing;
+    public List<UnitSpinner> spinners;   // ruedas y hélices del modelo que giran con la animación
+    public int spinFrame = -1;           // último fotograma en que giraron (para no girar dos veces en el mismo)
     public bool alive = true;
 
     public bool IsTrader => kind == UnitKind.Caravan || kind == UnitKind.Merchant; // puede establecer rutas comerciales

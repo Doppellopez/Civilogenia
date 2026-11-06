@@ -69,6 +69,9 @@ public partial class CivGame
         r.state = state;
         r.since = gameTime;
 
+        // La guerra destruye todas las rutas comerciales entre las dos civilizaciones
+        int lostRoutes = state == DiploState.War ? DestroyTradeRoutes(a, b) : 0;
+
         // Aviso al jugador de lo que pasa entre otras civilizaciones y de lo que le afecta
         if (human == null) return;
 
@@ -79,6 +82,7 @@ public partial class CivGame
                         : state == DiploState.Peace ? "Paz con " + other.name
                         : "Alianza con " + other.name;
             AddLog(text, other.color);
+            if (lostRoutes > 0) AddLog("Se destruyen " + lostRoutes + (lostRoutes == 1 ? " ruta comercial" : " rutas comerciales") + " con " + other.name, other.color);
             GameSfx.Play(state == DiploState.War ? Sfx.War : Sfx.Peace);
         }
         else
@@ -99,6 +103,30 @@ public partial class CivGame
 
         // La visión compartida de las alianzas cambia el mapa que ve el jugador
         fogMeshStale = true;
+    }
+
+    /// <summary>Borra las rutas comerciales entre ciudades de las dos civilizaciones y devuelve cuántas había.</summary>
+    int DestroyTradeRoutes(Civ a, Civ b)
+    {
+        int n = 0;
+        foreach (City c in allCities)
+        {
+            if (c.owner != a) continue;
+
+            foreach (City p in new List<City>(c.tradePartners))
+            {
+                if (p.owner != b) continue;
+
+                c.tradePartners.Remove(p);
+                p.tradePartners.Remove(c);
+                c.merchantPartners.Remove(p);
+                p.merchantPartners.Remove(c);
+                RecomputeCity(c);
+                RecomputeCity(p);
+                n++;
+            }
+        }
+        return n;
     }
 
     int WarsOf(Civ civ)

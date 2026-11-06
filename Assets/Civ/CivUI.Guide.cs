@@ -105,7 +105,7 @@ public partial class CivUI
     {
         GUILayout.BeginHorizontal();
         for (int i = 0; i < cells.Length; i++)
-            GUILayout.Label(cells[i], guideCell, GUILayout.Width(widths[i]));
+            LocGUI.LayoutLabel(cells[i], guideCell, GUILayout.Width(widths[i]));
         GUILayout.EndHorizontal();
     }
 
@@ -113,7 +113,7 @@ public partial class CivUI
     {
         GUILayout.BeginHorizontal();
         for (int i = 0; i < cells.Length; i++)
-            GUILayout.Label(cells[i].ToUpper(), guideHead, GUILayout.Width(widths[i]));
+            LocGUI.LayoutLabel(cells[i].ToUpper(), guideHead, GUILayout.Width(widths[i]));
         GUILayout.EndHorizontal();
         GUILayout.Space(2);
     }
@@ -134,11 +134,11 @@ public partial class CivUI
         float margin = 36f;
         Rect r = Panel(new Rect(margin, margin, vw - margin * 2f, vh - margin * 2f));
 
-        GUI.Label(new Rect(r.x + 16f, r.y + 8f, r.width - 140f, 30f), "<b>Guía de Civilogenia</b>", guideEra);
-        if (GUI.Button(new Rect(r.xMax - 150f, r.y + 10f, 134f, 26f), "Cerrar (F1)")) { ToggleGuide(); return; }
+        LocGUI.Label(new Rect(r.x + 16f, r.y + 8f, r.width - 140f, 30f), "<b>Guía de Civilogenia</b>", guideEra);
+        if (LocGUI.Button(new Rect(r.xMax - 150f, r.y + 10f, 134f, 26f), "Cerrar (F1)")) { ToggleGuide(); return; }
 
         GUILayout.BeginArea(new Rect(r.x + 16f, r.y + 44f, r.width - 32f, r.height - 56f));
-        int newTab = GUILayout.Toolbar(guideTab, GuideTabs);
+        int newTab = LocGUI.LayoutToolbar(guideTab, GuideTabs);
         if (newTab != guideTab) { guideTab = newTab; guideScroll = Vector2.zero; }
         GUILayout.Space(6);
 
@@ -164,7 +164,7 @@ public partial class CivUI
     {
         foreach (string p in paragraphs)
         {
-            GUILayout.Label(p, guideText);
+            LocGUI.LayoutLabel(p, guideText);
             GUILayout.Space(8);
         }
     }
@@ -178,7 +178,7 @@ public partial class CivUI
 
     void DrawGuideEras()
     {
-        GUILayout.Label("Cada edad se cierra con el <b>Cambio de era</b>, que exige todas las demás tecnologías de esa edad. Al descubrirlo suena un vídeo y cambia el aspecto de tus unidades, carreteras y ciudades.", guideText);
+        LocGUI.LayoutLabel("Cada edad se cierra con el <b>Cambio de era</b>, que exige todas las demás tecnologías de esa edad. Al descubrirlo suena un vídeo y cambia el aspecto de tus unidades, carreteras y ciudades.", guideText);
         GUILayout.Space(10);
 
         for (int e = 0; e < GuideData.Eras.Length; e++)
@@ -194,8 +194,8 @@ public partial class CivUI
 
             GUIStyle st = new GUIStyle(guideEra);
             st.normal.textColor = GuideEraColors[e];
-            GUILayout.Label(GuideData.Eras[e], st);
-            GUILayout.Label(count + " tecnologías. Para salir: " + closer + ".", guideText);
+            LocGUI.LayoutLabel(GuideData.Eras[e], st);
+            LocGUI.LayoutLabel(count + " tecnologías. Para salir: " + closer + ".", guideText);
             GUILayout.Space(8);
         }
     }
@@ -209,7 +209,7 @@ public partial class CivUI
             GUIStyle st = new GUIStyle(guideEra);
             st.normal.textColor = GuideEraColors[e];
             GUILayout.Space(6);
-            GUILayout.Label(GuideData.Eras[e], st);
+            LocGUI.LayoutLabel(GuideData.Eras[e], st);
             GuideHeadRow(w, "Tecnología", "Coste", "Requiere", "Qué da");
 
             foreach (GuideData.TechRow t in GuideData.Techs)
@@ -219,7 +219,7 @@ public partial class CivUI
 
     void DrawGuideUnits()
     {
-        GUILayout.Label("Ataque y defensa: el daño se multiplica por 6 y se divide por (6 + defensa del objetivo). Alcance: casillas desde las que ataca (1 es cuerpo a cuerpo). Velocidad: casillas por segundo en llano.", guideText);
+        LocGUI.LayoutLabel("Ataque y defensa: el daño se multiplica por 6 y se divide por (6 + defensa del objetivo). Alcance: casillas desde las que ataca (1 es cuerpo a cuerpo). Velocidad: casillas por segundo en llano.", guideText);
         GUILayout.Space(6);
 
         float[] w = { 160f, 50f, 46f, 40f, 54f, 58f, 66f, 54f, 200f, 150f };
@@ -230,7 +230,7 @@ public partial class CivUI
 
     void DrawGuideBuildings(bool wonders)
     {
-        GUILayout.Label(wonders
+        LocGUI.LayoutLabel(wonders
             ? "Solo puede existir <b>una de cada</b> en todo el mundo: la primera civilización que la termina se la queda. Su efecto vale para todas las ciudades de su dueña, salvo que se indique otra cosa."
             : "Cada ciudad puede tener uno de cada. Construcción (-10 %), Acero y hormigón (-15 %) y Nanotecnología (-25 %) los abaratan.", guideText);
         GUILayout.Space(6);

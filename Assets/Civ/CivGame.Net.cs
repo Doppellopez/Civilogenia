@@ -171,6 +171,7 @@ public partial class CivGame
                 peer.civChoice = hello.civ;
                 peer.joined = true;
                 lobbyDirty = true;
+                Debug.Log("[Civilogenia][Servidor] Jugador conectado: " + peer.name + " (" + NetJoinedCount() + " en la sala)");
                 break;
             }
 
@@ -180,6 +181,12 @@ public partial class CivGame
 
             case NetMsg.Bye:
             case NetMsg.Disconnected:
+                if (peer.joined)
+                {
+                    Civ left = CivById(peer.civId);
+                    Debug.Log("[Civilogenia][Servidor] Jugador desconectado: " + peer.name + (left != null ? " (" + left.name + ")" : ""));
+                }
+
                 if (netGame)
                 {
                     Civ civ = CivById(peer.civId);
@@ -228,16 +235,61 @@ public partial class CivGame
         return netPlayers.Count;
     }
 
-    /// <summary>Anfitrión: la partida ya está creada; envía el estado completo a cada jugador y empieza a emitir instantáneas.</summary>
-    public void NetHostBegin()
+    /// <summary>Servidor dedicado: la civilización del anfitrión pasa a manos de la IA (nadie la juega en este equipo).</summary>
+    public void NetHostHandOverToAi()
+    {
+        if (civs.Count > 0) civs[0].isHuman = false;
+    }
+
+    /// <summary>Servidor dedicado, partida guardada: todas las civilizaciones pasan a la IA hasta que los jugadores se unan.</summary>
+    public void NetHostResumeSetup()
+    {
+        foreach (Civ civ in civs) { civ.isHuman = false; civ.remote = false; }
+        if (civs.Count > 0) human = civs[0];
+        gameSpeed = 0f;   // la partida espera quieta hasta que empiece (en red la velocidad vuelve a 1)
+    }
+
+    /// <summary>Servidor dedicado, partida guardada: reparte las plazas guardadas entre los jugadores de la sala. Devuelve cuántos son.</summary>
+    public int NetPrepareResume(int slotCount)
+    {
+        extraHumanChoices.Clear();
+        netPlayers.Clear();
+
+        CivNet net = CivNet.Instance;
+        foreach (NetPeer p in net.PeerList())
+        {
+            if (p.dead) continue;
+            if (!p.joined || netPlayers.Count >= slotCount)
+            {
+                net.SendTo(p, NetMsg.Bye, "");
+                net.RemovePeer(p);
+                continue;
+            }
+            netPlayers.Add(p);
+        }
+
+        return netPlayers.Count;
+    }
+
+    /// <summary>Civilizaciones reservadas a jugadores en el servidor dedicado (se guardan para poder continuar la partida).</summary>
+    List<int> serverSlots;
+
+    /// <summary>Anfitrión: la partida ya está creada; envía el estado completo a cada jugador y empieza a emitir instantáneas.
+    /// "slots" (partida guardada del servidor) indica qué civilización toma cada jugador; sin ella, la 1, la 2...</summary>
+    public void NetHostBegin(List<int> slots = null)
     {
         CivNet net = CivNet.Instance;
         if (net == null || !net.IsHost) return;
 
+        serverSlots = new List<int>();
         for (int i = 0; i < netPlayers.Count; i++)
         {
-            netPlayers[i].civId = i + 1;
-            if (i + 1 < civs.Count) civs[i + 1].remote = true;
+            int id = slots != null && i < slots.Count ? slots[i] : i + 1;
+            netPlayers[i].civId = id;
+            Civ civ = CivById(id);
+            if (civ != null) { civ.remote = true; civ.isHuman = true; }
+            serverSlots.Add(id);
+            Debug.Log("[Civilogenia][Servidor] " + netPlayers[i].name + " juega como " + (civ != null ? civ.name : "civilización " + id));
         }
 
         net.StopAccepting();

@@ -221,6 +221,16 @@ public partial class CivUI : MonoBehaviour
         if (selUnit != null && selUnit.selectionRing != null) selUnit.selectionRing.SetActive(false);
         if (selCity != null && selCity.selectionRing != null) selCity.selectionRing.SetActive(false);
 
+        // La unidad que se sacó de la ciudad al mapa vuelve a esconderse al dejar de estar seleccionada
+        if (selUnit != null && selUnit != u) selUnit.shownOnMap = false;
+
+        // Elegir una unidad desde la vista de la ciudad: se vuelve a la vista general con la unidad visible y seleccionada
+        if (u != null && FreeCamera.ViewedCity != null && game.IsGarrisoned(u))
+        {
+            u.shownOnMap = true;
+            FreeCamera.ExitCityView();
+        }
+
         selUnit = u;
         selCity = c;
     }
@@ -318,7 +328,7 @@ public partial class CivUI : MonoBehaviour
             return;
         }
 
-        if (enemyUnit != null && enemyUnit.owner != game.human)
+        if (enemyUnit != null && enemyUnit.owner != game.human && !selUnit.IsTrader)
         {
             game.OrderAttack(selUnit, enemyUnit);
             return;
@@ -328,6 +338,13 @@ public partial class CivUI : MonoBehaviour
 
         if (enemyCity != null && enemyCity.owner != game.human)
         {
+            // Caravana o mercader: la ciudad de una civilización en paz es un destino de comercio, no un objetivo
+            if (selUnit.IsTrader && !game.AtWar(selUnit.owner, enemyCity.owner))
+            {
+                game.OrderMove(selUnit, enemyCity.cell);
+                return;
+            }
+
             game.OrderAttack(selUnit, enemyCity);
             return;
         }
@@ -420,6 +437,7 @@ public partial class CivUI : MonoBehaviour
         foreach (Unit u in game.allUnits)
         {
             if (!u.alive || u.carriedBy != null) continue;
+            if (u.view != null && !u.view.activeSelf) continue;   // oculta (p. ej. dentro de una ciudad que no se está viendo)
             if (onlyHuman && u.owner != game.human) continue;
             if (u.owner != game.human && !game.IsVisible(u.cell)) continue;   // niebla de guerra: no se puede elegir lo que no se ve
 
@@ -521,7 +539,7 @@ public partial class CivUI : MonoBehaviour
         GUILayout.BeginArea(r);
         GUILayout.BeginHorizontal();
 
-        GUILayout.Label("<b><color=#" + Hex(h.color) + ">" + h.name + "</color></b>", label, GUILayout.Width(110));
+        LocGUI.LayoutLabel("<b><color=#" + Hex(h.color) + ">" + h.name + "</color></b>", label, GUILayout.Width(110));
         IconLabel(ResourceIcons.Gold, Mathf.FloorToInt(h.gold) + " (" + Signed(h.goldRate) + "/s)", 150f, label);
 
         string research = h.researching
@@ -529,12 +547,12 @@ public partial class CivUI : MonoBehaviour
             : "— (pulsa T)";
         IconLabel(ResourceIcons.Science, Signed(h.scienceRate) + "/s: " + research, 300f, label);
 
-        if (GUILayout.Button("Ciudades: " + h.cities.Count + (cityListOpen ? " ▲" : " ▼"), GUILayout.Width(120))) cityListOpen = !cityListOpen;
-        GUILayout.Label("Unidades: " + h.units.Count, label, GUILayout.Width(90));
-        GUILayout.Label("<b>" + EraName(h) + "</b>", label, GUILayout.Width(130));
+        if (LocGUI.LayoutButton("Ciudades: " + h.cities.Count + (cityListOpen ? " ▲" : " ▼"), GUILayout.Width(120))) cityListOpen = !cityListOpen;
+        LocGUI.LayoutLabel("Unidades: " + h.units.Count, label, GUILayout.Width(90));
+        LocGUI.LayoutLabel("<b>" + EraName(h) + "</b>", label, GUILayout.Width(130));
         GUILayout.FlexibleSpace();
 
-        if (GUILayout.Button(game.gameSpeed <= 0f ? "▶" : "❚❚", GUILayout.Width(36))) HandleKeyPause();
+        if (LocGUI.LayoutButton(game.gameSpeed <= 0f ? "▶" : "❚❚", GUILayout.Width(36))) HandleKeyPause();
 
         GUILayout.EndHorizontal();
         GUILayout.EndArea();
@@ -551,11 +569,11 @@ public partial class CivUI : MonoBehaviour
         Rect r = Panel(new Rect(x, 36f, width, 12f + Mathf.Max(1, h.cities.Count) * rowH));
 
         GUILayout.BeginArea(new Rect(r.x + 6, r.y + 6, r.width - 12, r.height - 12));
-        if (h.cities.Count == 0) GUILayout.Label("Aún no tienes ciudades.", label);
+        if (h.cities.Count == 0) LocGUI.LayoutLabel("Aún no tienes ciudades.", label);
         foreach (City c in h.cities)
         {
             if (!c.alive) continue;
-            if (GUILayout.Button(c.name + "  (" + c.pop + ")", GUILayout.Height(rowH - 4f)))
+            if (LocGUI.LayoutButton(c.name + "  (" + c.pop + ")", GUILayout.Height(rowH - 4f)))
             {
                 Select(null, c);
                 game.FocusOn(c.cell);
@@ -579,8 +597,8 @@ public partial class CivUI : MonoBehaviour
     static void IconLabel(Texture2D icon, string text, float width, GUIStyle style)
     {
         GUILayout.BeginHorizontal(GUILayout.Width(width));
-        GUILayout.Label(icon, GUILayout.Width(18f), GUILayout.Height(18f));
-        GUILayout.Label(text, style, GUILayout.Width(width - 22f));
+        LocGUI.LayoutLabel(icon, GUILayout.Width(18f), GUILayout.Height(18f));
+        LocGUI.LayoutLabel(text, style, GUILayout.Width(width - 22f));
         GUILayout.EndHorizontal();
     }
 
@@ -611,8 +629,8 @@ public partial class CivUI : MonoBehaviour
 
             string text = "<color=#" + Hex(e.color) + ">" + e.text + "</color>";
             Rect r = new Rect(vw - 460f, y, 450f, 22f);
-            GUI.Label(new Rect(r.x + 1, r.y + 1, r.width, r.height), "<color=black>" + StripTags(e.text) + "</color>", small);
-            GUI.Label(r, text, small);
+            LocGUI.Label(new Rect(r.x + 1, r.y + 1, r.width, r.height), "<color=black>" + StripTags(e.text) + "</color>", small);
+            LocGUI.Label(r, text, small);
             y += 20f;
         }
 
@@ -625,20 +643,20 @@ public partial class CivUI : MonoBehaviour
     {
         Rect r = Panel(new Rect(10, vh - 266, 330, 256));
         GUILayout.BeginArea(new Rect(r.x + 8, r.y + 6, r.width - 16, r.height - 12));
-        GUILayout.Label("<b>Controles</b>", label);
-        GUILayout.Label("Clic izq.: seleccionar   Clic der.: mover / atacar", small);
-        GUILayout.Label("Mayús + clic der. (colono): mover y fundar", small);
-        GUILayout.Label("B: fundar ciudad   R o Ctrl+clic der.: carretera", small);
-        GUILayout.Label("T: tecnologías   C: centrar", small);
-        GUILayout.Label("Espacio: pausa   H: ocultar", small);
-        GUILayout.Label("Cursores / , . + - : mover y girar la cámara", small);
-        GUILayout.Label("F: fortificar unidad militar (+25%, +50% en ciudad con muro)", small);
-        GUILayout.Label("N: minimapa (clic para ir a un punto)", small);
-        GUILayout.Label("F1: guía del juego (controles, tecnologías, unidades)", small);
-        GUILayout.Label("F2: activar o silenciar los efectos de sonido", small);
-        GUILayout.Label("D: diplomacia (paz, alianzas, guerra)", small);
-        GUILayout.Label("Mayús+T: desarrollar todas las tecnologías de la edad", small);
-        GUILayout.Label("Esc: menú de pausa", small);
+        LocGUI.LayoutLabel("<b>Controles</b>", label);
+        LocGUI.LayoutLabel("Clic izq.: seleccionar   Clic der.: mover / atacar", small);
+        LocGUI.LayoutLabel("Mayús + clic der. (colono): mover y fundar", small);
+        LocGUI.LayoutLabel("B: fundar ciudad   R o Ctrl+clic der.: carretera", small);
+        LocGUI.LayoutLabel("T: tecnologías   C: centrar", small);
+        LocGUI.LayoutLabel("Espacio: pausa   H: ocultar", small);
+        LocGUI.LayoutLabel("Cursores / , . + - : mover y girar la cámara", small);
+        LocGUI.LayoutLabel("F: fortificar unidad militar (+25%, +50% en ciudad con muro)", small);
+        LocGUI.LayoutLabel("N: minimapa (clic para ir a un punto)", small);
+        LocGUI.LayoutLabel("F1: guía del juego (controles, tecnologías, unidades)", small);
+        LocGUI.LayoutLabel("F2: activar o silenciar los efectos de sonido", small);
+        LocGUI.LayoutLabel("D: diplomacia (paz, alianzas, guerra)", small);
+        LocGUI.LayoutLabel("Mayús+T: desarrollar todas las tecnologías de la edad", small);
+        LocGUI.LayoutLabel("Esc: menú de pausa", small);
         GUILayout.EndArea();
     }
 
@@ -658,8 +676,8 @@ public partial class CivUI : MonoBehaviour
         Rect r = Panel(new Rect(vw / 2f - 220f, vh - panelHeight - 10f, 440f, panelHeight));
         GUILayout.BeginArea(new Rect(r.x + 10, r.y + 8, r.width - 20, r.height - 16));
 
-        GUILayout.Label("<b><color=#" + Hex(u.owner.color) + ">" + u.def.name + "</color></b> de " + u.owner.name, title);
-        GUILayout.Label("Vida: " + Mathf.CeilToInt(u.hp) + "/" + u.def.hp
+        LocGUI.LayoutLabel("<b><color=#" + Hex(u.owner.color) + ">" + u.def.name + "</color></b> de " + u.owner.name, title);
+        LocGUI.LayoutLabel("Vida: " + Mathf.CeilToInt(u.hp) + "/" + u.def.hp
                         + (u.def.IsMilitary ? "    Ataque: " + u.def.attack + "    Defensa: " + u.def.defense + (u.fortified ? " (+" + Mathf.RoundToInt(100f * game.FortifyBonusOf(u)) + "% fortificada)" : u.fortifying ? " (fortificándose…)" : "") : ""), label);
 
         if (mine)
@@ -670,7 +688,7 @@ public partial class CivUI : MonoBehaviour
                 string fortifyText = u.fortified ? "Quitar fortificación (F)"
                     : u.fortifying ? "Fortificándose… " + Mathf.CeilToInt(Unit.FortifySeconds - u.fortifyProgress) + " s (F: cancelar)"
                     : "Fortificar (10 s): +25% de defensa, +50% con muro (F)";
-                if (GUILayout.Button(fortifyText)) game.ToggleFortify(u);
+                if (LocGUI.LayoutButton(fortifyText)) game.ToggleFortify(u);
                 GUI.enabled = true;
             }
 
@@ -678,17 +696,17 @@ public partial class CivUI : MonoBehaviour
             {
                 bool can = !u.Moving && game.CanFound(u.owner, u.cell);
                 GUI.enabled = can;
-                if (GUILayout.Button("Fundar ciudad (B)")) game.TryFound(u);
+                if (LocGUI.LayoutButton("Fundar ciudad (B)")) game.TryFound(u);
                 GUI.enabled = true;
 
-                if (!can) GUILayout.Label("Necesita tierra libre a 4+ casillas de otra ciudad.", small);
+                if (!can) LocGUI.LayoutLabel("Necesita tierra libre a 4+ casillas de otra ciudad.", small);
 
                 City here = game.grid.cityAt[u.cell];
                 bool canJoin = !u.Moving && here != null && here.owner == u.owner;
                 GUI.enabled = canJoin;
-                if (GUILayout.Button("Unirse a la ciudad (+1 población) (J)")) game.TryJoin(u);
+                if (LocGUI.LayoutButton("Unirse a la ciudad (+1 población) (J)")) game.TryJoin(u);
                 GUI.enabled = true;
-                if (!canJoin) GUILayout.Label("Unirse: entra en una ciudad propia (Ctrl + clic der. sobre ella para ir).", small);
+                if (!canJoin) LocGUI.LayoutLabel("Unirse: entra en una ciudad propia (Ctrl + clic der. sobre ella para ir).", small);
             }
             else if (CanRoad(u))
             {
@@ -696,88 +714,88 @@ public partial class CivUI : MonoBehaviour
                 bool canIrrigate = hasAgriculture && !u.Moving && game.grid.CanIrrigate(u.cell);
                 if (u.irrigateAt >= 0)
                 {
-                    GUILayout.Label("Irrigando… " + Mathf.FloorToInt(u.irrigateProgress * 100f) + "%", small);
+                    LocGUI.LayoutLabel("Irrigando… " + Mathf.FloorToInt(u.irrigateProgress * 100f) + "%", small);
                 }
                 else
                 {
                     GUI.enabled = canIrrigate;
-                    if (GUILayout.Button("Irrigar esta casilla (I)")) game.OrderIrrigate(u, u.cell);
+                    if (LocGUI.LayoutButton("Irrigar esta casilla (I)")) game.OrderIrrigate(u, u.cell);
                     GUI.enabled = true;
-                    if (!hasAgriculture) GUILayout.Label("Irrigar: descubre la Agricultura (T).", small);
-                    else if (!canIrrigate) GUILayout.Label("Irrigar: tierra que no sea montaña (Mayús + clic der. en otra casilla).", small);
+                    if (!hasAgriculture) LocGUI.LayoutLabel("Irrigar: descubre la Agricultura (T).", small);
+                    else if (!canIrrigate) LocGUI.LayoutLabel("Irrigar: tierra que no sea montaña (Mayús + clic der. en otra casilla).", small);
                 }
 
                 bool hasMining = game.human.Has(TechKind.Mining);
                 bool canMine = hasMining && !u.Moving && game.grid.CanMine(u.cell);
                 if (u.mineAt >= 0)
                 {
-                    GUILayout.Label("Construyendo mina… " + Mathf.FloorToInt(u.mineProgress * 100f) + "%", small);
+                    LocGUI.LayoutLabel("Construyendo mina… " + Mathf.FloorToInt(u.mineProgress * 100f) + "%", small);
                 }
                 else
                 {
                     GUI.enabled = canMine;
-                    if (GUILayout.Button("Construir mina aquí (M)")) game.OrderMine(u, u.cell);
+                    if (LocGUI.LayoutButton("Construir mina aquí (M)")) game.OrderMine(u, u.cell);
                     GUI.enabled = true;
-                    if (!hasMining) GUILayout.Label("Minas: descubre la Minería (T).", small);
-                    else if (!canMine) GUILayout.Label("Minas: monte o montaña (Mayús + clic der. en otra casilla).", small);
+                    if (!hasMining) LocGUI.LayoutLabel("Minas: descubre la Minería (T).", small);
+                    else if (!canMine) LocGUI.LayoutLabel("Minas: monte o montaña (Mayús + clic der. en otra casilla).", small);
                 }
 
                 bool hasPlow = game.human.Has(TechKind.HeavyPlow);
                 bool canFarm = hasPlow && !u.Moving && game.grid.CanFarm(u.cell);
                 if (u.farmAt >= 0)
                 {
-                    GUILayout.Label("Construyendo granja… " + Mathf.FloorToInt(u.farmProgress * 100f) + "%", small);
+                    LocGUI.LayoutLabel("Construyendo granja… " + Mathf.FloorToInt(u.farmProgress * 100f) + "%", small);
                 }
                 else
                 {
                     GUI.enabled = canFarm;
-                    if (GUILayout.Button("Construir granja aquí (F)")) game.OrderFarm(u, u.cell);
+                    if (LocGUI.LayoutButton("Construir granja aquí (F)")) game.OrderFarm(u, u.cell);
                     GUI.enabled = true;
-                    if (!hasPlow) GUILayout.Label("Granjas: descubre el Arado y collera (T).", small);
-                    else if (!canFarm) GUILayout.Label("Granjas: no en monte ni montaña (Alt + clic der. en otra casilla).", small);
+                    if (!hasPlow) LocGUI.LayoutLabel("Granjas: descubre el Arado y collera (T).", small);
+                    else if (!canFarm) LocGUI.LayoutLabel("Granjas: no en monte ni montaña (Alt + clic der. en otra casilla).", small);
                 }
 
                 if (u.roadGoal >= 0)
                 {
-                    GUILayout.Label((u.railMode ? "Construyendo ferrocarril hacia " : "Construyendo carretera hacia ") + game.RoadGoalName(u.roadGoal) + " (tramo " + Mathf.FloorToInt(u.roadProgress * 100f)
+                    LocGUI.LayoutLabel((u.railMode ? "Construyendo ferrocarril hacia " : "Construyendo carretera hacia ") + game.RoadGoalName(u.roadGoal) + " (tramo " + Mathf.FloorToInt(u.roadProgress * 100f)
                                     + "%, faltan " + u.path.Count + " casillas)", small);
                 }
                 else if (roadPick > 0)
                 {
-                    GUILayout.Label("<b>" + (roadPick == 2 ? "Ferrocarril" : "Carretera") + ":</b> haz clic en la casilla de destino (clic der.: cancelar)", small);
+                    LocGUI.LayoutLabel("<b>" + (roadPick == 2 ? "Ferrocarril" : "Carretera") + ":</b> haz clic en la casilla de destino (clic der.: cancelar)", small);
                 }
                 else if (!game.human.Has(TechKind.Wheel))
                 {
-                    GUILayout.Label("Caminos: descubre la Rueda (T).", small);
+                    LocGUI.LayoutLabel("Caminos: descubre la Rueda (T).", small);
                 }
-                else if (GUILayout.Button("Construir carretera hasta una casilla (R)"))
+                else if (LocGUI.LayoutButton("Construir carretera hasta una casilla (R)"))
                 {
                     StartRoadMode();
                 }
 
-                if (u.roadGoal < 0 && roadPick == 0 && game.human.Has(TechKind.Railway) && GUILayout.Button("Mejorar a ferrocarril hasta una casilla (V)"))
+                if (u.roadGoal < 0 && roadPick == 0 && game.human.Has(TechKind.Railway) && LocGUI.LayoutButton("Mejorar a ferrocarril hasta una casilla (V)"))
                     StartRoadMode(2);
             }
             else if (u.IsTrader)
             {
                 string home = u.homeCity != null && u.homeCity.alive ? u.homeCity.name : "—";
-                GUILayout.Label("Ciudad de origen: " + home, label);
+                LocGUI.LayoutLabel("Ciudad de origen: " + home, label);
 
                 string blocker = game.TradeBlocker(u);
                 GUI.enabled = blocker == null;
-                if (GUILayout.Button("Establecer ruta comercial (K)")) game.TryTrade(u);
+                if (LocGUI.LayoutButton("Establecer ruta comercial (K)")) game.TryTrade(u);
                 GUI.enabled = true;
-                GUILayout.Label(blocker ?? "Une " + u.homeCity.name + " con esta ciudad: +" + Mathf.RoundToInt((u.kind == UnitKind.Merchant ? CivGame.MerchantTradeBonus : CivGame.TradeBonus) * 100f) + "% de oro y ciencia en ambas.", small);
+                LocGUI.LayoutLabel(blocker ?? "Une " + u.homeCity.name + " con esta ciudad: +" + CivGame.RouteText(game.RouteBonus(u.kind == UnitKind.Merchant, u.homeCity, game.grid.cityAt[u.cell])) + " en ambas.", small);
             }
             else if (u.def.capacity > 0)
             {
-                GUILayout.Label(u.cargo.Count > 0 ? "Transporta (" + u.cargo.Count + "/" + u.def.capacity + "): " + string.Join(", ", u.cargo.ConvertAll(c => c.def.name)) : "Vacío (capacidad " + u.def.capacity + ")", label);
-                GUILayout.Label("Embarcar: clic der. de una unidad sobre el barco.", small);
-                GUILayout.Label("Desembarcar: clic der. del barco en una casilla de tierra.", small);
+                LocGUI.LayoutLabel(u.cargo.Count > 0 ? "Transporta (" + u.cargo.Count + "/" + u.def.capacity + "): " + string.Join(", ", u.cargo.ConvertAll(c => c.def.name)) : "Vacío (capacidad " + u.def.capacity + ")", label);
+                LocGUI.LayoutLabel("Embarcar: clic der. de una unidad sobre el barco.", small);
+                LocGUI.LayoutLabel("Desembarcar: clic der. del barco en una casilla de tierra.", small);
             }
             else
             {
-                GUILayout.Label("Clic derecho: moverse o atacar al enemigo.", small);
+                LocGUI.LayoutLabel("Clic derecho: moverse o atacar al enemigo.", small);
             }
 
             UnitKind? upgrade = game.UpgradeTarget(u.owner, u.kind);
@@ -785,12 +803,12 @@ public partial class CivUI : MonoBehaviour
             {
                 string upgradeBlocker = game.UpgradeBlocker(u);
                 GUI.enabled = upgradeBlocker == null;
-                if (GUILayout.Button("Mejorar a " + GameDefs.Units[upgrade.Value].name + " (" + game.UpgradePrice(u) + " de oro) (U)")) game.TryUpgrade(u);
+                if (LocGUI.LayoutButton("Mejorar a " + GameDefs.Units[upgrade.Value].name + " (" + game.UpgradePrice(u) + " de oro) (U)")) game.TryUpgrade(u);
                 GUI.enabled = true;
-                if (upgradeBlocker != null) GUILayout.Label(upgradeBlocker, small);
+                if (upgradeBlocker != null) LocGUI.LayoutLabel(upgradeBlocker, small);
             }
 
-            if (GUILayout.Button("Detener"))
+            if (LocGUI.LayoutButton("Detener"))
             {
                 u.path.Clear();
                 u.targetUnit = null;
@@ -828,14 +846,14 @@ public partial class CivUI : MonoBehaviour
         Rect r = Panel(new Rect(vw / 2f - 270f, vh - height - 10f, 540f, height));
         GUILayout.BeginArea(new Rect(r.x + 10, r.y + 8, r.width - 20, r.height - 16));
 
-        GUILayout.Label("<b><color=#" + Hex(c.owner.color) + ">" + c.name + "</color></b> — " + c.owner.name, title);
-        GUILayout.Label("Población " + c.pop + "    Vida " + Mathf.CeilToInt(c.hp) + "/" + Mathf.CeilToInt(c.maxHp), label);
+        LocGUI.LayoutLabel("<b><color=#" + Hex(c.owner.color) + ">" + c.name + "</color></b> — " + c.owner.name, title);
+        LocGUI.LayoutLabel("Población " + c.pop + "    Vida " + Mathf.CeilToInt(c.hp) + "/" + Mathf.CeilToInt(c.maxHp), label);
 
         if (mine)
         {
-            GUILayout.Label("Felicidad: <b>" + CivGame.MoodName(c.mood) + "</b> (" + c.happiness.ToString("+0.0;-0.0;0") + ")", label);
+            LocGUI.LayoutLabel("Felicidad: <b>" + CivGame.MoodName(c.mood) + "</b> (" + c.happiness.ToString("+0.0;-0.0;0") + ")", label);
             if (c.mood <= CivGame.MoodUnhappy)
-                GUILayout.Label("Sube con Baños públicos, Biblioteca, Mercado, maravillas o soldados dentro de la ciudad.", small);
+                LocGUI.LayoutLabel("Sube con Baños públicos, Biblioteca, Mercado, maravillas o soldados dentro de la ciudad.", small);
 
             float surplus = c.FoodSurplus;
             GUILayout.BeginHorizontal();
@@ -848,13 +866,13 @@ public partial class CivUI : MonoBehaviour
             string build = c.hasItem
                 ? c.ItemName + " " + Mathf.FloorToInt(c.prodStock) + "/" + c.ItemCost
                 : "Nada (elige abajo)";
-            GUILayout.Label("<b>Construyendo:</b> " + build, label);
+            LocGUI.LayoutLabel("<b>Construyendo:</b> " + build, label);
 
             if (c.hasItem)
             {
                 int price = game.BuyPrice(c);
                 GUI.enabled = game.human.gold >= price;
-                if (GUILayout.Button("Comprar (" + price + " oro)")) game.Buy(c);
+                if (LocGUI.LayoutButton("Comprar (" + price + " oro)")) game.Buy(c);
                 GUI.enabled = true;
             }
 
@@ -865,7 +883,7 @@ public partial class CivUI : MonoBehaviour
                 if (!game.Available(c, kv.Key)) continue;
                 if (inRow == ButtonsPerRow) { GUILayout.EndHorizontal(); GUILayout.BeginHorizontal(); inRow = 0; }
                 inRow++;
-                if (GUILayout.Button(kv.Value.name + " (" + kv.Value.cost + ")")) game.SetProduction(c, kv.Key);
+                if (LocGUI.LayoutButton(kv.Value.name + " (" + kv.Value.cost + ")")) game.SetProduction(c, kv.Key);
             }
             GUILayout.EndHorizontal();
 
@@ -878,21 +896,21 @@ public partial class CivUI : MonoBehaviour
                 any = true;
                 if (inRow == ButtonsPerRow) { GUILayout.EndHorizontal(); GUILayout.BeginHorizontal(); inRow = 0; }
                 inRow++;
-                if (GUILayout.Button(kv.Value.name + " (" + c.BuildingCost(kv.Key) + ")")) game.SetProduction(c, kv.Key);
+                if (LocGUI.LayoutButton(kv.Value.name + " (" + c.BuildingCost(kv.Key) + ")")) game.SetProduction(c, kv.Key);
             }
-            if (!any) GUILayout.Label("Sin edificios disponibles", small);
+            if (!any) LocGUI.LayoutLabel("Sin edificios disponibles", small);
             GUILayout.EndHorizontal();
 
             List<string> partners = new List<string>();
-            foreach (City p in c.tradePartners) if (p.alive && p.owner == c.owner) partners.Add(p.name);
+            foreach (City p in c.tradePartners) if (game.TradeActive(c, p)) partners.Add(p.owner == c.owner ? p.name : p.name + " (" + p.owner.name + ")");
             if (partners.Count > 0)
-                GUILayout.Label("Comercio con: " + string.Join(", ", partners) + " (+" + Mathf.RoundToInt(game.TradeBonusOf(c) * 100f) + "% oro y ciencia)", small);
+                LocGUI.LayoutLabel("Comercio con: " + string.Join(", ", partners) + " (+" + CivGame.RouteText(game.TradeBonusOf(c)) + ")", small);
 
             if (c.buildings.Count > 0)
             {
                 List<string> names = new List<string>();
                 foreach (BuildingKind b in c.buildings) names.Add(GameDefs.Buildings[b].name);
-                GUILayout.Label("Edificios: " + string.Join(", ", names), small);
+                LocGUI.LayoutLabel("Edificios: " + string.Join(", ", names), small);
             }
         }
 
@@ -911,7 +929,7 @@ public partial class CivUI : MonoBehaviour
         Rect r = Panel(new Rect(vw / 2f - 240f, 60f, 480f, 70f + Mathf.Max(1, shown.Count) * 34f));
 
         GUILayout.BeginArea(new Rect(r.x + 12, r.y + 8, r.width - 24, r.height - 16));
-        GUILayout.Label("<b>Tecnologías</b>", title);
+        LocGUI.LayoutLabel("<b>Tecnologías</b>", title);
 
         foreach (KeyValuePair<TechKind, TechDef> kv in shown)
         {
@@ -919,13 +937,13 @@ public partial class CivUI : MonoBehaviour
 
             bool current = h.researching && h.currentTech == kv.Key;
 
-            GUILayout.Label((current ? "▶ " : "") + kv.Value.name + " — " + kv.Value.unlocks, label, GUILayout.Width(310));
+            LocGUI.LayoutLabel((current ? "▶ " : "") + kv.Value.name + " — " + kv.Value.unlocks, label, GUILayout.Width(310));
 
             string text = current
                 ? Mathf.FloorToInt(100f * h.researchProgress / kv.Value.cost) + "%"
                 : "Investigar (" + kv.Value.cost + ")";
 
-            if (GUILayout.Button(text, GUILayout.Width(120))) game.StartResearch(h, kv.Key);
+            if (LocGUI.LayoutButton(text, GUILayout.Width(120))) game.StartResearch(h, kv.Key);
 
             GUILayout.EndHorizontal();
         }
@@ -946,19 +964,19 @@ public partial class CivUI : MonoBehaviour
         Rect r = Panel(new Rect(10f, 110f, 500f, height));
 
         GUILayout.BeginArea(new Rect(r.x + 12, r.y + 8, r.width - 24, r.height - 16));
-        GUILayout.Label("<b>Diplomacia</b>  (D: cerrar)", title);
+        LocGUI.LayoutLabel("<b>Diplomacia</b>  (D: cerrar)", title);
 
-        if (others.Count == 0) GUILayout.Label("No hay otras civilizaciones.", label);
+        if (others.Count == 0) LocGUI.LayoutLabel("No hay otras civilizaciones.", label);
 
         foreach (Civ c in others)
         {
             GUILayout.BeginHorizontal();
 
-            GUILayout.Label("<b><color=#" + Hex(c.color) + ">" + c.name + "</color></b>", label, GUILayout.Width(90));
+            LocGUI.LayoutLabel("<b><color=#" + Hex(c.color) + ">" + c.name + "</color></b>", label, GUILayout.Width(90));
 
             if (!c.alive)
             {
-                GUILayout.Label("Eliminada", label);
+                LocGUI.LayoutLabel("Eliminada", label);
                 GUILayout.EndHorizontal();
                 continue;
             }
@@ -967,27 +985,27 @@ public partial class CivUI : MonoBehaviour
             string stateText = state == DiploState.War ? "<color=#ff6a5a>Guerra</color>"
                              : state == DiploState.Alliance ? "<color=#7ad7ff>Alianza</color>" : "<color=#8fe08f>Paz</color>";
 
-            GUILayout.Label(stateText, label, GUILayout.Width(60));
-            GUILayout.Label(game.ScoreOf(c) + " pts", label, GUILayout.Width(70));
+            LocGUI.LayoutLabel(stateText, label, GUILayout.Width(60));
+            LocGUI.LayoutLabel(game.ScoreOf(c) + " pts", label, GUILayout.Width(70));
 
             if (state == DiploState.War)
             {
-                if (GUILayout.Button("Proponer paz", GUILayout.Width(110))) diploMessage = game.ProposePeace(c);
+                if (LocGUI.LayoutButton("Proponer paz", GUILayout.Width(110))) diploMessage = game.ProposePeace(c);
             }
             else if (state == DiploState.Peace)
             {
-                if (GUILayout.Button("Proponer alianza", GUILayout.Width(120))) diploMessage = game.ProposeAlliance(c);
-                if (GUILayout.Button("Declarar guerra", GUILayout.Width(110))) diploMessage = game.DeclareWar(c);
+                if (LocGUI.LayoutButton("Proponer alianza", GUILayout.Width(120))) diploMessage = game.ProposeAlliance(c);
+                if (LocGUI.LayoutButton("Declarar guerra", GUILayout.Width(110))) diploMessage = game.DeclareWar(c);
             }
             else
             {
-                if (GUILayout.Button("Romper alianza", GUILayout.Width(110))) diploMessage = game.DeclareWar(c);
+                if (LocGUI.LayoutButton("Romper alianza", GUILayout.Width(110))) diploMessage = game.DeclareWar(c);
             }
 
             GUILayout.EndHorizontal();
         }
 
-        if (!string.IsNullOrEmpty(diploMessage)) GUILayout.Label(diploMessage, small);
+        if (!string.IsNullOrEmpty(diploMessage)) LocGUI.LayoutLabel(diploMessage, small);
 
         GUILayout.EndArea();
     }
@@ -1010,10 +1028,10 @@ public partial class CivUI : MonoBehaviour
             GUILayout.BeginHorizontal();
 
             string what = p.kind == DiploState.Peace ? "te propone la paz" : "te propone una alianza";
-            GUILayout.Label("<b><color=#" + Hex(p.from.color) + ">" + p.from.name + "</color></b> " + what, label, GUILayout.Width(290));
+            LocGUI.LayoutLabel("<b><color=#" + Hex(p.from.color) + ">" + p.from.name + "</color></b> " + what, label, GUILayout.Width(290));
 
-            if (GUILayout.Button("Aceptar", GUILayout.Width(80))) game.RespondProposal(p, true);
-            if (GUILayout.Button("Rechazar", GUILayout.Width(80))) game.RespondProposal(p, false);
+            if (LocGUI.LayoutButton("Aceptar", GUILayout.Width(80))) game.RespondProposal(p, true);
+            if (LocGUI.LayoutButton("Rechazar", GUILayout.Width(80))) game.RespondProposal(p, false);
 
             GUILayout.EndHorizontal();
             GUILayout.EndArea();
@@ -1073,33 +1091,33 @@ public partial class CivUI : MonoBehaviour
         float w = 380f, h = pauseConfirmQuit ? 230f : 290f;
         Rect r = Panel(new Rect((vw - w) / 2f, (vh - h) / 2f, w, h));
 
-        GUI.Label(new Rect(r.x, r.y + 14f, r.width, 48f), "PAUSA", big);
+        LocGUI.Label(new Rect(r.x, r.y + 14f, r.width, 48f), "PAUSA", big);
 
         if (!pauseConfirmQuit)
         {
             float bx = r.x + 50f, bw = r.width - 100f, y = r.y + 76f;
 
-            if (GUI.Button(new Rect(bx, y, bw, 38f), "Reanudar  (Esc)")) ClosePause();
+            if (LocGUI.Button(new Rect(bx, y, bw, 38f), "Reanudar  (Esc)")) ClosePause();
             y += 50f;
 
-            if (GUI.Button(new Rect(bx, y, bw, 38f), "Guardar partida  (F5)"))
+            if (LocGUI.Button(new Rect(bx, y, bw, 38f), "Guardar partida  (F5)"))
                 pauseMessage = game.SaveGame() ? "Partida guardada" : "No se pudo guardar";
             y += 50f;
 
-            if (GUI.Button(new Rect(bx, y, bw, 38f), "Salir del juego")) pauseConfirmQuit = true;
+            if (LocGUI.Button(new Rect(bx, y, bw, 38f), "Salir al menú principal")) pauseConfirmQuit = true;
 
             if (!string.IsNullOrEmpty(pauseMessage))
             {
                 if (headStyle == null) headStyle = new GUIStyle(title) { alignment = TextAnchor.MiddleCenter };
-                GUI.Label(new Rect(r.x, r.yMax - 40f, r.width, 28f), pauseMessage, headStyle);
+                LocGUI.Label(new Rect(r.x, r.yMax - 40f, r.width, 28f), pauseMessage, headStyle);
             }
         }
         else
         {
             if (headStyle == null) headStyle = new GUIStyle(title) { alignment = TextAnchor.MiddleCenter };
-            GUI.Label(new Rect(r.x + 20f, r.y + 70f, r.width - 40f, 54f), "¿Salir del juego?\nSe perderá lo que no hayas guardado.", headStyle);
+            LocGUI.Label(new Rect(r.x + 20f, r.y + 70f, r.width - 40f, 54f), "¿Volver al menú principal?\nSe perderá lo que no hayas guardado.", headStyle);
 
-            if (GUI.Button(new Rect(r.x + 30f, r.yMax - 62f, 150f, 38f), "Sí, salir"))
+            if (LocGUI.Button(new Rect(r.x + 30f, r.yMax - 62f, 150f, 38f), "Sí, salir"))
             {
                 // Antes de cerrar se muestra la pantalla de fin de partida con las puntuaciones
                 pauseOpen = false;
@@ -1107,7 +1125,7 @@ public partial class CivUI : MonoBehaviour
                 game.abandoned = true;
             }
 
-            if (GUI.Button(new Rect(r.xMax - 180f, r.yMax - 62f, 150f, 38f), "Cancelar")) pauseConfirmQuit = false;
+            if (LocGUI.Button(new Rect(r.xMax - 180f, r.yMax - 62f, 150f, 38f), "Cancelar")) pauseConfirmQuit = false;
         }
     }
 
@@ -1151,16 +1169,16 @@ public partial class CivUI : MonoBehaviour
         float h = 264f + ranking.Count * rowH;   // cabecera + filas + nota (2 líneas) + botón, sin recortar nada
         Rect r = Panel(new Rect((vw - w) / 2f, Mathf.Max(20f, (vh - h) / 2f), w, h));
 
-        GUI.Label(new Rect(r.x, r.y + 14f, r.width, 50f), "PARTIDA TERMINADA", big);
+        LocGUI.Label(new Rect(r.x, r.y + 14f, r.width, 50f), "PARTIDA TERMINADA", big);
         if (headStyle == null) headStyle = new GUIStyle(title) { alignment = TextAnchor.MiddleCenter };
-        GUI.Label(new Rect(r.x, r.y + 62f, r.width, 28f), headline, headStyle);
+        LocGUI.Label(new Rect(r.x, r.y + 62f, r.width, 28f), headline, headStyle);
 
         // Cabecera de la tabla
         float y = r.y + 104f;
-        GUI.Label(new Rect(r.x + 24f, y, 40f, 26f), "<b>#</b>", label);
-        GUI.Label(new Rect(r.x + 64f, y, 220f, 26f), "<b>Civilización</b>", label);
-        GUI.Label(new Rect(r.x + 300f, y, 110f, 26f), "<b>Puntos</b>", label);
-        GUI.Label(new Rect(r.x + 420f, y, 180f, 26f), "<b>Estado</b>", label);
+        LocGUI.Label(new Rect(r.x + 24f, y, 40f, 26f), "<b>#</b>", label);
+        LocGUI.Label(new Rect(r.x + 64f, y, 220f, 26f), "<b>Civilización</b>", label);
+        LocGUI.Label(new Rect(r.x + 300f, y, 110f, 26f), "<b>Puntos</b>", label);
+        LocGUI.Label(new Rect(r.x + 420f, y, 180f, 26f), "<b>Estado</b>", label);
         y += 30f;
 
         for (int i = 0; i < ranking.Count; i++)
@@ -1178,26 +1196,20 @@ public partial class CivUI : MonoBehaviour
             string status = isWinner ? "<b>GANADORA</b>" : c.alive ? "En juego" : "Eliminada";
             string you = c == game.human ? "  (tú)" : "";
 
-            GUI.Label(new Rect(r.x + 24f, y, 40f, 26f), (i + 1).ToString(), label);
-            GUI.Label(new Rect(r.x + 64f, y, 230f, 26f), "<b><color=#" + Hex(c.color) + ">" + c.name + "</color></b>" + you, label);
-            GUI.Label(new Rect(r.x + 300f, y, 110f, 26f), game.ScoreOf(c).ToString(), label);
-            GUI.Label(new Rect(r.x + 420f, y, 180f, 26f), status, label);
+            LocGUI.Label(new Rect(r.x + 24f, y, 40f, 26f), (i + 1).ToString(), label);
+            LocGUI.Label(new Rect(r.x + 64f, y, 230f, 26f), "<b><color=#" + Hex(c.color) + ">" + c.name + "</color></b>" + you, label);
+            LocGUI.Label(new Rect(r.x + 300f, y, 110f, 26f), game.ScoreOf(c).ToString(), label);
+            LocGUI.Label(new Rect(r.x + 420f, y, 180f, 26f), status, label);
             y += rowH;
         }
 
         // Nota con ajuste de línea (sin él, el texto largo se corta por la derecha)
         if (noteStyle == null) noteStyle = new GUIStyle(small) { wordWrap = true, alignment = TextAnchor.UpperCenter };
-        GUI.Label(new Rect(r.x + 24f, y + 8f, r.width - 48f, 40f),
+        LocGUI.Label(new Rect(r.x + 24f, y + 8f, r.width - 48f, 40f),
             "Puntos: ciudades 100, habitantes 20, tecnologías 40, edificios 15, maravillas 150 más, unidades 5, oro 1 por cada 20", noteStyle);
 
-        if (GUI.Button(new Rect(r.x + w / 2f - 100f, r.yMax - 52f, 200f, 36f), "Salir del juego"))
-        {
-#if UNITY_EDITOR
-            UnityEditor.EditorApplication.isPlaying = false;
-#else
-            Application.Quit();
-#endif
-        }
+        if (LocGUI.Button(new Rect(r.x + w / 2f - 110f, r.yMax - 52f, 220f, 36f), "Volver al menú principal"))
+            GameFlow.ReturnToMenu();
     }
 
     void DrawBanner()
@@ -1214,8 +1226,8 @@ public partial class CivUI : MonoBehaviour
         if (text == null) return;
 
         Rect r = new Rect(0, vh * 0.3f, vw, 60f);
-        GUI.Label(new Rect(r.x + 2, r.y + 2, r.width, r.height), text, labelShadow);
-        GUI.Label(r, text, big);
+        LocGUI.Label(new Rect(r.x + 2, r.y + 2, r.width, r.height), text, labelShadow);
+        LocGUI.Label(r, text, big);
     }
 
     // Vista de la ciudad: recursos que da cada casilla de su territorio.
@@ -1266,7 +1278,7 @@ public partial class CivUI : MonoBehaviour
             float x = sp.x / s;
             float yy = (Screen.height - sp.y) / s;
 
-            if (items.Count == 0) { GUI.Label(new Rect(x - 20f, yy - 9f, 40f, 18f), "—", centered); continue; }
+            if (items.Count == 0) { LocGUI.Label(new Rect(x - 20f, yy - 9f, 40f, 18f), "—", centered); continue; }
             DrawIconRow(x, yy, items, 14f, active ? 1f : 0.4f, centered, shadow);
         }
     }
@@ -1302,8 +1314,8 @@ public partial class CivUI : MonoBehaviour
 
             Rect t = new Rect(x, cy - 9f, widths[i] + 2f, 18f);
             GUI.color = new Color(1f, 1f, 1f, alpha);
-            GUI.Label(new Rect(t.x + 1, t.y + 1, t.width, t.height), items[i].text, shadowStyle);
-            GUI.Label(t, items[i].text, textStyle);
+            LocGUI.Label(new Rect(t.x + 1, t.y + 1, t.width, t.height), items[i].text, shadowStyle);
+            LocGUI.Label(t, items[i].text, textStyle);
 
             x += widths[i] + spacing;
         }
@@ -1319,7 +1331,7 @@ public partial class CivUI : MonoBehaviour
         GUIStyle centered = new GUIStyle(label) { alignment = TextAnchor.MiddleCenter };
         GUIStyle centeredSmall = new GUIStyle(small) { alignment = TextAnchor.MiddleCenter };
 
-        GUI.Label(new Rect(r.x, r.y + 4f, r.width, 22f),
+        LocGUI.Label(new Rect(r.x, r.y + 4f, r.width, 22f),
                   "<b><color=#" + Hex(city.owner.color) + ">" + city.name + "</color></b> — recursos totales", centered);
 
         GUIStyle value = new GUIStyle(label) { alignment = TextAnchor.MiddleCenter, fontSize = 16, fontStyle = FontStyle.Bold };
@@ -1335,7 +1347,7 @@ public partial class CivUI : MonoBehaviour
         };
         DrawIconRow(r.x + r.width / 2f, r.y + 38f, items, 22f, 1f, value, valueShadow);
 
-        GUI.Label(new Rect(r.x, r.y + 52f, r.width, 20f),
+        LocGUI.Label(new Rect(r.x, r.y + 52f, r.width, 20f),
                   "<color=#BBBBBB>por segundo · entre paréntesis, comida neta · casillas trabajadas: " + (city.worked.Count + 1) + "</color>", centeredSmall);
     }
 
@@ -1372,8 +1384,8 @@ public partial class CivUI : MonoBehaviour
             GUIStyle centeredShadow = new GUIStyle(centered);
             centeredShadow.normal.textColor = Color.black;
 
-            GUI.Label(new Rect(r.x + 1, r.y + 1, r.width, r.height), "<color=black>" + c.name + " " + c.pop + "</color>", centeredShadow);
-            GUI.Label(r, text, centered);
+            LocGUI.Label(new Rect(r.x + 1, r.y + 1, r.width, r.height), "<color=black>" + c.name + " " + c.pop + "</color>", centeredShadow);
+            LocGUI.Label(r, text, centered);
         }
     }
 }

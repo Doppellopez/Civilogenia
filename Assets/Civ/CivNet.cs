@@ -44,13 +44,15 @@ public class NetPeer
     public bool dead;
     public TcpClient tcp;
     public NetworkStream stream;
+    public bool viaRelay;       // conectado por Unity Relay en vez de TCP directo (ver CivNet.Relay.cs)
+    public RelayLink relay;
 }
 
 [Serializable] public class HelloMsg { public string name; public int civ; public int version = CivNet.ProtocolVersion; }
 [Serializable] public class LobbyMsg { public string text; }
 [Serializable] public class LogMsg { public string text; public float r, g, b; }
 
-public class CivNet : MonoBehaviour
+public partial class CivNet : MonoBehaviour
 {
     public const int ProtocolVersion = 1;
     public const int DefaultPort = 7777;
@@ -86,7 +88,13 @@ public class CivNet : MonoBehaviour
         go.AddComponent<CivNet>();
     }
 
-    void Awake() { Instance = this; }
+    void Awake()
+    {
+        Instance = this;
+        Application.runInBackground = true;   // el anfitrión debe seguir atendiendo a los jugadores aunque su ventana no tenga el foco
+    }
+
+    void Update() { RelayUpdate(); }   // Unity Transport se atiende desde el hilo principal
 
     void OnDestroy() { Shutdown(); }
     void OnApplicationQuit() { Shutdown(); }
@@ -154,6 +162,7 @@ public class CivNet : MonoBehaviour
     {
         try { if (listener != null) listener.Stop(); } catch (Exception) { }
         listener = null;
+        RelayStopAccepting();
     }
 
     // ---------------------------------------------------------------- Cliente
@@ -233,15 +242,22 @@ public class CivNet : MonoBehaviour
         }
     }
 
+    // Mensaje en el cable: [longitud int32][tipo byte][carga JSON]; la longitud cuenta el tipo y la carga
+    static byte[] Frame(NetMsg type, string json)
+    {
+        byte[] body = Encoding.UTF8.GetBytes(json ?? "");
+        byte[] frame = new byte[5 + body.Length];
+        BitConverter.GetBytes(body.Length + 1).CopyTo(frame, 0);
+        frame[4] = (byte)type;
+        Buffer.BlockCopy(body, 0, frame, 5, body.Length);
+        return frame;
+    }
+
     static bool SendRaw(NetworkStream stream, NetMsg type, string json)
     {
         try
         {
-            byte[] body = Encoding.UTF8.GetBytes(json ?? "");
-            byte[] frame = new byte[5 + body.Length];
-            BitConverter.GetBytes(body.Length + 1).CopyTo(frame, 0);
-            frame[4] = (byte)type;
-            Buffer.BlockCopy(body, 0, frame, 5, body.Length);
+            byte[] frame = Frame(type, json);
             lock (stream) stream.Write(frame, 0, frame.Length);
             return true;
         }
@@ -254,14 +270,30 @@ public class CivNet : MonoBehaviour
     /// <summary>Cliente: manda un mensaje al anfitrión.</summary>
     public void SendToHost(NetMsg type, string json)
     {
-        if (role != Role.Client || clientStream == null) return;
+        if (role != Role.Client) return;
+
+        if (relayClient)
+        {
+            if (!RelaySendToHost(type, json)) inbox.Enqueue(new NetPacket { peer = 0, type = NetMsg.Disconnected, json = "" });
+            return;
+        }
+
+        if (clientStream == null) return;
         if (!SendRaw(clientStream, type, json)) inbox.Enqueue(new NetPacket { peer = 0, type = NetMsg.Disconnected, json = "" });
     }
 
     /// <summary>Anfitrión: manda un mensaje a un jugador.</summary>
     public void SendTo(NetPeer peer, NetMsg type, string json)
     {
-        if (role != Role.Host || peer == null || peer.dead || peer.stream == null) return;
+        if (role != Role.Host || peer == null || peer.dead) return;
+
+        if (peer.viaRelay)
+        {
+            if (!RelaySend(peer, type, json)) inbox.Enqueue(new NetPacket { peer = peer.id, type = NetMsg.Disconnected, json = "" });
+            return;
+        }
+
+        if (peer.stream == null) return;
         if (!SendRaw(peer.stream, type, json)) inbox.Enqueue(new NetPacket { peer = peer.id, type = NetMsg.Disconnected, json = "" });
     }
 
@@ -285,6 +317,7 @@ public class CivNet : MonoBehaviour
         if (peer == null) return;
         peer.dead = true;
         try { if (peer.tcp != null) peer.tcp.Close(); } catch (Exception) { }
+        if (peer.viaRelay) RelayRemovePeer(peer);
         lock (peersLock) peers.Remove(peer);
     }
 
@@ -292,9 +325,10 @@ public class CivNet : MonoBehaviour
 
     public void Shutdown()
     {
-        if (role == Role.None && listener == null && clientTcp == null) return;
+        if (role == Role.None && listener == null && clientTcp == null && !RelayActive) return;
 
         closing = true;
+        RelayShutdown();
         try { if (listener != null) listener.Stop(); } catch (Exception) { }
         listener = null;
 

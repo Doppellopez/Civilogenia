@@ -132,6 +132,19 @@ public class IntroVideo : MonoBehaviour
         shown.imageSeconds = seconds;
     }
 
+    /// <summary>Cierra cualquier vídeo o imagen que esté en pantalla y reanuda el juego (al volver al menú principal).</summary>
+    public static void CancelAll()
+    {
+        foreach (IntroVideo v in FindObjectsByType<IntroVideo>(FindObjectsSortMode.None))
+        {
+            v.finished = true;
+            Destroy(v.gameObject);
+        }
+
+        Active = false;
+        PauseWorld(false);
+    }
+
     void Begin(VideoClip clip)
     {
         startTime = Time.realtimeSinceStartup;
@@ -260,7 +273,7 @@ public class IntroVideo : MonoBehaviour
 
         GUIStyle hint = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.LowerCenter, fontSize = 16 };
         hint.normal.textColor = new Color(1f, 1f, 1f, 0.55f);
-        GUI.Label(new Rect(0, 0, Screen.width, Screen.height - 14), "Enter o clic: saltar", hint);
+        LocGUI.Label(new Rect(0, 0, Screen.width, Screen.height - 14), "Enter o clic: saltar", hint);
     }
 
     void Finish(string reason)

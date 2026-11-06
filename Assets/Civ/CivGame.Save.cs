@@ -37,6 +37,7 @@ public class CivSaveData
     public bool winnerByTech;
     public int nextId = 1;
     public List<int> proposals = new List<int>();   // de tres en tres: civilización que propone, estado (1 paz, 2 alianza), civilización destinataria (-1 = cualquiera)
+    public List<int> playerCivs = new List<int>();  // servidor dedicado: civilizaciones reservadas a jugadores, para continuar la partida
 }
 
 [Serializable]
@@ -91,12 +92,16 @@ public static class CivSave
         return d == null ? null : d.savedAt;
     }
 
-    public static CivSaveData Read()
+    public static CivSaveData Read() { return ReadFrom(FilePath); }
+
+    public static bool Write(CivSaveData data) { return WriteTo(FilePath, data); }
+
+    public static CivSaveData ReadFrom(string path)
     {
         try
         {
-            if (!File.Exists(FilePath)) return null;
-            return JsonUtility.FromJson<CivSaveData>(File.ReadAllText(FilePath));
+            if (!File.Exists(path)) return null;
+            return JsonUtility.FromJson<CivSaveData>(File.ReadAllText(path));
         }
         catch (Exception e)
         {
@@ -105,11 +110,15 @@ public static class CivSave
         }
     }
 
-    public static bool Write(CivSaveData data)
+    // Se escribe en un archivo temporal y se renombra: si el servidor se cierra a mitad, el guardado anterior no se corrompe
+    public static bool WriteTo(string path, CivSaveData data)
     {
         try
         {
-            File.WriteAllText(FilePath, JsonUtility.ToJson(data));
+            string tmp = path + ".tmp";
+            File.WriteAllText(tmp, JsonUtility.ToJson(data));
+            if (File.Exists(path)) File.Delete(path);
+            File.Move(tmp, path);
             return true;
         }
         catch (Exception e)
@@ -234,6 +243,16 @@ public partial class CivGame
         bool ok = CivSave.Write(data);
         AddLog(ok ? "Partida guardada (" + data.savedAt + ")" : "No se pudo guardar la partida", ok ? Color.white : Color.red);
         return ok;
+    }
+
+    /// <summary>Servidor dedicado: guarda la partida multijugador (con las plazas de los jugadores) en el archivo indicado.</summary>
+    public bool SaveServerGame(string path)
+    {
+        if (!ready || grid == null) return false;
+
+        CivSaveData data = BuildSaveData(false, true);
+        if (serverSlots != null) data.playerCivs.AddRange(serverSlots);
+        return CivSave.WriteTo(path, data);
     }
 
     // ---------------------------------------------------------------- Cargar

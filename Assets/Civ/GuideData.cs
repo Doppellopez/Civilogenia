@@ -1,163 +1,309 @@
-// Archivo generado: datos de la guía del juego (tecnologías, unidades, edificios y maravillas).
-// Se vuelve a generar a partir del código del juego; no editar a mano.
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Text.RegularExpressions;
+
+// Datos de la guía del juego (tecnologías, unidades, edificios y maravillas).
+// Se construyen al arrancar a partir de GameDefs (nombres, costes, estadísticas y efectos), así que
+// cambiar un coste o un efecto en CivTypes.cs se refleja solo en la guía.
+// Lo único que se mantiene aquí es qué tecnología exige cada edificio y cada unidad, porque esa
+// regla vive en CivGame.Available / HasTechFor: si cambias allí un requisito, cámbialo también aquí.
 public static class GuideData
 {
     public static readonly string[] Eras = { "Edad Antigua", "Edad Media", "Edad Moderna", "Edad Contemporánea", "Edad Futura" };
 
     // era, nombre, coste, requisitos, efecto, cierra la edad
     public struct TechRow { public int era; public string name, cost, requires, effect; public bool closer; }
-    public static readonly TechRow[] Techs =
-    {
-        new TechRow { era = 0, name = "Fuego", cost = "45", requires = "Ninguna", effect = "Las ciudades crecen a más de 3", closer = false },
-        new TechRow { era = 0, name = "Agricultura", cost = "75", requires = "Fuego", effect = "Irrigaciones y Granero", closer = false },
-        new TechRow { era = 0, name = "Ganadería", cost = "75", requires = "Fuego", effect = "+1 comida en llanuras", closer = false },
-        new TechRow { era = 0, name = "Minería", cost = "75", requires = "Fuego", effect = "Minas (producción x2) y Lancero", closer = false },
-        new TechRow { era = 0, name = "Vela", cost = "75", requires = "Fuego", effect = "Barco de Vela en ciudades costeras", closer = false },
-        new TechRow { era = 0, name = "Tiro con arco", cost = "75", requires = "Fuego", effect = "Arquero", closer = false },
-        new TechRow { era = 0, name = "Bronce", cost = "105", requires = "Minería", effect = "Falange", closer = false },
-        new TechRow { era = 0, name = "Mampostería", cost = "105", requires = "Minería", effect = "Muro de la Ciudad", closer = false },
-        new TechRow { era = 0, name = "Rueda", cost = "105", requires = "Ganadería", effect = "Caminos y Carro", closer = false },
-        new TechRow { era = 0, name = "Equitación", cost = "105", requires = "Ganadería", effect = "Jinete (y, con Bronce, Elefante de guerra)", closer = false },
-        new TechRow { era = 0, name = "Cerámica", cost = "105", requires = "Agricultura", effect = "Crecimiento de población x1,5 en todas las ciudades", closer = false },
-        new TechRow { era = 0, name = "Ballesta", cost = "120", requires = "Tiro con arco", effect = "Ballestero y Ballesta de asedio", closer = false },
-        new TechRow { era = 0, name = "Moneda", cost = "120", requires = "Bronce y Escritura", effect = "Caravana de comercio", closer = false },
-        new TechRow { era = 0, name = "Matemáticas", cost = "120", requires = "Escritura y Rueda", effect = "Catapulta", closer = false },
-        new TechRow { era = 0, name = "Construcción de puentes", cost = "120", requires = "Mampostería", effect = "Carreteras que atraviesan ríos", closer = false },
-        new TechRow { era = 0, name = "Hierro", cost = "135", requires = "Bronce", effect = "Legión", closer = false },
-        new TechRow { era = 0, name = "Escritura", cost = "135", requires = "Cerámica", effect = "Biblioteca", closer = false },
-        new TechRow { era = 0, name = "Construcción", cost = "150", requires = "Rueda y Mampostería", effect = "Edificios al 90% de su coste", closer = false },
-        new TechRow { era = 0, name = "Astronomía", cost = "165", requires = "Escritura", effect = "Observatorio", closer = false },
-        new TechRow { era = 0, name = "Filosofía", cost = "210", requires = "Astronomía y Matemáticas", effect = "+50% de investigación y Cambio de era", closer = false },
-        new TechRow { era = 0, name = "Cambio de era", cost = "1.500", requires = "Filosofía", effect = "Una nueva era", closer = true },
-        new TechRow { era = 1, name = "Arado y collera", cost = "800", requires = "Cambio de era", effect = "Granja (alimento x2)", closer = false },
-        new TechRow { era = 1, name = "Molino hidráulico", cost = "850", requires = "Cambio de era", effect = "+1 comida en casillas junto al mar o a un río", closer = false },
-        new TechRow { era = 1, name = "Cifras arábigas", cost = "900", requires = "Cambio de era", effect = "+25% de ciencia y de oro en todas las ciudades, Banco, Mercader y Laboratorio de Fibonacci", closer = false },
-        new TechRow { era = 1, name = "Brújula magnética", cost = "900", requires = "Cambio de era y Vela", effect = "Galeón y los barcos navegan un 50% más rápido", closer = false },
-        new TechRow { era = 1, name = "Árbol de levas", cost = "950", requires = "Molino hidráulico", effect = "+1 producción en casillas junto al mar o a un río, Batán y Carro husita", closer = false },
-        new TechRow { era = 1, name = "Ciudades", cost = "1.000", requires = "Arado y collera", effect = "+25% de crecimiento en todas las ciudades y Academia", closer = false },
-        new TechRow { era = 1, name = "Reloj mecánico", cost = "1.100", requires = "Árbol de levas", effect = "+25% de producción en todas las ciudades", closer = false },
-        new TechRow { era = 1, name = "Imprenta", cost = "1.200", requires = "Universidades", effect = "Prensa", closer = false },
-        new TechRow { era = 1, name = "Universidades", cost = "1.300", requires = "Cifras arábigas", effect = "+25% de ciencia en todas las ciudades, Universidad y Gran Biblioteca de Alejandría", closer = false },
-        new TechRow { era = 1, name = "Pólvora", cost = "1.500", requires = "Cambio de era", effect = "Mosquetero", closer = false },
-        new TechRow { era = 1, name = "Cambio de era", cost = "2.000", requires = "Las 10 tecnologías de la Edad Media", effect = "Una nueva era", closer = true },
-        new TechRow { era = 2, name = "Máquina de vapor", cost = "1.600", requires = "Cambio de era", effect = "+50% de producción en todas las ciudades, Fábrica y Barco de vapor", closer = false },
-        new TechRow { era = 2, name = "Telescopio", cost = "1.700", requires = "Cambio de era y Astronomía", effect = "El Observatorio da +100% de ciencia en su ciudad (en vez de +50%) y la maravilla Observatorio de Galileo Galilei", closer = false },
-        new TechRow { era = 2, name = "Fusil", cost = "1.760", requires = "Cambio de era", effect = "Fusilero", closer = false },
-        new TechRow { era = 2, name = "Termómetro", cost = "1.900", requires = "Telescopio", effect = "+20% de crecimiento en todas las ciudades (medicina e higiene) y la maravilla Estudio de Daniel Gabriel Fahrenheit", closer = false },
-        new TechRow { era = 2, name = "Granada de mano", cost = "1.900", requires = "Fusil", effect = "Granadero", closer = false },
-        new TechRow { era = 2, name = "Electricidad", cost = "2.000", requires = "Máquina de vapor", effect = "+25% de ciencia en todas las ciudades Presa hidroeléctrica y la maravilla Presa Hoover", closer = false },
-        new TechRow { era = 2, name = "Artillería", cost = "2.080", requires = "Cambio de era", effect = "Cañón", closer = false },
-        new TechRow { era = 2, name = "Imprenta de tipos móviles", cost = "2.200", requires = "Electricidad", effect = "Periódico y la maravilla Prensa de Gutenberg", closer = false },
-        new TechRow { era = 2, name = "Ferrocarril", cost = "2.400", requires = "Máquina de vapor", effect = "Los trabajadores mejoran las carreteras a ferrocarril (el doble de rápidas y +1 de producción por casilla)", closer = false },
-        new TechRow { era = 2, name = "Cambio de era", cost = "2.600", requires = "Las 9 tecnologías de la Edad Moderna", effect = "La Edad Contemporánea", closer = true },
-        new TechRow { era = 3, name = "Motor de combustión", cost = "2.800", requires = "Cambio de era", effect = "+50% de producción en todas las ciudades y las unidades terrestres se mueven un 33% más rápido", closer = false },
-        new TechRow { era = 3, name = "Radio", cost = "2.900", requires = "Cambio de era", effect = "+25% de ciencia en todas las ciudades", closer = false },
-        new TechRow { era = 3, name = "Acero y hormigón", cost = "3.000", requires = "Cambio de era", effect = "Los edificios cuestan un 15% menos (rascacielos)", closer = false },
-        new TechRow { era = 3, name = "Penicilina", cost = "3.100", requires = "Cambio de era", effect = "+30% de crecimiento en todas las ciudades", closer = false },
-        new TechRow { era = 3, name = "Aviación", cost = "3.200", requires = "Motor de combustión", effect = "Caza y Bombardero (vuelan sobre tierra y mar)", closer = false },
-        new TechRow { era = 3, name = "Carro de combate", cost = "3.300", requires = "Motor de combustión", effect = "Tanque (mejora del Cañón y del Carro husita)", closer = false },
-        new TechRow { era = 3, name = "Ordenadores", cost = "3.600", requires = "Radio", effect = "Laboratorio informático (+100% de ciencia en su ciudad)", closer = false },
-        new TechRow { era = 3, name = "Energía nuclear", cost = "4.200", requires = "Ordenadores y Aviación", effect = "Central nuclear (+10 de producción en su ciudad)", closer = false },
-        new TechRow { era = 3, name = "Cambio de era", cost = "5.000", requires = "Las 8 tecnologías de la Edad Contemporánea", effect = "La Edad Futura", closer = true },
-        new TechRow { era = 4, name = "Inteligencia artificial", cost = "5.500", requires = "Cambio de era", effect = "+30% de producción y +30% de ciencia en todas las ciudades", closer = false },
-        new TechRow { era = 4, name = "Vuelo espacial", cost = "6.000", requires = "Cambio de era", effect = "+50% de ciencia en todas las ciudades y Satélite (descubre todo el mapa)", closer = false },
-        new TechRow { era = 4, name = "Robótica", cost = "6.200", requires = "Inteligencia artificial", effect = "+25% de producción en todas las ciudades y los trabajadores trabajan el doble de rápido", closer = false },
-        new TechRow { era = 4, name = "Antigravedad", cost = "6.500", requires = "Vuelo espacial", effect = "Las unidades terrestres se mueven un 50% más rápido", closer = false },
-        new TechRow { era = 4, name = "Ingeniería genética", cost = "6.600", requires = "Inteligencia artificial y Penicilina", effect = "+50% de crecimiento en todas las ciudades y la maravilla Banco genético", closer = false },
-        new TechRow { era = 4, name = "Computación cuántica", cost = "6.800", requires = "Inteligencia artificial", effect = "+40% de ciencia en todas las ciudades y Computadora cuántica", closer = false },
-        new TechRow { era = 4, name = "Energía de fusión", cost = "7.000", requires = "Energía nuclear y Inteligencia artificial", effect = "+50% de producción en todas las ciudades y Reactor de fusión", closer = false },
-        new TechRow { era = 4, name = "Nanotecnología", cost = "7.200", requires = "Robótica", effect = "Los edificios cuestan un 25% menos y +20% de producción en todas las ciudades", closer = false },
-        new TechRow { era = 4, name = "Escudos de energía", cost = "7.500", requires = "Energía de fusión", effect = "+100 de vida en todas las ciudades", closer = false },
-        new TechRow { era = 4, name = "Colonización espacial", cost = "7.800", requires = "Vuelo espacial y Robótica", effect = "Base lunar y la maravilla Ascensor espacial", closer = false },
-        new TechRow { era = 4, name = "Armas de plasma", cost = "8.000", requires = "Energía de fusión y Robótica", effect = "Mecha de combate (mejora del Tanque)", closer = false },
-        new TechRow { era = 4, name = "Omnisciencia", cost = "12.000", requires = "Todas las demás tecnologías (62)", effect = "VICTORIA POR TECNOLOGÍA y visión total (todo el mapa y todas las unidades, sin niebla de guerra)", closer = true },
-    };
-
     public struct UnitRow { public string name, type, cost, hp, attack, defense, speed, range, requires, notes; }
-    public static readonly UnitRow[] Units =
+    public struct BuildingRow { public string name, cost, effect, requires; public bool wonder; public int era; }
+
+    public static readonly TechRow[] Techs;
+    public static readonly UnitRow[] Units;
+    public static readonly BuildingRow[] Buildings;
+
+    // Se construyen aquí, después de inicializar las tablas de requisitos de más abajo
+    static GuideData()
     {
-        new UnitRow { name = "Trabajador", type = "Civil", cost = "30", hp = "10", attack = "-", defense = "-", speed = "0.6", range = "-", requires = "Desde el inicio", notes = "" },
-        new UnitRow { name = "Caravana de comercio", type = "Civil", cost = "50", hp = "10", attack = "-", defense = "-", speed = "0.5", range = "-", requires = "Moneda", notes = "" },
-        new UnitRow { name = "Colono", type = "Civil", cost = "70", hp = "10", attack = "-", defense = "-", speed = "0.6", range = "-", requires = "Desde el inicio", notes = "cuesta 1 habitante" },
-        new UnitRow { name = "Mercader", type = "Civil", cost = "90", hp = "15", attack = "-", defense = "-", speed = "0.7", range = "-", requires = "Mejorando una Caravana en una Academia", notes = "" },
-        new UnitRow { name = "Guerrero", type = "Tierra", cost = "40", hp = "20", attack = "6", defense = "3", speed = "0.7", range = "1", requires = "Desde el inicio", notes = "" },
-        new UnitRow { name = "Arquero", type = "Tierra", cost = "50", hp = "15", attack = "7", defense = "2", speed = "0.7", range = "2", requires = "Tiro con arco", notes = "" },
-        new UnitRow { name = "Lancero", type = "Tierra", cost = "60", hp = "30", attack = "9", defense = "5", speed = "0.65", range = "1", requires = "Minería", notes = "" },
-        new UnitRow { name = "Ballestero", type = "Tierra", cost = "65", hp = "18", attack = "10", defense = "3", speed = "0.65", range = "2", requires = "Ballesta", notes = "" },
-        new UnitRow { name = "Jinete", type = "Tierra", cost = "70", hp = "22", attack = "8", defense = "3", speed = "1.1", range = "1", requires = "Equitación", notes = "" },
-        new UnitRow { name = "Carro husita", type = "Tierra", cost = "120", hp = "45", attack = "12", defense = "14", speed = "0.45", range = "2", requires = "Árbol de levas", notes = "Mejora del Carro (y del Jinete) en la Academia; a su vez se mejora a Tanque. Muy defensivo; dispara desde detrás de su blindaje de madera. Se dibuja igual en todas las eras" },
-        new UnitRow { name = "Elefante de guerra", type = "Tierra", cost = "130", hp = "55", attack = "14", defense = "6", speed = "0.75", range = "1", requires = "Equitación y Bronce", notes = "Resistente y fuerte; se dibuja igual en todas las eras" },
-        new UnitRow { name = "Falange", type = "Tierra", cost = "80", hp = "35", attack = "7", defense = "8", speed = "0.55", range = "1", requires = "Bronce", notes = "" },
-        new UnitRow { name = "Mosquetero", type = "Tierra", cost = "90", hp = "28", attack = "16", defense = "8", speed = "0.6", range = "2", requires = "Pólvora", notes = "" },
-        new UnitRow { name = "Carro", type = "Tierra", cost = "90", hp = "28", attack = "10", defense = "4", speed = "0.9", range = "1", requires = "Rueda", notes = "" },
-        new UnitRow { name = "Catapulta", type = "Tierra", cost = "100", hp = "18", attack = "14", defense = "1", speed = "0.4", range = "3", requires = "Matemáticas", notes = "" },
-        new UnitRow { name = "Ballesta de asedio", type = "Tierra", cost = "110", hp = "20", attack = "18", defense = "1", speed = "0.4", range = "3", requires = "Ballesta", notes = "" },
-        new UnitRow { name = "Granadero", type = "Tierra", cost = "110", hp = "32", attack = "28", defense = "9", speed = "0.6", range = "1", requires = "Granada de mano", notes = "" },
-        new UnitRow { name = "Legión", type = "Tierra", cost = "110", hp = "45", attack = "12", defense = "9", speed = "0.6", range = "1", requires = "Hierro", notes = "" },
-        new UnitRow { name = "Fusilero", type = "Tierra", cost = "120", hp = "35", attack = "22", defense = "11", speed = "0.6", range = "2", requires = "Fusil", notes = "" },
-        new UnitRow { name = "Cañón", type = "Tierra", cost = "150", hp = "25", attack = "30", defense = "2", speed = "0.35", range = "4", requires = "Artillería", notes = "" },
-        new UnitRow { name = "Tanque", type = "Tierra", cost = "200", hp = "80", attack = "38", defense = "14", speed = "0.5", range = "3", requires = "Carro de combate", notes = "" },
-        new UnitRow { name = "Mecha de combate", type = "Tierra", cost = "320", hp = "120", attack = "55", defense = "20", speed = "0.55", range = "3", requires = "Armas de plasma", notes = "" },
-        new UnitRow { name = "Barco de Vela", type = "Mar", cost = "80", hp = "25", attack = "-", defense = "-", speed = "0.3", range = "-", requires = "Vela", notes = "transporta 1" },
-        new UnitRow { name = "Galeón", type = "Mar", cost = "120", hp = "45", attack = "20", defense = "4", speed = "0.35", range = "2", requires = "Brújula magnética", notes = "transporta 3" },
-        new UnitRow { name = "Barco de vapor", type = "Mar", cost = "170", hp = "70", attack = "25", defense = "6", speed = "0.45", range = "2", requires = "Máquina de vapor", notes = "transporta 4" },
-        new UnitRow { name = "Caza", type = "Aire", cost = "190", hp = "40", attack = "30", defense = "6", speed = "1", range = "2", requires = "Aviación", notes = "" },
-        new UnitRow { name = "Bombardero", type = "Aire", cost = "260", hp = "60", attack = "45", defense = "4", speed = "0.7", range = "2", requires = "Aviación", notes = "" },
+        Techs = BuildTechs();
+        Units = BuildUnits();
+        Buildings = BuildBuildings();
+    }
+
+    const string FromStart = "Desde el inicio";
+
+    // Los Cambios de era cierran cada edad
+    static readonly HashSet<TechKind> EraChanges = new HashSet<TechKind> { TechKind.EraChange, TechKind.EraChange2, TechKind.EraChange3, TechKind.EraChange4 };
+
+    // Maravilla retirada del juego (se conserva el tipo solo para las partidas guardadas)
+    const BuildingKind RetiredWonder = BuildingKind.GreatLibrary;
+
+    // ---------------------------------------------------------------- Tecnologías
+
+    static TechRow[] BuildTechs()
+    {
+        List<TechRow> rows = new List<TechRow>();
+        Dictionary<TechKind, int> eraOf = new Dictionary<TechKind, int>();
+
+        foreach (KeyValuePair<TechKind, TechDef> kv in GameDefs.Techs)
+        {
+            TechDef d = kv.Value;
+            bool closer = EraChanges.Contains(kv.Key) || kv.Key == TechKind.Omniscience;
+            int era = TechEra(kv.Key);
+            eraOf[kv.Key] = era;
+
+            rows.Add(new TechRow
+            {
+                era = era,
+                name = d.name,
+                cost = Num(d.cost),
+                requires = TechRequires(kv.Key, d, era),
+                effect = Cap(d.unlocks),
+                closer = closer,
+            });
+        }
+
+        // Por edad; el Cambio de era (o la Omnisciencia) cierra la lista; dentro, por coste
+        return rows.Select((r, i) => new { r, i })
+                   .OrderBy(x => x.r.era).ThenBy(x => x.r.closer).ThenBy(x => ParseNum(x.r.cost)).ThenBy(x => x.i)
+                   .Select(x => x.r).ToArray();
+    }
+
+    // La edad de una tecnología es el número de Cambios de era que hay que haber pasado para llegar a ella
+    static int TechEra(TechKind tech)
+    {
+        HashSet<TechKind> seen = new HashSet<TechKind>();
+        Stack<TechKind> pending = new Stack<TechKind>();
+        pending.Push(tech);
+
+        int changes = 0;
+        while (pending.Count > 0)
+        {
+            TechKind t = pending.Pop();
+            foreach (TechKind pre in Prerequisites(GameDefs.Techs[t]))
+            {
+                if (!seen.Add(pre)) continue;
+                if (EraChanges.Contains(pre)) changes++;
+                pending.Push(pre);
+            }
+        }
+        return changes;
+    }
+
+    static IEnumerable<TechKind> Prerequisites(TechDef d)
+    {
+        if (d.requires.HasValue) yield return d.requires.Value;
+        if (d.alsoRequires.HasValue) yield return d.alsoRequires.Value;
+        if (d.requiresAll != null) foreach (TechKind t in d.requiresAll) yield return t;
+    }
+
+    static string TechRequires(TechKind kind, TechDef d, int era)
+    {
+        if (kind == TechKind.Omniscience) return "Todas las demás tecnologías (" + d.requiresAll.Length + ")";
+        if (d.requiresAll != null) return "Las " + d.requiresAll.Length + " tecnologías de la " + Eras[era];
+
+        List<string> names = new List<string>();
+        if (d.requires.HasValue) names.Add(GameDefs.Techs[d.requires.Value].name);
+        if (d.alsoRequires.HasValue) names.Add(GameDefs.Techs[d.alsoRequires.Value].name);
+        return names.Count == 0 ? "Ninguna" : string.Join(" y ", names);
+    }
+
+    // ---------------------------------------------------------------- Unidades
+
+    // Tecnologías que exige cada unidad (CivGame.HasTechFor); las que no salen aquí están desde el inicio
+    static readonly Dictionary<UnitKind, TechKind[]> UnitTech = new Dictionary<UnitKind, TechKind[]>
+    {
+        { UnitKind.Spearman,     new[] { TechKind.Mining } },
+        { UnitKind.Archer,       new[] { TechKind.Archery } },
+        { UnitKind.Horseman,     new[] { TechKind.Riding } },
+        { UnitKind.WarElephant,  new[] { TechKind.Riding, TechKind.Bronze } },
+        { UnitKind.HussiteWagon, new[] { TechKind.Camshaft } },
+        { UnitKind.Chariot,      new[] { TechKind.Wheel } },
+        { UnitKind.Phalanx,      new[] { TechKind.Bronze } },
+        { UnitKind.Legion,       new[] { TechKind.Iron } },
+        { UnitKind.Catapult,     new[] { TechKind.Mathematics } },
+        { UnitKind.Sailboat,     new[] { TechKind.Sailing } },
+        { UnitKind.Galleon,      new[] { TechKind.Compass } },
+        { UnitKind.Musketeer,    new[] { TechKind.Gunpowder } },
+        { UnitKind.Crossbowman,  new[] { TechKind.Crossbow } },
+        { UnitKind.Ballista,     new[] { TechKind.Crossbow } },
+        { UnitKind.Rifleman,     new[] { TechKind.Rifle } },
+        { UnitKind.Grenadier,    new[] { TechKind.Grenade } },
+        { UnitKind.Cannon,       new[] { TechKind.Artillery } },
+        { UnitKind.Steamship,    new[] { TechKind.SteamEngine } },
+        { UnitKind.Tank,         new[] { TechKind.Tanks } },
+        { UnitKind.Mecha,        new[] { TechKind.PlasmaWeapons } },
+        { UnitKind.Fighter,      new[] { TechKind.Aviation } },
+        { UnitKind.Bomber,       new[] { TechKind.Aviation } },
+        { UnitKind.Caravan,      new[] { TechKind.Currency } },
+        { UnitKind.Merchant,     new[] { TechKind.ArabicNumerals } },
     };
 
-    public struct BuildingRow { public string name, cost, effect, requires; public bool wonder; public int era; }
-    public static readonly BuildingRow[] Buildings =
+    // Notas que no se pueden deducir de las estadísticas
+    static readonly Dictionary<UnitKind, string> UnitNotes = new Dictionary<UnitKind, string>
     {
-        new BuildingRow { name = "Baños públicos", cost = "70", effect = "+50% velocidad de crecimiento y +3 de felicidad", requires = "Desde el inicio", wonder = false, era = 0 },
-        new BuildingRow { name = "Templo", cost = "60", effect = "+2 de felicidad", requires = "Cerámica", wonder = false, era = 0 },
-        new BuildingRow { name = "Biblioteca", cost = "80", effect = "Dobla la ciencia de la ciudad", requires = "Escritura", wonder = false, era = 0 },
-        new BuildingRow { name = "Observatorio", cost = "90", effect = "+50% de ciencia de la ciudad", requires = "Astronomía", wonder = false, era = 0 },
-        new BuildingRow { name = "Anfiteatro", cost = "100", effect = "+3 de felicidad", requires = "Construcción", wonder = false, era = 0 },
-        new BuildingRow { name = "Universidad", cost = "150", effect = "+75% de ciencia de la ciudad", requires = "Universidades", wonder = false, era = 1 },
-        new BuildingRow { name = "Prensa", cost = "150", effect = "Duplica la ciencia de la ciudad", requires = "Imprenta", wonder = false, era = 1 },
-        new BuildingRow { name = "Catedral", cost = "220", effect = "+4 de felicidad y +1 de ciencia", requires = "Universidades", wonder = false, era = 1 },
-        new BuildingRow { name = "Periódico", cost = "180", effect = "+50% de descubrimiento (ciencia) de la ciudad", requires = "Imprenta de tipos móviles", wonder = false, era = 2 },
-        new BuildingRow { name = "Teatro", cost = "180", effect = "+3 de felicidad", requires = "Imprenta de tipos móviles", wonder = false, era = 2 },
-        new BuildingRow { name = "Fábrica", cost = "200", effect = "+50% de producción de la ciudad", requires = "Máquina de vapor", wonder = false, era = 2 },
-        new BuildingRow { name = "Presa hidroeléctrica", cost = "250", effect = "+6 producción (solo en ciudades con río)", requires = "Electricidad", wonder = false, era = 2 },
-        new BuildingRow { name = "Parque", cost = "150", effect = "+2 de felicidad", requires = "Motor de combustión", wonder = false, era = 3 },
-        new BuildingRow { name = "Hospital", cost = "250", effect = "+3 de felicidad y +10% de crecimiento", requires = "Penicilina", wonder = false, era = 3 },
-        new BuildingRow { name = "Centro comercial", cost = "280", effect = "+3 de felicidad y +25% de oro", requires = "Acero y hormigón", wonder = false, era = 3 },
-        new BuildingRow { name = "Laboratorio informático", cost = "300", effect = "+100% de ciencia de la ciudad", requires = "Ordenadores", wonder = false, era = 3 },
-        new BuildingRow { name = "Estadio", cost = "300", effect = "+5 de felicidad", requires = "Radio", wonder = false, era = 3 },
-        new BuildingRow { name = "Cine", cost = "350", effect = "+5 de felicidad", requires = "Ordenadores", wonder = false, era = 3 },
-        new BuildingRow { name = "Central nuclear", cost = "500", effect = "+10 producción", requires = "Energía nuclear", wonder = false, era = 3 },
-        new BuildingRow { name = "Parque de realidad virtual", cost = "450", effect = "+6 de felicidad", requires = "Inteligencia artificial", wonder = false, era = 4 },
-        new BuildingRow { name = "Computadora cuántica", cost = "600", effect = "+150% de ciencia de la ciudad", requires = "Computación cuántica", wonder = false, era = 4 },
-        new BuildingRow { name = "Jardín orbital", cost = "600", effect = "+8 de felicidad", requires = "Colonización espacial", wonder = false, era = 4 },
-        new BuildingRow { name = "Reactor de fusión", cost = "700", effect = "+20 producción", requires = "Energía de fusión", wonder = false, era = 4 },
-        new BuildingRow { name = "Base lunar", cost = "900", effect = "+15 ciencia y +10 oro", requires = "Colonización espacial", wonder = false, era = 4 },
-        new BuildingRow { name = "Satélite", cost = "1.500", effect = "Descubre todo el mapa (solo hace falta uno por civilización)", requires = "Vuelo espacial", wonder = false, era = 4 },
-        new BuildingRow { name = "Faro de Alejandría", cost = "200", effect = "Tus barcos van un 50% más rápido", requires = "Vela y una ciudad costera", wonder = true, era = 0 },
-        new BuildingRow { name = "Pirámides", cost = "250", effect = "+25% de producción en todas tus ciudades", requires = "Mampostería", wonder = true, era = 0 },
-        new BuildingRow { name = "Gran Muralla", cost = "300", effect = "+4 de defensa en todas tus ciudades", requires = "Construcción", wonder = true, era = 0 },
-        new BuildingRow { name = "Coliseo", cost = "300", effect = "+2 de felicidad en todas tus ciudades", requires = "Construcción", wonder = true, era = 0 },
-        new BuildingRow { name = "Laboratorio de Fibonacci", cost = "250", effect = "+25% de ciencia en todas tus ciudades", requires = "Cifras arábigas", wonder = true, era = 1 },
-        new BuildingRow { name = "Gran Biblioteca de Alejandría", cost = "300", effect = "+40% de ciencia en todas tus ciudades", requires = "Universidades", wonder = true, era = 1 },
-        new BuildingRow { name = "Imprenta de Gutenberg", cost = "300", effect = "X1,5 de ciencia en todas tus ciudades", requires = "Imprenta", wonder = true, era = 1 },
-        new BuildingRow { name = "Ruta de la seda de Marco Polo", cost = "400", effect = "+30% de oro en todas tus ciudades", requires = "Brújula magnética", wonder = true, era = 1 },
-        new BuildingRow { name = "Capilla Sixtina", cost = "450", effect = "+3 de felicidad en todas tus ciudades", requires = "Universidades", wonder = true, era = 1 },
-        new BuildingRow { name = "Estudio de Daniel Gabriel Fahrenheit", cost = "450", effect = "+30% de crecimiento en todas tus ciudades", requires = "Termómetro", wonder = true, era = 2 },
-        new BuildingRow { name = "Observatorio de Galileo Galilei", cost = "500", effect = "X1,4 de ciencia en todas tus ciudades", requires = "Telescopio", wonder = true, era = 2 },
-        new BuildingRow { name = "Presa Hoover", cost = "500", effect = "+25% de producción en todas tus ciudades (solo en ciudades con río)", requires = "Electricidad", wonder = true, era = 2 },
-        new BuildingRow { name = "Prensa de Gutenberg", cost = "600", effect = "Construye un Periódico en cada ciudad que controles y que fundes", requires = "Imprenta de tipos móviles", wonder = true, era = 2 },
-        new BuildingRow { name = "Torre Eiffel", cost = "600", effect = "+25% de oro y +1 de felicidad en todas tus ciudades", requires = "Electricidad", wonder = true, era = 2 },
-        new BuildingRow { name = "Estatua de la Libertad", cost = "650", effect = "+15% de crecimiento y +1 de felicidad en todas tus ciudades", requires = "Ferrocarril", wonder = true, era = 2 },
-        new BuildingRow { name = "Torre de radio de Marconi", cost = "700", effect = "+30% de ciencia en todas tus ciudades", requires = "Radio", wonder = true, era = 3 },
-        new BuildingRow { name = "Laboratorio de Fleming", cost = "700", effect = "+30% de crecimiento en todas tus ciudades", requires = "Penicilina", wonder = true, era = 3 },
-        new BuildingRow { name = "Cadena de montaje de Ford", cost = "750", effect = "+25% de producción en todas tus ciudades", requires = "Motor de combustión", wonder = true, era = 3 },
-        new BuildingRow { name = "Hollywood", cost = "800", effect = "+3 de felicidad en todas tus ciudades", requires = "Ordenadores", wonder = true, era = 3 },
-        new BuildingRow { name = "Internet", cost = "900", effect = "X1,5 de ciencia en todas tus ciudades", requires = "Ordenadores", wonder = true, era = 3 },
-        new BuildingRow { name = "Naciones Unidas", cost = "900", effect = "Mientras exista, todas las civilizaciones aceptan la paz y no hay cansancio de guerra", requires = "Radio", wonder = true, era = 3 },
-        new BuildingRow { name = "Proyecto Manhattan", cost = "1.000", effect = "+50% de producción y x1,25 de ciencia en todas tus ciudades", requires = "Energía nuclear", wonder = true, era = 3 },
-        new BuildingRow { name = "Programa Apolo", cost = "1.100", effect = "+30% de ciencia en todas tus ciudades y descubre todo el mapa", requires = "Aviación", wonder = true, era = 3 },
-        new BuildingRow { name = "Banco genético", cost = "1.000", effect = "+40% de crecimiento en todas tus ciudades", requires = "Ingeniería genética", wonder = true, era = 4 },
-        new BuildingRow { name = "Biosfera", cost = "1.200", effect = "+30% de crecimiento y +2 de felicidad en todas tus ciudades", requires = "Ingeniería genética", wonder = true, era = 4 },
-        new BuildingRow { name = "Ascensor espacial", cost = "1.400", effect = "+40% de oro en todas tus ciudades", requires = "Colonización espacial", wonder = true, era = 4 },
+        { UnitKind.HussiteWagon, "Mejora del Carro (y del Jinete) en la Academia; a su vez se mejora a Tanque. Muy defensivo; dispara desde detrás de su blindaje de madera. Se dibuja igual en todas las eras" },
+        { UnitKind.WarElephant, "Resistente y fuerte; se dibuja igual en todas las eras" },
+        { UnitKind.Merchant, "Sustituye a la Caravana; sus rutas dan el doble. También se obtiene mejorando una Caravana en una Academia" },
     };
+
+    static readonly string[] UnitTypes = { "Civil", "Tierra", "Mar", "Aire" };
+
+    static UnitRow[] BuildUnits()
+    {
+        List<UnitRow> rows = new List<UnitRow>();
+        List<int> order = new List<int>();
+
+        foreach (KeyValuePair<UnitKind, UnitDef> kv in GameDefs.Units)
+        {
+            UnitDef d = kv.Value;
+            string type = d.naval ? "Mar" : d.air ? "Aire" : d.IsMilitary ? "Tierra" : "Civil";
+
+            List<string> notes = new List<string>();
+            if (d.popCost > 0) notes.Add("cuesta " + d.popCost + (d.popCost == 1 ? " habitante" : " habitantes"));
+            if (d.capacity > 0) notes.Add("transporta " + d.capacity);
+            if (UnitNotes.TryGetValue(kv.Key, out string extra)) notes.Add(extra);
+
+            rows.Add(new UnitRow
+            {
+                name = d.name,
+                type = type,
+                cost = Num(d.cost),
+                hp = Fmt(d.hp),
+                attack = d.IsMilitary ? Fmt(d.attack) : "-",
+                defense = d.IsMilitary ? Fmt(d.defense) : "-",
+                speed = Fmt(d.speed),
+                range = d.IsMilitary ? d.range.ToString() : "-",
+                requires = UnitRequires(kv.Key),
+                notes = string.Join("; ", notes),
+            });
+            order.Add(System.Array.IndexOf(UnitTypes, type));
+        }
+
+        return rows.Select((r, i) => new { r, i })
+                   .OrderBy(x => order[x.i]).ThenBy(x => ParseNum(x.r.cost)).ThenBy(x => x.i)
+                   .Select(x => x.r).ToArray();
+    }
+
+    static string UnitRequires(UnitKind kind)
+    {
+        if (!UnitTech.TryGetValue(kind, out TechKind[] techs)) return FromStart;
+        return string.Join(" y ", techs.Select(t => GameDefs.Techs[t].name));
+    }
+
+    // ---------------------------------------------------------------- Edificios y maravillas
+
+    // Tecnología que exige cada edificio (CivGame.Available); los que no salen aquí están desde el inicio
+    static readonly Dictionary<BuildingKind, TechKind> BuildingTech = new Dictionary<BuildingKind, TechKind>
+    {
+        { BuildingKind.Granary, TechKind.Agriculture },
+        { BuildingKind.Walls, TechKind.Masonry },
+        { BuildingKind.Library, TechKind.Writing },
+        { BuildingKind.Observatory, TechKind.Astronomy },
+        { BuildingKind.AlexandriaLibrary, TechKind.Universities },
+        { BuildingKind.University, TechKind.Universities },
+        { BuildingKind.FullingMill, TechKind.Camshaft },
+        { BuildingKind.Academy, TechKind.Cities },
+        { BuildingKind.GutenbergPress, TechKind.PrintingPress },
+        { BuildingKind.GalileoObservatory, TechKind.Telescope },
+        { BuildingKind.FahrenheitStudy, TechKind.Thermometer },
+        { BuildingKind.Newspaper, TechKind.MovableType },
+        { BuildingKind.GutenbergPrint, TechKind.MovableType },
+        { BuildingKind.HooverDam, TechKind.Electricity },
+        { BuildingKind.HydroDam, TechKind.Electricity },
+        { BuildingKind.Factory, TechKind.SteamEngine },
+        { BuildingKind.RadioTower, TechKind.Radio },
+        { BuildingKind.FordAssembly, TechKind.CombustionEngine },
+        { BuildingKind.FlemingLab, TechKind.Penicillin },
+        { BuildingKind.ManhattanProject, TechKind.NuclearEnergy },
+        { BuildingKind.Internet, TechKind.Computers },
+        { BuildingKind.FusionReactor, TechKind.FusionEnergy },
+        { BuildingKind.QuantumComputer, TechKind.QuantumComputing },
+        { BuildingKind.LunarBase, TechKind.SpaceColonization },
+        { BuildingKind.GeneBank, TechKind.GeneticEngineering },
+        { BuildingKind.SpaceElevator, TechKind.SpaceColonization },
+        { BuildingKind.Pyramids, TechKind.Masonry },
+        { BuildingKind.LighthouseAlex, TechKind.Sailing },
+        { BuildingKind.GreatWall, TechKind.Construction },
+        { BuildingKind.Colosseum, TechKind.Construction },
+        { BuildingKind.SistineChapel, TechKind.Universities },
+        { BuildingKind.MarcoPolo, TechKind.Compass },
+        { BuildingKind.EiffelTower, TechKind.Electricity },
+        { BuildingKind.StatueOfLiberty, TechKind.Railway },
+        { BuildingKind.Hollywood, TechKind.Computers },
+        { BuildingKind.ApolloProgram, TechKind.Aviation },
+        { BuildingKind.UnitedNations, TechKind.Radio },
+        { BuildingKind.Biosphere, TechKind.GeneticEngineering },
+        { BuildingKind.Temple, TechKind.Pottery },
+        { BuildingKind.Amphitheater, TechKind.Construction },
+        { BuildingKind.Cathedral, TechKind.Universities },
+        { BuildingKind.Theater, TechKind.MovableType },
+        { BuildingKind.Hospital, TechKind.Penicillin },
+        { BuildingKind.Stadium, TechKind.Radio },
+        { BuildingKind.Park, TechKind.CombustionEngine },
+        { BuildingKind.Mall, TechKind.SteelConcrete },
+        { BuildingKind.Cinema, TechKind.Computers },
+        { BuildingKind.VRPark, TechKind.ArtificialIntelligence },
+        { BuildingKind.OrbitalGarden, TechKind.SpaceColonization },
+        { BuildingKind.Satellite, TechKind.SpaceFlight },
+        { BuildingKind.ComputerLab, TechKind.Computers },
+        { BuildingKind.NuclearPlant, TechKind.NuclearEnergy },
+        { BuildingKind.PrintingHouse, TechKind.PrintingPress },
+        { BuildingKind.Bank, TechKind.ArabicNumerals },
+        { BuildingKind.FibonacciLab, TechKind.ArabicNumerals },
+    };
+
+    // Las maravillas empiezan su efecto con "maravilla única", a veces con una condición entre paréntesis
+    static readonly Regex WonderPrefix = new Regex(@"^maravilla única(?: \(([^)]*)\))?:\s*");
+
+    static BuildingRow[] BuildBuildings()
+    {
+        List<BuildingRow> rows = new List<BuildingRow>();
+        List<int> techCost = new List<int>();
+
+        foreach (KeyValuePair<BuildingKind, BuildingDef> kv in GameDefs.Buildings)
+        {
+            if (kv.Key == RetiredWonder) continue;
+
+            BuildingDef d = kv.Value;
+            Match m = WonderPrefix.Match(d.effect);
+            bool wonder = m.Success;
+            string effect = wonder ? Cap(d.effect.Substring(m.Length)) + (m.Groups[1].Success ? " (" + m.Groups[1].Value + ")" : "") : Cap(d.effect);
+
+            bool needsTech = BuildingTech.TryGetValue(kv.Key, out TechKind tech);
+
+            rows.Add(new BuildingRow
+            {
+                name = d.name,
+                cost = Num(d.cost),
+                effect = effect,
+                requires = needsTech ? GameDefs.Techs[tech].name : FromStart,
+                wonder = wonder,
+                era = needsTech ? TechEra(tech) : 0,
+            });
+            techCost.Add(needsTech ? (int)GameDefs.Techs[tech].cost : 0);
+        }
+
+        // Edificios y luego maravillas; por edad, por lo pronto que se desbloquean y por coste
+        return rows.Select((r, i) => new { r, i })
+                   .OrderBy(x => x.r.wonder).ThenBy(x => x.r.era).ThenBy(x => techCost[x.i]).ThenBy(x => ParseNum(x.r.cost)).ThenBy(x => x.i)
+                   .Select(x => x.r).ToArray();
+    }
+
+    // ---------------------------------------------------------------- Formato
+
+    // 1500 -> "1.500", como en el resto del juego
+    static string Num(float v)
+    {
+        int n = (int)System.Math.Round(v);
+        string s = System.Math.Abs(n).ToString(CultureInfo.InvariantCulture);
+        for (int i = s.Length - 3; i > 0; i -= 3) s = s.Insert(i, ".");
+        return n < 0 ? "-" + s : s;
+    }
+
+    static int ParseNum(string s) { return int.Parse(s.Replace(".", ""), CultureInfo.InvariantCulture); }
+
+    // 0.65 -> "0.65", 10 -> "10"
+    static string Fmt(float v) { return v.ToString(CultureInfo.InvariantCulture); }
+
+    static string Cap(string s) { return string.IsNullOrEmpty(s) ? s : char.ToUpperInvariant(s[0]) + s.Substring(1); }
 }

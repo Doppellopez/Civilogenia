@@ -162,6 +162,45 @@ public class FreeCamera : MonoBehaviour
 
         transform.position = e.TransformPoint(followLocal) + normal * distance * 0.75f - north * distance * 0.65f;
         lastEarthRotation = e.rotation;
+        LookAtFollowedPoint();   // la ciudad queda en el centro de la pantalla desde el primer fotograma
+    }
+
+    // Apunta la cámara al punto fijado (la ciudad), con el norte de la Tierra hacia arriba en la pantalla
+    void LookAtFollowedPoint()
+    {
+        Transform e = earth.transform;
+        Vector3 toPoint = e.TransformPoint(followLocal) - transform.position;
+        if (toPoint.sqrMagnitude < 1e-6f) return;
+
+        Vector3 north = e.TransformDirection(Vector3.up);
+        if (Vector3.Cross(toPoint, north).sqrMagnitude < 1e-6f * toPoint.sqrMagnitude) return;
+
+        transform.rotation = Quaternion.LookRotation(toPoint, north);
+    }
+
+    static FreeCamera instance;
+    void Awake() { instance = this; }
+
+    /// <summary>Sale de la vista de la ciudad y vuelve a la vista general: la cámara se aleja sobre la misma zona.</summary>
+    public static void ExitCityView()
+    {
+        if (instance == null || instance.earth == null || ViewedCity == null) return;
+        instance.LeaveCityView();
+    }
+
+    void LeaveCityView()
+    {
+        Transform e = earth.transform;
+        // La cámara se aleja justo por encima de la ciudad: al mirar al centro de la Tierra, la ciudad queda en el centro de la pantalla
+        Vector3 radial = (e.TransformPoint(followLocal) - e.position).normalized;
+
+        StopFollowing();   // ViewedCity = null y suelta el punto
+        transform.position = e.position + radial * earth.FinalRadius * startDistanceInRadii * 0.6f;
+        LookAtEarthCenter();
+
+        Vector3 euler = transform.eulerAngles;
+        yaw = euler.y;
+        pitch = euler.x > 180f ? euler.x - 360f : euler.x;
     }
 
     void StopFollowing()
@@ -186,8 +225,9 @@ public class FreeCamera : MonoBehaviour
         lastEarthRotation = e.rotation;
         transform.position = e.position + delta * (transform.position - e.position);
 
-        // Siempre al centro de la Tierra, con su norte (eje local Y) hacia arriba en la pantalla
-        LookAtEarthCenter();
+        // En la vista de la ciudad la cámara mira a la ciudad (centrada en la pantalla); si no, al centro de la Tierra
+        if (ViewedCity != null) LookAtFollowedPoint();
+        else LookAtEarthCenter();   // con su norte (eje local Y) hacia arriba en la pantalla
     }
 
     [Header("Zoom (rueda del ratón)")]
@@ -236,7 +276,11 @@ public class FreeCamera : MonoBehaviour
         if (following)
         {
             // Retroceso suelta el punto (Espacio ya pausa la partida); los cursores siguen moviendo la cámara
-            if (Inp.GetKeyDown(KeyCode.Backspace)) StopFollowing();
+            if (Inp.GetKeyDown(KeyCode.Backspace))
+            {
+                if (ViewedCity != null) LeaveCityView();   // salir de la vista de ciudad: la cámara se aleja apuntando a la ciudad
+                else StopFollowing();
+            }
             else { MoveWithArrows(); return; }
         }
 

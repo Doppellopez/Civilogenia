@@ -1651,6 +1651,8 @@ public static partial class CivViews
             BuildElephantModel(root.transform, size, unit.owner.color);   // el elefante se dibuja igual en todas las eras
         else if (unit.kind == UnitKind.HussiteWagon)
             BuildHussiteWagonModel(root.transform, size, unit.owner.color);   // y el carro husita también
+        else if (unit.kind == UnitKind.Merchant)
+            BuildMerchantModel(root.transform, size, unit.owner.color);   // y el mercader (siempre medieval)
         else if (unit.owner.Has(TechKind.EraChange4))
             BuildFuturisticUnit(root.transform, size, unit);
         else if (unit.owner.Has(TechKind.EraChange3))
@@ -1787,6 +1789,7 @@ public static partial class CivViews
                 break;
         }
 
+        unit.spinners = CollectSpinners(root.transform);
         unit.selectionRing = Ring(root.transform, size * 1.9f);
     }
 
@@ -2976,6 +2979,7 @@ public static partial class CivViews
         w.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
         GameObject h = Piece(r, Cylinder, hub, new Vector3(x + Mathf.Sign(x) * width * 0.6f, y, z), new Vector3(diameter * 0.5f, width * 0.2f, diameter * 0.5f));
         h.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+        h.name = "Cubo";   // el buje no gira ni lleva radios (solo la rueda)
     }
 
     static GameObject ModTube(Transform r, Material m, Vector3 from, Vector3 to, float thickness)
@@ -3347,6 +3351,7 @@ public static partial class CivViews
                     float x = side * s * (0.2f + i * 0.22f);
                     GameObject eng = Piece(root, Cylinder, dark, new Vector3(x, y - s * 0.06f, -s * (0.02f + i * 0.08f)), new Vector3(s * 0.06f, s * 0.12f, s * 0.06f));
                     eng.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                    Fan(root, new Vector3(x, y - s * 0.06f, -s * (0.02f + i * 0.08f) + s * 0.125f), s * 0.05f);   // ventilador a la entrada del motor
                 }
         }
         else

@@ -330,6 +330,7 @@ public partial class CivGame : MonoBehaviour
         if (IntroVideo.Active || MainMenu.Active) return;   // la partida espera mientras suena la introducción y está el menú
 
         TickFog();   // niebla de guerra: solo se ve en torno a las unidades y ciudades propias
+        UpdateGarrisonViews();   // las unidades dentro de una ciudad propia salen del mapa y solo se ven en la vista de esa ciudad
 
         float dt = Time.deltaTime * gameSpeed * SimulationScale;
         if (dt <= 0f) return;
@@ -367,6 +368,46 @@ public partial class CivGame : MonoBehaviour
 
         foreach (Civ civ in civs)
             if (civ.territoryDirty) CivViews.RebuildTerritory(civ, grid, earth, EarthT);
+    }
+
+    // Ciudad de su misma civilización en la que está parada la unidad (null si va por el mapa, se mueve, está embarcada
+    // o el jugador la eligió desde la vista de la ciudad y debe verse en el mapa)
+    City GarrisonCity(Unit u)
+    {
+        if (!u.alive || u.carriedBy != null || u.Moving || u.shownOnMap) return null;
+        City c = grid.cityAt[u.cell];
+        return (c != null && c.alive && c.owner == u.owner) ? c : null;
+    }
+
+    // Unidad parada dentro de una ciudad propia (solo se ve en la vista de esa ciudad)
+    public bool IsGarrisoned(Unit u)
+    {
+        bool wasShown = u.shownOnMap;
+        u.shownOnMap = false;
+        bool result = GarrisonCity(u) != null;
+        u.shownOnMap = wasShown;
+        return result;
+    }
+
+    // Una unidad que entra en una ciudad propia desaparece del mapa y aparece en la vista de esa ciudad;
+    // al salir vuelve a mostrarse según la niebla de guerra.
+    void UpdateGarrisonViews()
+    {
+        City viewed = FreeCamera.ViewedCity;
+
+        foreach (Unit u in allUnits)
+        {
+            if (!u.alive || u.view == null || u.carriedBy != null) continue;
+
+            City garrison = GarrisonCity(u);
+            bool show = garrison != null
+                ? garrison == viewed
+                : (u.owner == human || IsVisible(u.cell));
+
+            if (u.view.activeSelf != show) u.view.SetActive(show);
+            if (u.selectionRing != null && !show && u.selectionRing.activeSelf) u.selectionRing.SetActive(false);
+            if (u.fortifyView != null && u.fortifyView.activeSelf != show) u.fortifyView.SetActive(show);
+        }
     }
 
     // ---------------------------------------------------------------- Ciudades
@@ -604,10 +645,10 @@ public partial class CivGame : MonoBehaviour
             city.hp += 100f;
         }
 
-        // Cada ruta comercial activa da +15 % de oro y de ciencia a la ciudad
-        float trade = 1f + TradeBonusOf(city);
-        city.goldRate *= trade;
-        city.scienceRate *= trade;
+        // Cada ruta comercial activa da oro y ciencia a la ciudad (+0,1 % por casilla de distancia si es de caravana, +0,2 % si es de mercader)
+        float trade = TradeBonusOf(city);
+        city.goldRate *= 1f + trade * TradeGoldFactor;
+        city.scienceRate *= 1f + trade;
         city.scienceRate *= 1f + city.owner.scienceBonus;   // bonus de la civilización elegida
         city.prodRate *= 1f + city.owner.productionBonus;
         city.goldRate *= 1f + city.owner.goldBonus;
@@ -763,7 +804,7 @@ public partial class CivGame : MonoBehaviour
             c.pop -= d.popCost;
             int spawnCell = d.naval ? SeaCellNextTo(c) : c.cell;
             Unit built = SpawnUnit(c.owner, c.itemUnit, spawnCell >= 0 ? spawnCell : c.cell);
-            if (built.kind == UnitKind.Caravan) built.homeCity = c;
+            if (built.IsTrader) built.homeCity = c;
             RecomputeCity(c);
             RebuildCityView(c);
             Notify(c.owner, c.name + ": " + d.name + " listo", c.owner.color);
@@ -852,7 +893,7 @@ public partial class CivGame : MonoBehaviour
             case UnitKind.Bomber:   return civ.Has(TechKind.Aviation);
             case UnitKind.Ballista: return civ.Has(TechKind.Crossbow);
             case UnitKind.Caravan:  return civ.Has(TechKind.Currency);
-            case UnitKind.Merchant: return false; // solo mejorando una caravana
+            case UnitKind.Merchant: return civ.Has(TechKind.ArabicNumerals);   // sustituye a la caravana (que también se puede mejorar a mercader en una Academia)
             default:                return true;
         }
     }
@@ -1339,6 +1380,7 @@ public partial class CivGame : MonoBehaviour
         if (fwd.sqrMagnitude > 1e-8f) rot = Quaternion.LookRotation(fwd.normalized, d);
 
         u.view.transform.localRotation = rot;
+        AnimateUnit(u, d);
     }
 
     // ---------------------------------------------------------------- Carreteras
@@ -1829,33 +1871,64 @@ public partial class CivGame : MonoBehaviour
 
     // ---------------------------------------------------------------- Comercio
 
-    public const float TradeBonus = 0.15f;          // ruta creada por una caravana
-    public const float MerchantTradeBonus = 0.20f;  // ruta creada por un mercader
+    public const float TradeBonusPerTile = 0.001f;  // ruta creada por una caravana: +0,1 % por cada casilla de distancia entre las dos ciudades
+    public const float TradeGoldFactor = 10f;       // las rutas dan 10 veces más oro que ciencia (+1 % de oro por casilla en caravana)
+    public const float MerchantTradeFactor = 2f;   // ruta creada por un mercader: el doble que la de caravana (+0,2 % por casilla)
 
-    /// <summary>Rutas comerciales activas: con ciudades vivas que sigan siendo de la misma civilización.</summary>
+    /// <summary>Texto de lo que da una ruta (o varias) con ese bonus de ciencia: "12% de oro y 1,2% de ciencia".</summary>
+    public static string RouteText(float bonus)
+    {
+        return BonusPercent(bonus * TradeGoldFactor) + "% de oro y " + BonusPercent(bonus) + "% de ciencia";
+    }
+
+    /// <summary>Un bonus como porcentaje con un decimal: 0.012 -> "1,2".</summary>
+    public static string BonusPercent(float bonus)
+    {
+        return (bonus * 100f).ToString("0.#", System.Globalization.CultureInfo.GetCultureInfo("es-ES"));
+    }
+
+    /// <summary>Distancia entre dos ciudades en casillas (al menos 1).</summary>
+    public int TradeDistance(City a, City b)
+    {
+        return Mathf.Max(1, Mathf.RoundToInt(grid.AngleBetween(a.cell, b.cell) / grid.angularSpacing));
+    }
+
+    /// <summary>Bonus de oro y ciencia de una ruta entre estas dos ciudades según quién la creó.</summary>
+    public float RouteBonus(bool merchant, City a, City b)
+    {
+        return TradeBonusPerTile * TradeDistance(a, b) * (merchant ? MerchantTradeFactor : 1f);
+    }
+
+    /// <summary>La ruta con esa ciudad está activa: la ciudad sigue viva y su dueña no está en guerra con la nuestra (la guerra ya destruye las rutas; esto cubre ciudades conquistadas y partidas antiguas).</summary>
+    public bool TradeActive(City city, City partner)
+    {
+        return partner.alive && !AtWar(city.owner, partner.owner);
+    }
+
+    /// <summary>Rutas comerciales activas.</summary>
     public int TradeRoutes(City city)
     {
         int n = 0;
         foreach (City p in city.tradePartners)
-            if (p.alive && p.owner == city.owner) n++;
+            if (TradeActive(city, p)) n++;
         return n;
     }
 
-    /// <summary>Bonus total de oro y ciencia de la ciudad por sus rutas activas (0,15 por las de caravana, 0,20 por las de mercader).</summary>
+    /// <summary>Bonus total de oro y ciencia de la ciudad por sus rutas activas (0,001 por casilla de distancia en las de caravana, el doble en las de mercader).</summary>
     public float TradeBonusOf(City city)
     {
         float bonus = 0f;
         foreach (City p in city.tradePartners)
         {
-            if (!p.alive || p.owner != city.owner) continue;
-            bonus += city.merchantPartners.Contains(p) ? MerchantTradeBonus : TradeBonus;
+            if (!TradeActive(city, p)) continue;
+            bonus += RouteBonus(city.merchantPartners.Contains(p), city, p);
         }
         return bonus;
     }
 
     /// <summary>
     /// Motivo por el que la caravana no puede establecer comercio ahora mismo, o null si puede.
-    /// Debe estar parada en una ciudad propia distinta de la de origen y sin ruta ya con ella.
+    /// Debe estar parada en una ciudad distinta de la de origen (propia, o de una civilización con la que no estemos en guerra) y sin ruta ya con ella.
     /// </summary>
     public string TradeBlocker(Unit u)
     {
@@ -1865,11 +1938,12 @@ public partial class CivGame : MonoBehaviour
         if (home == null || !home.alive || home.owner != u.owner) return "La ciudad de origen ya no es tuya.";
 
         City here = u.Moving ? null : grid.cityAt[u.cell];
-        if (here == null || here.owner != u.owner) return "Llévala a otra ciudad propia.";
+        if (here == null) return "Llévala a otra ciudad.";
+        if (AtWar(u.owner, here.owner)) return "No puedes comerciar con " + here.owner.name + ": estáis en guerra.";
         if (here == home) return "Llévala a una ciudad distinta de " + home.name + ".";
         if (home.tradePartners.Contains(here))
         {
-            // Una ruta de mercader sustituye a la de caravana entre las mismas ciudades (+20 % en vez de +15 %)
+            // Una ruta de mercader sustituye a la de caravana entre las mismas ciudades (+0,2 % por casilla en vez de +0,1 %)
             bool replaces = u.kind == UnitKind.Merchant && !home.merchantPartners.Contains(here);
             if (!replaces) return home.name + " ya comercia con " + here.name + (u.kind == UnitKind.Merchant ? " por mercader." : ".");
         }
@@ -1907,7 +1981,9 @@ public partial class CivGame : MonoBehaviour
         RecomputeCity(a);
         RecomputeCity(b);
 
-        Notify(u.owner, "Comercio entre " + a.name + " y " + b.name + ": +" + Mathf.RoundToInt((merchant ? MerchantTradeBonus : TradeBonus) * 100f) + "% de oro y ciencia en ambas", u.owner.color);
+        string text = "Comercio entre " + a.name + " y " + b.name + ": +" + RouteText(RouteBonus(merchant, a, b)) + " en ambas";
+        Notify(u.owner, text, u.owner.color);
+        if (b.owner != u.owner) Notify(b.owner, text, b.owner.color);   // la otra civilización también se beneficia
 
         KillSilently(u);
     }
@@ -2173,6 +2249,8 @@ public partial class CivGame : MonoBehaviour
 
         if (u.carriedBy != null) return; // embarcada: la lleva el barco
 
+        if (!u.Moving && u.view != null) PlaceUnit(u);   // parada también se anima (respira, ataca, trabaja)
+
         if (u.Moving)
         {
             AdvanceMove(u, dt);
@@ -2284,7 +2362,8 @@ public partial class CivGame : MonoBehaviour
         u.path.RemoveAt(0);
 
         City c = grid.cityAt[next];
-        if (c != null && c.owner != u.owner)
+        bool tradeVisit = u.IsTrader && c != null && !AtWar(u.owner, c.owner);   // caravanas y mercaderes pueden entrar en ciudades de civilizaciones con las que no hay guerra
+        if (c != null && c.owner != u.owner && !tradeVisit)
         {
             u.path.Clear();
             return;

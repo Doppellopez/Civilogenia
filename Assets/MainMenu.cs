@@ -36,6 +36,7 @@ public class MainMenu : MonoBehaviour
     int mpMode;                // 0 = un jugador, 1 = anfitrión, 2 = se une a una sala
     bool mpMenu;               // pantalla "Multijugador": crear o unirse
     bool hostLobby;            // sala del anfitrión: jugadores conectados y botón Comenzar
+    bool relayMode;            // la sala o la unión van por Unity Relay (con código) en vez de por IP
     bool joinForm;             // formulario para unirse: nombre e IP
     bool joinWait;             // conectado (o conectando): se espera a que el anfitrión empiece
     string joinIp = "127.0.0.1";
@@ -43,6 +44,7 @@ public class MainMenu : MonoBehaviour
     string mpError = "";
     bool loading;
     string loadingText = "Cargando partida…";
+    string loadingHint = "";
     float openTime;
     float previousTimeScale = 1f;
 
@@ -72,7 +74,7 @@ public class MainMenu : MonoBehaviour
     static void Create()
     {
         Active = false;
-        if (!Enabled || FindFirstObjectByType<MainMenu>() != null) return;
+        if (!Enabled || DedicatedServer.IsDedicated || FindFirstObjectByType<MainMenu>() != null) return;   // el servidor dedicado no tiene menú
 
         GameObject go = new GameObject("Menú principal");
         go.AddComponent<MainMenu>();
@@ -88,6 +90,7 @@ public class MainMenu : MonoBehaviour
         }
 
         if (Active && joinWait) UpdateJoinWait();
+        if (Active && hostLobby && relayMode) UpdateRelayLobby();
 
         if (!Active || loading || Time.unscaledTime - openTime < IgnoreInputSeconds) return;
 
@@ -114,6 +117,7 @@ public class MainMenu : MonoBehaviour
         hostLobby = false;
         joinForm = false;
         joinWait = false;
+        relayMode = false;
         mpMode = 0;
         openTime = Time.unscaledTime;
         previousTimeScale = Time.timeScale > 0f ? Time.timeScale : 1f;
@@ -173,6 +177,7 @@ public class MainMenu : MonoBehaviour
     {
         if (CivNet.Instance != null) CivNet.Instance.Shutdown();
         choosingCiv = choosingSize = choosingRivals = hostLobby = joinForm = joinWait = false;
+        relayMode = false;
         mpMenu = true;
         mpMode = 0;
     }
@@ -181,7 +186,14 @@ public class MainMenu : MonoBehaviour
     void OpenHostLobby()
     {
         mpError = "";
-        if (!CivNet.Instance.StartHost())
+
+        if (relayMode)
+        {
+            // Unity Relay: sin abrir puertos; el código aparece en la sala en cuanto Relay responde (ver UpdateRelayLobby)
+            CivNet.Instance.Shutdown();
+            CivNet.Instance.StartRelayHost(CivGame.MaxNetPlayers - 1);
+        }
+        else if (!CivNet.Instance.StartHost())
         {
             mpError = CivNet.Instance.status;
             BackToMpMenu();
@@ -192,6 +204,17 @@ public class MainMenu : MonoBehaviour
         hostLobby = true;
     }
 
+    // Sala por Relay: si Relay no responde, se vuelve al menú con el motivo
+    void UpdateRelayLobby()
+    {
+        CivNet net = CivNet.Instance;
+        if (net == null || !net.relayFailed) return;
+
+        string reason = net.relayError;
+        BackToMpMenu();
+        mpError = "No se pudo abrir la sala en Relay: " + reason;
+    }
+
     // Cliente: conecta con "ip" o "ip:puerto"
     void Connect()
     {
@@ -200,10 +223,17 @@ public class MainMenu : MonoBehaviour
         int colon = host.LastIndexOf(':');
         if (colon > 0 && int.TryParse(host.Substring(colon + 1), out int parsed)) { port = parsed; host = host.Substring(0, colon); }
 
-        if (host.Length == 0) { mpError = "Escribe la IP del anfitrión."; return; }
+        if (host.Length == 0) { mpError = "Escribe la IP del anfitrión o el código de Relay."; return; }
 
         mpError = "";
-        CivNet.Instance.StartClient(host, port, playerName.Trim().Length > 0 ? playerName.Trim() : "Jugador", civChoice);
+        string nick = playerName.Trim().Length > 0 ? playerName.Trim() : "Jugador";
+
+        // Un código de Relay son letras y números (sin puntos ni dos puntos); una IP o un nombre de equipo los lleva
+        bool isRelayCode = relayMode || (host.Length >= 4 && host.Length <= 8 && System.Text.RegularExpressions.Regex.IsMatch(host, "^[A-Za-z0-9]+$")
+            && !host.Equals("localhost", System.StringComparison.OrdinalIgnoreCase));
+
+        if (isRelayCode) CivNet.Instance.StartRelayClient(host, nick, civChoice);
+        else CivNet.Instance.StartClient(host, port, nick, civChoice);
         joinForm = false;
         joinWait = true;
     }
@@ -214,7 +244,12 @@ public class MainMenu : MonoBehaviour
         CivGame game = CivGame.Instance;
         CivNet net = CivNet.Instance;
 
-        if (game != null && game.netJoining) { loading = true; loadingText = "Uniéndose a la partida…"; }
+        if (game != null && game.netJoining)
+        {
+            loading = true;
+            loadingText = "Uniéndose a la partida…";
+            loadingHint = "Se está reconstruyendo el mundo del servidor. En equipos lentos puede tardar un minuto.";
+        }
 
         if (game != null && game.ready && game.IsNetClient)
         {
@@ -260,6 +295,7 @@ public class MainMenu : MonoBehaviour
     void Play()
     {
         if (!Active || loading) return;
+        loadingHint = "";
         Active = false;
         Time.timeScale = previousTimeScale;
         Debug.Log("[Civilogenia] Menú principal: a jugar.");
@@ -306,6 +342,104 @@ public class MainMenu : MonoBehaviour
         styleScale = k;
     }
 
+    // Firma y versión abajo a la derecha, en todas las pantallas del menú
+    const string VersionText = "Doppellopez   " + GameVersion.Full;
+    GUIStyle versionStyle;
+
+    void DrawVersion(float k)
+    {
+        if (versionStyle == null || versionStyle.fontSize != Mathf.RoundToInt(16f * k))
+        {
+            versionStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.LowerRight, fontSize = Mathf.RoundToInt(16f * k) };
+            versionStyle.normal.textColor = new Color(1f, 1f, 1f, 0.6f);
+        }
+
+        float pad = 16f * k;
+        GUI.Label(new Rect(0, 0, Screen.width - pad, Screen.height - pad), VersionText, versionStyle);
+    }
+
+    // ---------------------------------------------------------------- Idioma
+
+    Texture2D unionJack;
+
+    // Bandera del Reino Unido dibujada por código: fondo azul, aspas blancas con rojas finas y cruz blanca con cruz roja
+    static Texture2D MakeUnionJack()
+    {
+        const int w = 120, h = 60;
+        Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+        Color blue = new Color32(1, 33, 105, 255), white = Color.white, red = new Color32(200, 16, 46, 255);
+        Color[] pixels = new Color[w * h];
+        float diagonal = Mathf.Sqrt(w * w + h * h);
+
+        for (int y = 0; y < h; y++)
+        {
+            for (int x = 0; x < w; x++)
+            {
+                float dx = x + 0.5f - w / 2f, dy = y + 0.5f - h / 2f;
+                float d = Mathf.Min(Mathf.Abs(dy * w - dx * h), Mathf.Abs(dy * w + dx * h)) / diagonal;   // distancia a la diagonal más cercana
+
+                Color c = blue;
+                if (d <= 6f) c = white;
+                if (d <= 2f) c = red;
+                if (Mathf.Abs(dy) <= 10f || Mathf.Abs(dx) <= 10f) c = white;
+                if (Mathf.Abs(dy) <= 6f || Mathf.Abs(dx) <= 6f) c = red;
+                pixels[y * w + x] = c;
+            }
+        }
+
+        tex.SetPixels(pixels);
+        tex.wrapMode = TextureWrapMode.Clamp;
+        tex.filterMode = FilterMode.Bilinear;
+        tex.Apply();
+        return tex;
+    }
+
+    // Tres banderas arriba a la derecha: España (español), Reino Unido (inglés) y Alemania (alemán). La elegida se ve con borde dorado.
+    void DrawLanguageFlags(float k)
+    {
+        if (unionJack == null) unionJack = MakeUnionJack();
+
+        float fw = 72f * k, fh = 48f * k, gap = 12f * k, pad = 20f * k;
+        Rect de = new Rect(Screen.width - pad - fw, pad, fw, fh);
+        Rect uk = new Rect(de.x - gap - fw, pad, fw, fh);
+        Rect es = new Rect(uk.x - gap - fw, pad, fw, fh);
+        bool english = Loc.English, german = Loc.German;
+
+        // Alemania: franjas horizontales negra, roja y dorada
+        float deAlpha = german ? 1f : 0.55f;
+        GUI.color = new Color(0f, 0f, 0f, deAlpha);
+        GUI.DrawTexture(new Rect(de.x, de.y, de.width, de.height / 3f), Texture2D.whiteTexture);
+        GUI.color = new Color(0.867f, 0f, 0f, deAlpha);
+        GUI.DrawTexture(new Rect(de.x, de.y + de.height / 3f, de.width, de.height / 3f), Texture2D.whiteTexture);
+        GUI.color = new Color(1f, 0.808f, 0f, deAlpha);
+        GUI.DrawTexture(new Rect(de.x, de.y + 2f * de.height / 3f, de.width, de.height / 3f), Texture2D.whiteTexture);
+
+        // España: franja roja, amarilla (el doble de alta) y roja
+        float esAlpha = (english || german) ? 0.55f : 1f;
+        GUI.color = new Color(0.667f, 0.082f, 0.106f, esAlpha);
+        GUI.DrawTexture(new Rect(es.x, es.y, es.width, es.height * 0.25f), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(es.x, es.yMax - es.height * 0.25f, es.width, es.height * 0.25f), Texture2D.whiteTexture);
+        GUI.color = new Color(0.945f, 0.749f, 0f, esAlpha);
+        GUI.DrawTexture(new Rect(es.x, es.y + es.height * 0.25f, es.width, es.height * 0.5f), Texture2D.whiteTexture);
+
+        GUI.color = new Color(1f, 1f, 1f, english ? 1f : 0.55f);
+        GUI.DrawTexture(uk, unionJack, ScaleMode.StretchToFill, false);
+
+        // Borde dorado en la elegida
+        Rect chosen = german ? de : (english ? uk : es);
+        float b = 3f * k;
+        GUI.color = new Color(1f, 0.85f, 0.35f, 1f);
+        GUI.DrawTexture(new Rect(chosen.x - b, chosen.y - b, chosen.width + 2f * b, b), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(chosen.x - b, chosen.yMax, chosen.width + 2f * b, b), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(chosen.x - b, chosen.y, b, chosen.height), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(chosen.xMax, chosen.y, b, chosen.height), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+
+        if (GUI.Button(es, GUIContent.none, GUIStyle.none)) Loc.SetLanguage(0);
+        if (GUI.Button(uk, GUIContent.none, GUIStyle.none)) Loc.SetLanguage(1);
+        if (GUI.Button(de, GUIContent.none, GUIStyle.none)) Loc.SetLanguage(2);
+    }
+
     void OnGUI()
     {
         if (!Active) return;
@@ -328,10 +462,10 @@ public class MainMenu : MonoBehaviour
         Rect titleRect = new Rect(0, Screen.height * 0.12f, Screen.width, 110f * k);
         Color shadow = title.normal.textColor;
         title.normal.textColor = new Color(0f, 0f, 0f, 0.7f);
-        GUI.Label(new Rect(titleRect.x + 3f * k, titleRect.y + 3f * k, titleRect.width, titleRect.height), "CIVILOGENIA", title);
+        LocGUI.Label(new Rect(titleRect.x + 3f * k, titleRect.y + 3f * k, titleRect.width, titleRect.height), "CIVILOGENIA", title);
         title.normal.textColor = shadow;
-        GUI.Label(titleRect, "CIVILOGENIA", title);
-        GUI.Label(new Rect(0, titleRect.yMax - 10f * k, Screen.width, 40f * k), "De la Edad de Piedra a las estrellas", subtitle);
+        LocGUI.Label(titleRect, "CIVILOGENIA", title);
+        LocGUI.Label(new Rect(0, titleRect.yMax - 10f * k, Screen.width, 40f * k), "De la Edad de Piedra a las estrellas", subtitle);
 
         bool wasEnabled = GUI.enabled;
         GUI.enabled = !loading && Time.unscaledTime - openTime >= IgnoreInputSeconds;
@@ -339,178 +473,209 @@ public class MainMenu : MonoBehaviour
         float bw = 340f * k, bh = 58f * k, gap = 16f * k;
         float y = Screen.height * 0.43f;
 
+        DrawLanguageFlags(k);
+        DrawVersion(k);
+
         if (mpMenu)
         {
-            GUI.Label(new Rect(0, y - 20f * k, Screen.width, 44f * k), "Multijugador", body);
+            LocGUI.Label(new Rect(0, y - 20f * k, Screen.width, 44f * k), "Multijugador", body);
             y += 34f * k;
 
-            if (mpError.Length > 0) { GUI.Label(new Rect(0, y - 6f * k, Screen.width, 28f * k), mpError, hint2); y += 30f * k; }
+            float mw = 600f * k;   // más ancho que los demás botones: los textos de Relay son largos
 
-            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Crear partida", button)) { mpError = ""; mpMenu = false; mpMode = 1; choosingCiv = true; }
+            if (mpError.Length > 0) { LocGUI.Label(new Rect(0, y - 6f * k, Screen.width, 28f * k), mpError, hint2); y += 30f * k; }
+
+            if (LocGUI.Button(new Rect(cx - mw / 2f, y, mw, bh), "Crear partida", button)) { mpError = ""; mpMenu = false; mpMode = 1; relayMode = false; choosingCiv = true; }
             y += bh + gap;
-            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Unirse a una partida", button)) { mpError = ""; mpMenu = false; mpMode = 2; choosingCiv = true; }
+            if (LocGUI.Button(new Rect(cx - mw / 2f, y, mw, bh), "Unirse a una partida", button)) { mpError = ""; mpMenu = false; mpMode = 2; relayMode = false; if (joinIp.Length == 0) joinIp = "127.0.0.1"; choosingCiv = true; }
             y += bh + gap;
-            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Volver", button)) mpMenu = false;
+
+            // Unity Relay: jugar por internet con un código, sin abrir puertos (necesita los paquetes de Relay)
+            bool relayOk = CivNet.RelayAvailable;
+            bool menuEnabled = GUI.enabled;
+            GUI.enabled = menuEnabled && relayOk;
+            if (LocGUI.Button(new Rect(cx - mw / 2f, y, mw, bh), "Crear partida por Unity Relay", button)) { mpError = ""; mpMenu = false; mpMode = 1; relayMode = true; choosingCiv = true; }
+            y += bh + gap;
+            if (LocGUI.Button(new Rect(cx - mw / 2f, y, mw, bh), "Unirse por Unity Relay (código)", button)) { mpError = ""; mpMenu = false; mpMode = 2; relayMode = true; joinIp = ""; choosingCiv = true; }
+            y += bh + gap;
+            GUI.enabled = menuEnabled;
+            if (!relayOk) { LocGUI.Label(new Rect(0, y - 8f * k, Screen.width, 28f * k), "Relay no está instalado en esta versión del juego", hint2); y += 30f * k; }
+
+            if (LocGUI.Button(new Rect(cx - mw / 2f, y, mw, bh), "Volver", button)) mpMenu = false;
         }
         else if (hostLobby)
         {
             CivGame game = CivGame.Instance;
-            GUI.Label(new Rect(0, y - 40f * k, Screen.width, 44f * k), "Sala de la partida", body);
+            LocGUI.Label(new Rect(0, y - 40f * k, Screen.width, 44f * k), "Sala de la partida", body);
 
-            string ips = string.Join("   ", CivNet.LocalAddresses().ToArray());
             hint2.wordWrap = true;
-            GUI.Label(new Rect(cx - 320f * k, y, 640f * k, 54f * k), "Que los demás se unan a: " + (ips.Length > 0 ? ips : "(IP no encontrada)") + "   puerto " + CivNet.DefaultPort, hint2);
+            bool relayWaiting = false;
+            if (relayMode)
+            {
+                CivNet relayNet = CivNet.Instance;
+                relayWaiting = relayNet == null || !relayNet.relayReady;
+                string relayText = relayWaiting ? "Creando la sala en Unity Relay…" : "Que los demás se unan con el código de Relay:   " + relayNet.relayJoinCode;
+                LocGUI.Label(new Rect(cx - 320f * k, y, 640f * k, 54f * k), relayText, hint2);
+            }
+            else
+            {
+                string ips = string.Join("   ", CivNet.LocalAddresses().ToArray());
+                LocGUI.Label(new Rect(cx - 320f * k, y, 640f * k, 54f * k), "Que los demás se unan a: " + (ips.Length > 0 ? ips : "(IP no encontrada)") + "   puerto " + CivNet.DefaultPort, hint2);
+            }
             y += 58f * k;
 
             string players = game != null ? game.HostLobbyText() : "";
             int lines = players.Split('\n').Length;
-            GUI.Label(new Rect(cx - 280f * k, y, 560f * k, 28f * k * lines + 10f * k), players, body);
+            LocGUI.Label(new Rect(cx - 280f * k, y, 560f * k, 28f * k * lines + 10f * k), players, body);
             y += 28f * k * lines + 24f * k;
 
-            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Comenzar partida", button)) StartCoroutine(HostStartRoutine());
+            bool lobbyEnabled = GUI.enabled;
+            GUI.enabled = lobbyEnabled && !relayWaiting;   // por Relay no se puede empezar hasta tener el código
+            if (LocGUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Comenzar partida", button)) StartCoroutine(HostStartRoutine());
+            GUI.enabled = lobbyEnabled;
             y += bh + gap;
-            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Cancelar", button)) BackToMpMenu();
+            if (LocGUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Cancelar", button)) BackToMpMenu();
         }
         else if (joinForm)
         {
-            GUI.Label(new Rect(0, y - 40f * k, Screen.width, 44f * k), "Unirse a una partida", body);
+            LocGUI.Label(new Rect(0, y - 40f * k, Screen.width, 44f * k), relayMode ? "Unirse por Unity Relay" : "Unirse a una partida", body);
             y += 4f * k;
 
-            GUI.Label(new Rect(cx - 280f * k, y, 560f * k, 28f * k), "Tu nombre", hint2);
+            LocGUI.Label(new Rect(cx - 280f * k, y, 560f * k, 28f * k), "Tu nombre", hint2);
             y += 28f * k;
             playerName = GUI.TextField(new Rect(cx - 200f * k, y, 400f * k, 40f * k), playerName, 20, button);
             y += 50f * k;
 
-            GUI.Label(new Rect(cx - 280f * k, y, 560f * k, 28f * k), "IP del anfitrión (ejemplo 192.168.1.20 o 192.168.1.20:7777)", hint2);
+            LocGUI.Label(new Rect(cx - 280f * k, y, 560f * k, 28f * k), relayMode ? "Código de Relay que muestra el anfitrión (ejemplo K7X9PQ)" : "IP del anfitrión (192.168.1.20 o 192.168.1.20:7777) o código de Relay (ejemplo K7X9PQ)", hint2);
             y += 28f * k;
             joinIp = GUI.TextField(new Rect(cx - 200f * k, y, 400f * k, 40f * k), joinIp, 64, button);
             y += 54f * k;
 
-            if (mpError.Length > 0) { GUI.Label(new Rect(0, y - 6f * k, Screen.width, 28f * k), mpError, hint2); y += 30f * k; }
+            if (mpError.Length > 0) { LocGUI.Label(new Rect(0, y - 6f * k, Screen.width, 28f * k), mpError, hint2); y += 30f * k; }
 
-            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Conectar", button)) Connect();
+            if (LocGUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Conectar", button)) Connect();
             y += bh + gap;
-            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Volver", button)) { joinForm = false; choosingCiv = true; }
+            if (LocGUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Volver", button)) { joinForm = false; choosingCiv = true; }
         }
         else if (joinWait)
         {
             CivGame game = CivGame.Instance;
             CivNet net = CivNet.Instance;
-            GUI.Label(new Rect(0, y - 20f * k, Screen.width, 44f * k), net != null ? net.status : "", body);
+            LocGUI.Label(new Rect(0, y - 20f * k, Screen.width, 44f * k), net != null ? net.status : "", body);
             y += 40f * k;
 
             string players = game != null ? game.netLobbyText : "";
             if (players.Length > 0)
             {
                 int lines = players.Split('\n').Length;
-                GUI.Label(new Rect(0, y, Screen.width, 28f * k), "Jugadores en la sala", hint2);
+                LocGUI.Label(new Rect(0, y, Screen.width, 28f * k), "Jugadores en la sala", hint2);
                 y += 30f * k;
-                GUI.Label(new Rect(cx - 280f * k, y, 560f * k, 28f * k * lines + 10f * k), players, body);
+                LocGUI.Label(new Rect(cx - 280f * k, y, 560f * k, 28f * k * lines + 10f * k), players, body);
                 y += 28f * k * lines + 20f * k;
             }
 
-            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Cancelar", button)) BackToMpMenu();
+            if (LocGUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Cancelar", button)) BackToMpMenu();
         }
         else if (choosingCiv)
         {
             y -= 60f * k;   // la cuadrícula de civilizaciones ocupa más: se sube todo para que quepa el botón Volver
-            GUI.Label(new Rect(0, y - 20f * k, Screen.width, 44f * k), "Elige tu civilización", body);
+            LocGUI.Label(new Rect(0, y - 20f * k, Screen.width, 44f * k), "Elige tu civilización", body);
             y += 34f * k;
 
             string[] names = new string[GameDefs.PlayableCivs.Length];
             for (int i = 0; i < names.Length; i++) names[i] = GameDefs.PlayableCivs[i].name;
             const int cols = 4;
             int rows = (names.Length + cols - 1) / cols;
-            civChoice = GUI.SelectionGrid(new Rect(cx - 380f * k, y, 760f * k, 42f * k * rows), civChoice, names, cols, button);
+            civChoice = LocGUI.SelectionGrid(new Rect(cx - 380f * k, y, 760f * k, 42f * k * rows), civChoice, names, cols, button);
             y += 42f * k * rows + 10f * k;
 
             GameDefs.CivChoice pick = GameDefs.PlayableCivs[civChoice];
             hint2.wordWrap = true;
-            GUI.Label(new Rect(cx - 280f * k, y, 560f * k, 60f * k), pick.description, hint2);
+            LocGUI.Label(new Rect(cx - 280f * k, y, 560f * k, 60f * k), pick.description, hint2);
             y += 64f * k;
             if (pick.cityNames != null)
             {
-                GUI.Label(new Rect(cx - 280f * k, y, 560f * k, 50f * k),
+                LocGUI.Label(new Rect(cx - 280f * k, y, 560f * k, 50f * k),
                     "Ciudades: " + string.Join(", ", pick.cityNames, 0, Mathf.Min(6, pick.cityNames.Length)) + "…", hint2);
                 y += 40f * k;
             }
 
-            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Continuar", button)) AfterCivChosen();
+            if (LocGUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Continuar", button)) AfterCivChosen();
             y += bh + gap;
-            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Volver", button)) { choosingCiv = false; if (mpMode != 0) { mpMode = 0; mpMenu = true; } }
+            if (LocGUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Volver", button)) { choosingCiv = false; if (mpMode != 0) { mpMode = 0; mpMenu = true; } }
         }
         else if (choosingSize)
         {
-            GUI.Label(new Rect(0, y - 20f * k, Screen.width, 44f * k), "Tamaño del mapa", body);
+            LocGUI.Label(new Rect(0, y - 20f * k, Screen.width, 44f * k), "Tamaño del mapa", body);
             y += 34f * k;
 
             string[] sizes = new string[GameDefs.MapSizes.Length];
             for (int i = 0; i < sizes.Length; i++) sizes[i] = GameDefs.MapSizes[i].name;
-            mapSize = GUI.Toolbar(new Rect(cx - 280f * k, y, 560f * k, 48f * k), mapSize, sizes, button);
+            mapSize = LocGUI.Toolbar(new Rect(cx - 280f * k, y, 560f * k, 48f * k), mapSize, sizes, button);
             y += 58f * k;
-            GUI.Label(new Rect(0, y, Screen.width, 28f * k), GameDefs.MapSizes[mapSize].hint, hint2);
+            LocGUI.Label(new Rect(0, y, Screen.width, 28f * k), GameDefs.MapSizes[mapSize].hint, hint2);
             y += 44f * k;
 
-            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Continuar", button)) { choosingSize = false; choosingRivals = true; }
+            if (LocGUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Continuar", button)) { choosingSize = false; choosingRivals = true; }
             y += bh + gap;
-            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Volver", button)) { choosingSize = false; choosingCiv = true; }
+            if (LocGUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Volver", button)) { choosingSize = false; choosingCiv = true; }
         }
         else if (choosingRivals)
         {
-            GUI.Label(new Rect(0, y - 20f * k, Screen.width, 44f * k), "Civilizaciones enemigas", body);
-            GUI.Label(new Rect(0, y + 14f * k, Screen.width, 30f * k), "Las manejará la IA", hint2);
+            LocGUI.Label(new Rect(0, y - 20f * k, Screen.width, 44f * k), "Civilizaciones enemigas", body);
+            LocGUI.Label(new Rect(0, y + 14f * k, Screen.width, 30f * k), "Las manejará la IA", hint2);
             y += 64f * k;
 
             // Selector: − número +
             float sw = 64f * k;
-            if (GUI.Button(new Rect(cx - 150f * k, y, sw, bh), "−", button)) rivals = Mathf.Max(0, rivals - 1);
-            GUI.Label(new Rect(cx - 70f * k, y, 140f * k, bh), rivals.ToString(), number);
-            if (GUI.Button(new Rect(cx + 150f * k - sw, y, sw, bh), "+", button)) rivals = Mathf.Min(MaxRivals, rivals + 1);
+            if (LocGUI.Button(new Rect(cx - 150f * k, y, sw, bh), "−", button)) rivals = Mathf.Max(0, rivals - 1);
+            LocGUI.Label(new Rect(cx - 70f * k, y, 140f * k, bh), rivals.ToString(), number);
+            if (LocGUI.Button(new Rect(cx + 150f * k - sw, y, sw, bh), "+", button)) rivals = Mathf.Min(MaxRivals, rivals + 1);
             y += bh + gap * 0.6f;
 
             // Dificultad de la IA
-            GUI.Label(new Rect(0, y, Screen.width, 30f * k), "Dificultad", body);
+            LocGUI.Label(new Rect(0, y, Screen.width, 30f * k), "Dificultad", body);
             y += 32f * k;
-            difficultyIndex = GUI.Toolbar(new Rect(cx - 180f * k, y, 360f * k, 44f * k), difficultyIndex, DifficultyNames, button);
+            difficultyIndex = LocGUI.Toolbar(new Rect(cx - 180f * k, y, 360f * k, 44f * k), difficultyIndex, DifficultyNames, button);
             y += 46f * k;
-            GUI.Label(new Rect(0, y, Screen.width, 24f * k), DifficultyHints[difficultyIndex], hint2);
+            LocGUI.Label(new Rect(0, y, Screen.width, 24f * k), DifficultyHints[difficultyIndex], hint2);
             y += 30f * k + gap * 0.6f;
 
-            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), mpMode == 1 ? "Abrir sala" : "Comenzar", button))
+            if (LocGUI.Button(new Rect(cx - bw / 2f, y, bw, bh), mpMode == 1 ? "Abrir sala" : "Comenzar", button))
             {
                 if (mpMode == 1) OpenHostLobby();
                 else StartCoroutine(StartRoutine());
             }
             y += bh + gap;
-            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Volver", button)) { choosingRivals = false; choosingSize = true; }
+            if (LocGUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Volver", button)) { choosingRivals = false; choosingSize = true; }
         }
         else if (!showControls)
         {
-            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Jugar", button)) choosingCiv = true;
+            if (LocGUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Jugar", button)) choosingCiv = true;
             y += bh + gap;
 
             // Cargar partida: solo si hay una guardada (F5 en la partida guarda)
             bool canLoad = CivSave.Exists;
             bool enabledBefore = GUI.enabled;
             GUI.enabled = enabledBefore && canLoad;
-            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), canLoad ? "Cargar partida" : "Cargar partida (no hay ninguna)", button))
+            if (LocGUI.Button(new Rect(cx - bw / 2f, y, bw, bh), canLoad ? "Cargar partida" : "Cargar partida (no hay ninguna)", button))
                 StartCoroutine(LoadRoutine());
             GUI.enabled = enabledBefore;
             y += bh + gap;
-            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Multijugador", button)) { mpError = ""; mpMenu = true; }
+            if (LocGUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Multijugador", button)) { mpError = ""; mpMenu = true; }
             y += bh + gap;
-            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Controles", button)) showControls = true;
+            if (LocGUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Controles", button)) showControls = true;
             y += bh + gap;
-            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Salir", button)) Quit();
+            if (LocGUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Salir", button)) Quit();
         }
         else
         {
             float lineH = 40f * k;
             for (int i = 0; i < Controls.Length; i++)
-                GUI.Label(new Rect(0, y + i * lineH - 40f * k, Screen.width, lineH), Controls[i], body);
+                LocGUI.Label(new Rect(0, y + i * lineH - 40f * k, Screen.width, lineH), Controls[i], body);
 
             y += Controls.Length * lineH - 20f * k;
-            if (GUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Volver", button)) showControls = false;
+            if (LocGUI.Button(new Rect(cx - bw / 2f, y, bw, bh), "Volver", button)) showControls = false;
         }
 
         GUI.enabled = wasEnabled;
@@ -520,11 +685,12 @@ public class MainMenu : MonoBehaviour
             GUI.color = Color.black;   // opaco: mientras se prepara la partida no se ve el planeta sin niebla
             GUI.DrawTexture(new Rect(-4, -4, Screen.width + 8, Screen.height + 8), Texture2D.whiteTexture);
             GUI.color = Color.white;
-            GUI.Label(new Rect(0, 0, Screen.width, Screen.height), loadingText, title);
+            LocGUI.Label(new Rect(0, 0, Screen.width, Screen.height), loadingText, title);
+            if (loadingHint.Length > 0) LocGUI.Label(new Rect(0, Screen.height * 0.5f + 70f * k, Screen.width, 40f * k), loadingHint, subtitle);
             return;
         }
 
         if (mpMenu || hostLobby || joinWait) return;
-        GUI.Label(new Rect(0, 0, Screen.width, Screen.height - 14f * k), joinForm ? "Enter: conectar" : choosingRivals ? (mpMode == 1 ? "Enter: abrir sala" : "Enter: comenzar") : (choosingCiv || choosingSize) ? "Enter: continuar" : "Enter: jugar", hint);
+        LocGUI.Label(new Rect(0, 0, Screen.width, Screen.height - 14f * k), joinForm ? "Enter: conectar" : choosingRivals ? (mpMode == 1 ? "Enter: abrir sala" : "Enter: comenzar") : (choosingCiv || choosingSize) ? "Enter: continuar" : "Enter: jugar", hint);
     }
 }
